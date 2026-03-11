@@ -10,6 +10,7 @@ from api.database import get_db
 from api.deps import get_current_user
 from api.models import Company, DataUpload, User, _utcnow
 from api.services.webhooks import dispatch_event
+from api.services import audit
 from api.schemas import (
     CompanyOut,
     CompanyUpdate,
@@ -54,6 +55,11 @@ async def update_company(
     for key, value in updates.items():
         setattr(company, key, value)
 
+    await audit.record(
+        db, user_id=user.id, company_id=user.company_id,
+        action="update", resource_type="company", resource_id=company.id,
+        detail=f"fields: {', '.join(updates.keys())}",
+    )
     await db.commit()
     await db.refresh(company)
     return company
@@ -178,4 +184,8 @@ async def delete_data_upload(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Data upload not found")
 
     upload.deleted_at = _utcnow()
+    await audit.record(
+        db, user_id=user.id, company_id=user.company_id,
+        action="delete", resource_type="data_upload", resource_id=upload_id,
+    )
     await db.commit()

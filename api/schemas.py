@@ -304,3 +304,18 @@ class WebhookDeliveryOut(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+# ── Audit Log ───────────────────────────────────────────────────────
+
+
+class AuditLogOut(BaseModel):
+    id: str
+    user_id: str
+    action: str
+    resource_type: str
+    resource_id: str | None = None
+    detail: str | None = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}

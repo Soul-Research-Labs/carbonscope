@@ -13,6 +13,7 @@ from api.deps import get_current_user
 from api.limiter import limiter
 from api.models import Company, User
 from api.schemas import PasswordChange, Token, UserLogin, UserOut, UserProfileUpdate, UserRegister
+from api.services import audit
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -100,6 +101,10 @@ async def change_password(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect")
 
     user.hashed_password = hash_password(body.new_password)
+    await audit.record(
+        db, user_id=user.id, company_id=user.company_id,
+        action="change_password", resource_type="user", resource_id=user.id,
+    )
     await db.commit()
 
 

@@ -24,6 +24,7 @@ from api.schemas import (
 )
 from api.services.subnet_bridge import estimate_emissions_local
 from api.services.webhooks import dispatch_event
+from api.services import audit
 
 router = APIRouter(tags=["carbon"])
 
@@ -242,6 +243,10 @@ async def delete_report(
     if report is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
     report.deleted_at = _utcnow()
+    await audit.record(
+        db, user_id=user.id, company_id=user.company_id,
+        action="delete", resource_type="emission_report", resource_id=report_id,
+    )
     await db.commit()
 
 

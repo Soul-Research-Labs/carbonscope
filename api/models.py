@@ -178,3 +178,19 @@ class WebhookDelivery(Base):
     created_at: datetime = Column(DateTime(timezone=True), default=_utcnow)
 
     webhook = relationship("Webhook")
+
+
+# ── Audit Log ───────────────────────────────────────────────────────
+
+
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+
+    id: str = Column(String(32), primary_key=True, default=_new_id)
+    user_id: str = Column(String(32), ForeignKey("users.id"), nullable=False, index=True)
+    company_id: str = Column(String(32), ForeignKey("companies.id"), nullable=False, index=True)
+    action: str = Column(String(100), nullable=False)
+    resource_type: str = Column(String(100), nullable=False)
+    resource_id: str | None = Column(String(32), nullable=True)
+    detail: str | None = Column(Text, nullable=True)
+    created_at: datetime = Column(DateTime(timezone=True), default=_utcnow)

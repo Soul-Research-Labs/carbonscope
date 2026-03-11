@@ -21,6 +21,7 @@ from api.routes.ai_routes import router as ai_router
 from api.routes.supply_chain_routes import router as supply_chain_router
 from api.routes.compliance_routes import router as compliance_router
 from api.routes.webhook_routes import router as webhook_router
+from api.routes.audit_routes import router as audit_router
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +61,7 @@ app.include_router(ai_router, prefix="/api/v1")
 app.include_router(supply_chain_router, prefix="/api/v1")
 app.include_router(compliance_router, prefix="/api/v1")
 app.include_router(webhook_router, prefix="/api/v1")
+app.include_router(audit_router, prefix="/api/v1")
 
 
 @app.get("/health")
