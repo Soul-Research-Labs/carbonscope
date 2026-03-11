@@ -6,6 +6,7 @@ import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import (
+    Boolean,
     Column,
     DateTime,
     Float,
@@ -14,6 +15,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
     event,
 )
 from sqlalchemy.dialects.sqlite import JSON
@@ -124,6 +126,9 @@ class EmissionReport(Base):
 
 class SupplyChainLink(Base):
     __tablename__ = "supply_chain_links"
+    __table_args__ = (
+        UniqueConstraint("buyer_company_id", "supplier_company_id", name="uq_supply_chain_buyer_supplier"),
+    )
 
     id: str = Column(String(32), primary_key=True, default=_new_id)
     buyer_company_id: str = Column(String(32), ForeignKey("companies.id"), nullable=False, index=True)
@@ -149,7 +154,7 @@ class Webhook(Base):
     url: str = Column(String(2048), nullable=False)
     event_types: list = Column(JSON, nullable=False, default=list)  # ["report.created", "data.uploaded"]
     secret: str = Column(String(255), nullable=False)
-    active: bool = Column(Integer, nullable=False, default=1)  # SQLite has no bool
+    active: bool = Column(Boolean, nullable=False, default=True)
     created_at: datetime = Column(DateTime(timezone=True), default=_utcnow)
 
     company = relationship("Company")
@@ -167,7 +172,7 @@ class WebhookDelivery(Base):
     payload: dict = Column(JSON, nullable=False)
     status_code: int | None = Column(Integer, nullable=True)
     response_body: str | None = Column(Text, nullable=True)
-    success: bool = Column(Integer, nullable=False, default=0)
+    success: bool = Column(Boolean, nullable=False, default=False)
     error: str | None = Column(Text, nullable=True)
     duration_ms: int | None = Column(Integer, nullable=True)
     created_at: datetime = Column(DateTime(timezone=True), default=_utcnow)

@@ -51,7 +51,7 @@ async def create_webhook(
         url=url,
         event_types=event_types,
         secret=secret,
-        active=1,
+        active=True,
     )
     db.add(webhook)
     await db.commit()
@@ -106,7 +106,7 @@ async def toggle_webhook(
     webhook = result.scalar_one_or_none()
     if not webhook:
         return None
-    webhook.active = 1 if active else 0
+    webhook.active = active
     await db.commit()
     await db.refresh(webhook)
     return webhook
@@ -165,7 +165,7 @@ async def dispatch_event(
 
             delivery.status_code = resp.status_code
             delivery.response_body = resp.text[:2048]
-            delivery.success = 1 if resp.status_code < 400 else 0
+            delivery.success = resp.status_code < 400
             delivery.duration_ms = elapsed_ms
 
             results.append({
@@ -177,7 +177,7 @@ async def dispatch_event(
             })
         except Exception as exc:
             elapsed_ms = int((time.monotonic() - start) * 1000)
-            delivery.success = 0
+            delivery.success = False
             delivery.error = str(exc)[:2048]
             delivery.duration_ms = elapsed_ms
 
