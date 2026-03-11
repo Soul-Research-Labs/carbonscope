@@ -9,16 +9,34 @@ from httpx import AsyncClient
 
 @pytest.mark.asyncio
 class TestTokenRefresh:
-    async def test_refresh_returns_new_token(self, auth_client: AsyncClient):
-        resp = await auth_client.post("/api/v1/auth/refresh")
+    async def test_refresh_returns_new_token(self, client: AsyncClient):
+        # Register and login to obtain a refresh token
+        await client.post("/api/v1/auth/register", json={
+            "email": "trefresh@example.com",
+            "password": "Password123",
+            "full_name": "Trefresh User",
+            "company_name": "TrefreshCorp",
+            "industry": "energy",
+        })
+        login_resp = await client.post("/api/v1/auth/login", json={
+            "email": "trefresh@example.com",
+            "password": "Password123",
+        })
+        refresh_token = login_resp.json()["refresh_token"]
+
+        resp = await client.post("/api/v1/auth/refresh", json={
+            "refresh_token": refresh_token,
+        })
         assert resp.status_code == 200
         data = resp.json()
         assert "access_token" in data
         assert data["token_type"] == "bearer"
 
-    async def test_refresh_without_auth(self, client: AsyncClient):
-        resp = await client.post("/api/v1/auth/refresh")
-        assert resp.status_code in (401, 403)  # no bearer token
+    async def test_refresh_without_token(self, client: AsyncClient):
+        resp = await client.post("/api/v1/auth/refresh", json={
+            "refresh_token": "invalid-garbage",
+        })
+        assert resp.status_code == 401
 
 
 @pytest.mark.asyncio

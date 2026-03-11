@@ -1,11 +1,16 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
+import { ToastProvider } from "@/components/Toast";
 import Navbar from "@/components/Navbar";
 
 export const metadata: Metadata = {
-  title: "CarbonScope",
-  description: "Decentralized corporate carbon emission intelligence",
+  title: {
+    default: "CarbonScope",
+    template: "%s | CarbonScope",
+  },
+  description:
+    "Decentralized corporate carbon emission intelligence powered by Bittensor",
 };
 
 export default function RootLayout({
@@ -17,8 +22,22 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <AuthProvider>
-          <Navbar />
-          <main className="min-h-[calc(100vh-49px)]">{children}</main>
+          <ToastProvider>
+            <a
+              href="#main-content"
+              className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:bg-[var(--primary)] focus:text-black focus:px-4 focus:py-2 focus:rounded-lg"
+            >
+              Skip to main content
+            </a>
+            <Navbar />
+            <main
+              id="main-content"
+              className="min-h-[calc(100vh-49px)]"
+              role="main"
+            >
+              {children}
+            </main>
+          </ToastProvider>
         </AuthProvider>
       </body>
     </html>

@@ -85,3 +85,15 @@ def require_credits(operation: str) -> Callable:
         return user
 
     return _check
+
+
+async def require_admin(
+    user: User = Depends(get_current_user),
+) -> User:
+    """Dependency that ensures the current user has admin role."""
+    if user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required",
+        )
+    return user

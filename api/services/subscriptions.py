@@ -94,14 +94,24 @@ async def change_plan(db: AsyncSession, company_id: str, new_plan: str) -> Subsc
 
     sub = await get_or_create_subscription(db, company_id)
     old_plan = sub.plan
+    if old_plan == new_plan:
+        return sub
+
     sub.plan = new_plan
     sub.updated_at = _utcnow()
 
-    # Grant the delta in monthly credits
     old_credits = PLAN_LIMITS[old_plan]["monthly_credits"]
     new_credits = PLAN_LIMITS[new_plan]["monthly_credits"]
+
     if new_credits > old_credits:
+        # Upgrade: grant the delta
         await grant_credits(db, company_id, new_credits - old_credits, "plan_upgrade")
+    elif new_credits < old_credits:
+        # Downgrade: cap balance to new plan's monthly limit
+        current_balance = await get_credit_balance(db, company_id)
+        if current_balance > new_credits:
+            excess = current_balance - new_credits
+            await deduct_credits(db, company_id, excess, "plan_downgrade_adjustment")
 
     await db.flush()
     return sub
@@ -119,9 +129,29 @@ async def get_credit_balance(db: AsyncSession, company_id: str) -> int:
     return row if row is not None else 0
 
 
+async def _get_balance_for_update(db: AsyncSession, company_id: str) -> int:
+    """Get current credit balance with row-level locking to prevent race conditions.
+
+    Uses SELECT ... FOR UPDATE on PostgreSQL; on SQLite, serialized writes
+    provide equivalent safety within the same connection.
+    """
+    from sqlalchemy import text
+
+    # Get the latest ledger entry with lock
+    result = await db.execute(
+        select(CreditLedger)
+        .where(CreditLedger.company_id == company_id)
+        .order_by(CreditLedger.created_at.desc())
+        .limit(1)
+        .with_for_update()
+    )
+    entry = result.scalar_one_or_none()
+    return entry.balance_after if entry is not None else 0
+
+
 async def grant_credits(db: AsyncSession, company_id: str, amount: int, reason: str) -> CreditLedger:
     """Add credits to a company's balance."""
-    current = await get_credit_balance(db, company_id)
+    current = await _get_balance_for_update(db, company_id)
     entry = CreditLedger(
         company_id=company_id,
         amount=amount,
@@ -135,7 +165,7 @@ async def grant_credits(db: AsyncSession, company_id: str, amount: int, reason: 
 
 async def deduct_credits(db: AsyncSession, company_id: str, amount: int, reason: str) -> CreditLedger:
     """Deduct credits from a company's balance. Raises ValueError if insufficient."""
-    current = await get_credit_balance(db, company_id)
+    current = await _get_balance_for_update(db, company_id)
     if current < amount:
         raise ValueError(f"Insufficient credits: have {current}, need {amount}")
     entry = CreditLedger(

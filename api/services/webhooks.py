@@ -40,6 +40,11 @@ async def create_webhook(
     event_types: list[str],
 ) -> Webhook:
     """Register a new webhook endpoint for a company."""
+    # Validate URL against SSRF
+    from api.services.url_validator import validate_webhook_url
+
+    validate_webhook_url(url)
+
     # Validate event types
     invalid = [e for e in event_types if e not in EVENT_TYPES]
     if invalid:
@@ -225,3 +230,18 @@ async def list_deliveries(
         base.order_by(WebhookDelivery.created_at.desc()).limit(limit).offset(offset)
     )
     return list(result.scalars().all()), total
+
+
+async def dispatch_event_background(
+    company_id: str,
+    event_type: str,
+    data: dict[str, Any],
+) -> None:
+    """Dispatch webhook event in the background (for use with BackgroundTasks).
+
+    Opens its own DB session so it doesn't depend on the request lifecycle.
+    """
+    from api.database import async_session
+
+    async with async_session() as db:
+        await dispatch_event(db, company_id, event_type, data)

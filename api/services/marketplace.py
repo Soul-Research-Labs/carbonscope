@@ -146,3 +146,42 @@ async def purchase_listing(
     db.add(purchase)
     await db.flush()
     return purchase
+
+
+async def list_my_listings(
+    db: AsyncSession,
+    company_id: str,
+    limit: int = 20,
+    offset: int = 0,
+) -> tuple[list[DataListing], int]:
+    """List marketplace listings owned by a company."""
+    query = select(DataListing).where(DataListing.seller_company_id == company_id)
+    count_query = select(func.count()).select_from(DataListing).where(
+        DataListing.seller_company_id == company_id
+    )
+    total = (await db.execute(count_query)).scalar() or 0
+    result = await db.execute(
+        query.order_by(DataListing.created_at.desc()).offset(offset).limit(limit)
+    )
+    return result.scalars().all(), total
+
+
+async def withdraw_listing(
+    db: AsyncSession,
+    listing_id: str,
+    company_id: str,
+) -> DataListing | None:
+    """Withdraw a listing from the marketplace (seller only)."""
+    result = await db.execute(
+        select(DataListing).where(
+            DataListing.id == listing_id,
+            DataListing.seller_company_id == company_id,
+            DataListing.status == "active",
+        )
+    )
+    listing = result.scalar_one_or_none()
+    if listing is None:
+        return None
+    listing.status = "withdrawn"
+    await db.flush()
+    return listing

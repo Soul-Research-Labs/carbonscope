@@ -11,9 +11,10 @@ from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
-from api.config import ALLOWED_ORIGINS
+from api.config import ALLOWED_ORIGINS, ENV
 from api.database import get_db, init_db
 from api.limiter import limiter
+from api.middleware import register_middleware
 from api.routes.auth_routes import router as auth_router
 from api.routes.company_routes import router as company_router
 from api.routes.carbon_routes import router as carbon_router
@@ -31,12 +32,13 @@ from api.routes.marketplace_routes import router as marketplace_router
 logger = logging.getLogger(__name__)
 
 
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Startup: create DB tables, start scheduler. Shutdown: stop scheduler."""
-    await init_db()
-    logger.info("CarbonScope API v0.5.0 started")
+    """Startup: create DB tables (dev only), start scheduler. Shutdown: stop scheduler."""
+    if ENV != "production":
+        # In production, use Alembic migrations instead of create_all
+        await init_db()
+    logger.info("CarbonScope API v0.6.0 started (env=%s)", ENV)
 
     from api.services.scheduler import start_scheduler, stop_scheduler
 
@@ -48,11 +50,14 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="CarbonScope Platform API",
     description="Decentralized corporate carbon emission estimation powered by Bittensor",
-    version="0.5.0",
+    version="0.6.0",
     lifespan=lifespan,
 )
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Custom middleware (request ID, security headers, global error handler)
+register_middleware(app)
 
 # CORS — configurable origins with restricted methods/headers
 app.add_middleware(
@@ -60,7 +65,7 @@ app.add_middleware(
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization"],
+    allow_headers=["Content-Type", "Authorization", "X-Request-ID"],
 )
 
 # Routes
@@ -93,6 +98,6 @@ async def health():
         db_ok = False
     return {
         "status": "ok" if db_ok else "degraded",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "database": "connected" if db_ok else "unavailable",
     }

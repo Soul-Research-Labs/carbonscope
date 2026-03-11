@@ -1,6 +1,7 @@
 """SQLAlchemy async engine + session factory.
 
 Supports both SQLite (aiosqlite) and PostgreSQL (asyncpg).
+PostgreSQL uses connection pooling for production performance.
 """
 
 from __future__ import annotations
@@ -13,7 +14,18 @@ from api.config import DATABASE_URL
 
 _is_sqlite = DATABASE_URL.startswith("sqlite")
 
-engine = create_async_engine(DATABASE_URL, echo=False)
+# PostgreSQL connection pooling settings
+_engine_kwargs: dict = {"echo": False}
+if not _is_sqlite:
+    _engine_kwargs.update({
+        "pool_size": 10,
+        "max_overflow": 20,
+        "pool_timeout": 30,
+        "pool_recycle": 1800,  # recycle connections every 30 min
+        "pool_pre_ping": True,  # test connections before use
+    })
+
+engine = create_async_engine(DATABASE_URL, **_engine_kwargs)
 
 
 if _is_sqlite:

@@ -13,13 +13,13 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    JSON,
     String,
     Text,
     UniqueConstraint,
     event,
     Enum,
 )
-from sqlalchemy.dialects.sqlite import JSON
 from sqlalchemy.orm import relationship
 
 from api.database import Base

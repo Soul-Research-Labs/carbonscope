@@ -1,32 +1,52 @@
 """Background task scheduler for periodic monitoring.
 
 Uses asyncio tasks running within the FastAPI lifespan.
-Checks alerts and sends email notifications on a configurable interval.
+Checks alerts (with dedup), sends email notifications, and resets monthly credits.
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
+from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.database import async_session
-from api.models import Company
+from api.models import Alert, Company, EmissionReport
 from api.services.alerts import check_company_alerts
 
 logger = logging.getLogger(__name__)
 
 _scheduler_task: asyncio.Task | None = None
+_credit_reset_task: asyncio.Task | None = None
 
 # Check interval in seconds (default: 1 hour)
 CHECK_INTERVAL_SECONDS = 3600
+# Credit reset interval (default: 24 hours — checks daily, resets monthly)
+CREDIT_RESET_INTERVAL_SECONDS = 86400
+
+
+async def _get_latest_alert_report_ids(db: AsyncSession, company_id: str) -> set[str]:
+    """Get report IDs already referenced in recent alerts to prevent duplicates."""
+    result = await db.execute(
+        select(Alert.metadata_json)
+        .where(Alert.company_id == company_id)
+        .order_by(Alert.created_at.desc())
+        .limit(20)
+    )
+    report_ids = set()
+    for row in result.scalars().all():
+        if row and isinstance(row, dict):
+            if "latest_report_id" in row:
+                report_ids.add(row["latest_report_id"])
+    return report_ids
 
 
 async def _run_periodic_checks() -> None:
-    """Background loop that checks all companies for alerts."""
+    """Background loop that checks all companies for alerts (with dedup)."""
     while True:
         try:
             await asyncio.sleep(CHECK_INTERVAL_SECONDS)
@@ -39,8 +59,17 @@ async def _run_periodic_checks() -> None:
                 total_alerts = 0
                 for company_id in company_ids:
                     try:
+                        # Get existing alert report IDs for dedup
+                        existing_ids = await _get_latest_alert_report_ids(db, company_id)
                         new_alerts = await check_company_alerts(db, company_id)
-                        total_alerts += len(new_alerts)
+
+                        # Filter out duplicates
+                        for alert in new_alerts:
+                            meta = alert.metadata_json or {}
+                            if meta.get("latest_report_id") in existing_ids:
+                                await db.delete(alert)
+                            else:
+                                total_alerts += 1
                     except Exception:
                         logger.exception("Alert check failed for company %s", company_id)
 
@@ -48,6 +77,7 @@ async def _run_periodic_checks() -> None:
                     await db.commit()
                     logger.info("Created %d new alerts across %d companies", total_alerts, len(company_ids))
                 else:
+                    await db.commit()
                     logger.debug("No new alerts for %d companies", len(company_ids))
 
         except asyncio.CancelledError:
@@ -57,22 +87,68 @@ async def _run_periodic_checks() -> None:
             logger.exception("Scheduler error — will retry next cycle")
 
 
+async def _run_monthly_credit_reset() -> None:
+    """Background loop that resets credits on the 1st of each month."""
+    last_reset_month: int | None = None
+    while True:
+        try:
+            await asyncio.sleep(CREDIT_RESET_INTERVAL_SECONDS)
+            now = datetime.now(timezone.utc)
+
+            # Only reset on the 1st of the month, once per month
+            if now.day == 1 and last_reset_month != now.month:
+                logger.info("Running monthly credit reset...")
+                from api.services.subscriptions import (
+                    PLAN_LIMITS,
+                    get_or_create_subscription,
+                    grant_credits,
+                    get_credit_balance,
+                )
+
+                async with async_session() as db:
+                    result = await db.execute(select(Company.id))
+                    company_ids = [row[0] for row in result.all()]
+
+                    for company_id in company_ids:
+                        try:
+                            sub = await get_or_create_subscription(db, company_id)
+                            monthly = PLAN_LIMITS.get(sub.plan, PLAN_LIMITS["free"])["monthly_credits"]
+                            await grant_credits(db, company_id, monthly, "monthly_reset")
+                        except Exception:
+                            logger.exception("Credit reset failed for company %s", company_id)
+
+                    await db.commit()
+                    last_reset_month = now.month
+                    logger.info("Monthly credit reset complete for %d companies", len(company_ids))
+
+        except asyncio.CancelledError:
+            logger.info("Credit reset scheduler shutting down")
+            break
+        except Exception:
+            logger.exception("Credit reset error — will retry next cycle")
+
+
 def start_scheduler() -> None:
-    """Start the background scheduler task."""
-    global _scheduler_task
+    """Start the background scheduler tasks."""
+    global _scheduler_task, _credit_reset_task
     if _scheduler_task is None or _scheduler_task.done():
         _scheduler_task = asyncio.create_task(_run_periodic_checks())
-        logger.info("Background scheduler started (interval=%ds)", CHECK_INTERVAL_SECONDS)
+        logger.info("Background alert scheduler started (interval=%ds)", CHECK_INTERVAL_SECONDS)
+    if _credit_reset_task is None or _credit_reset_task.done():
+        _credit_reset_task = asyncio.create_task(_run_monthly_credit_reset())
+        logger.info("Monthly credit reset scheduler started")
 
 
 async def stop_scheduler() -> None:
-    """Stop the background scheduler task."""
-    global _scheduler_task
-    if _scheduler_task and not _scheduler_task.done():
-        _scheduler_task.cancel()
-        try:
-            await _scheduler_task
-        except asyncio.CancelledError:
-            pass
-        _scheduler_task = None
-        logger.info("Background scheduler stopped")
+    """Stop the background scheduler tasks."""
+    global _scheduler_task, _credit_reset_task
+    for task in [_scheduler_task, _credit_reset_task]:
+        if task and not task.done():
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+    _scheduler_task = None
+    _credit_reset_task = None
+    logger.info("Background schedulers stopped")

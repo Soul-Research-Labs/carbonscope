@@ -78,5 +78,3 @@ ESTIMATION_MODE: str = os.getenv("ESTIMATION_MODE", "local")  # local | subnet
 # ── Email / SMTP ────────────────────────────────────────────────────
 # Configured in api/services/email.py via env vars:
 #   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, EMAIL_FROM
-BT_WALLET_HOTKEY: str = os.getenv("BT_WALLET_HOTKEY", "default")
-BT_QUERY_TIMEOUT: float = float(os.getenv("BT_QUERY_TIMEOUT", "30.0"))

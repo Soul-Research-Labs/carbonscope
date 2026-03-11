@@ -80,15 +80,23 @@ export default function LoginPage() {
             {submitting ? "Signing in..." : "Sign In"}
           </button>
         </form>
-        <p className="text-center text-sm text-[var(--muted)] mt-6">
-          Don&apos;t have an account?{" "}
+        <div className="flex justify-between text-sm text-[var(--muted)] mt-6">
           <Link
-            href="/register"
+            href="/forgot-password"
             className="text-[var(--primary)] hover:underline"
           >
-            Register
+            Forgot password?
           </Link>
-        </p>
+          <span>
+            Don&apos;t have an account?{" "}
+            <Link
+              href="/register"
+              className="text-[var(--primary)] hover:underline"
+            >
+              Register
+            </Link>
+          </span>
+        </div>
       </div>
     </div>
   );

@@ -14,7 +14,7 @@ from api.schemas import (
     DataPurchaseOut,
     PaginatedResponse,
 )
-from api.services.marketplace import browse_listings, create_listing, purchase_listing
+from api.services.marketplace import browse_listings, create_listing, list_my_listings, purchase_listing, withdraw_listing
 
 router = APIRouter(prefix="/marketplace", tags=["marketplace"])
 
@@ -84,3 +84,30 @@ async def purchase_data(
         return purchase
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.get("/my-listings", response_model=PaginatedResponse[DataListingOut])
+async def get_my_listings(
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """List your own marketplace listings."""
+    listings, total = await list_my_listings(db, user.company_id, limit, offset)
+    return PaginatedResponse(items=listings, total=total, limit=limit, offset=offset)
+
+
+@router.post("/listings/{listing_id}/withdraw", response_model=DataListingOut)
+async def withdraw_data_listing(
+    listing_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Withdraw one of your listings from the marketplace."""
+    listing = await withdraw_listing(db, listing_id, user.company_id)
+    if listing is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Listing not found or already withdrawn")
+    await db.commit()
+    await db.refresh(listing)
+    return listing
