@@ -1,9 +1,10 @@
-feat: DB indexes, FK enforcement, and soft delete
+feat: webhook HTTP dispatch with delivery logging
 
-- Add composite indexes on (company_id, year) for data_uploads and emission_reports
-- Add single-column indexes on company_id for DataUpload and EmissionReport
-- Enable SQLite foreign key enforcement via PRAGMA foreign_keys=ON
-- Add deleted_at column to DataUpload and EmissionReport for soft delete
-- Convert DELETE endpoints to soft-delete (set deleted_at timestamp)
-- Filter soft-deleted records from all list/get/count/dashboard queries
+- Add WebhookDelivery model for tracking delivery attempts
+- Replace stub dispatch with real httpx HTTP POST requests
+- Sign payloads with HMAC-SHA256 (X-CarbonScope-Signature header)
+- Log status_code, response_body, duration_ms, success/error per delivery
+- Add GET /webhooks/{id}/deliveries endpoint with pagination
+- Wire dispatch_event into data upload and estimate endpoints
+- Add WebhookDeliveryOut schema
 - All 167 tests pass

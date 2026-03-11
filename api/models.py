@@ -153,3 +153,23 @@ class Webhook(Base):
     created_at: datetime = Column(DateTime(timezone=True), default=_utcnow)
 
     company = relationship("Company")
+
+
+# ── Webhook delivery logs ────────────────────────────────────────────
+
+
+class WebhookDelivery(Base):
+    __tablename__ = "webhook_deliveries"
+
+    id: str = Column(String(32), primary_key=True, default=_new_id)
+    webhook_id: str = Column(String(32), ForeignKey("webhooks.id", ondelete="CASCADE"), nullable=False, index=True)
+    event_type: str = Column(String(100), nullable=False)
+    payload: dict = Column(JSON, nullable=False)
+    status_code: int | None = Column(Integer, nullable=True)
+    response_body: str | None = Column(Text, nullable=True)
+    success: bool = Column(Integer, nullable=False, default=0)
+    error: str | None = Column(Text, nullable=True)
+    duration_ms: int | None = Column(Integer, nullable=True)
+    created_at: datetime = Column(DateTime(timezone=True), default=_utcnow)
+
+    webhook = relationship("Webhook")

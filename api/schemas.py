@@ -258,3 +258,17 @@ class WebhookOut(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class WebhookDeliveryOut(BaseModel):
+    id: str
+    webhook_id: str
+    event_type: str
+    payload: dict[str, Any]
+    status_code: int | None = None
+    success: bool
+    error: str | None = None
+    duration_ms: int | None = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}

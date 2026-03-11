@@ -11,12 +11,14 @@ import hmac
 import json
 import logging
 import secrets
+import time
 from typing import Any
 
+import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.models import Webhook
+from api.models import Webhook, WebhookDelivery
 
 logger = logging.getLogger(__name__)
 
@@ -123,9 +125,8 @@ async def dispatch_event(
 ) -> list[dict[str, Any]]:
     """Dispatch an event to all matching active webhooks for a company.
 
+    Performs real HTTP POST requests and logs delivery results.
     Returns a list of dispatch results (webhook_id, status, error).
-    In production this would use an async HTTP client; here we log and
-    return the intended payloads for testability.
     """
     webhooks = await list_webhooks(db, company_id)
     results = []
@@ -136,26 +137,91 @@ async def dispatch_event(
         if event_type not in (wh.event_types or []):
             continue
 
-        payload = json.dumps({
+        payload_dict = {
             "event": event_type,
             "company_id": company_id,
             "data": data,
-        }).encode()
-
+        }
+        payload = json.dumps(payload_dict, default=str).encode()
         signature = _sign_payload(wh.secret, payload)
 
-        # In production: httpx.AsyncClient.post(wh.url, content=payload, headers=...)
-        # For now, log the dispatch
-        logger.info(
-            "Webhook dispatch: event=%s webhook=%s url=%s",
-            event_type, wh.id, wh.url,
-        )
-        results.append({
-            "webhook_id": wh.id,
-            "url": wh.url,
-            "event": event_type,
-            "signature": signature,
-            "status": "dispatched",
-        })
+        headers = {
+            "Content-Type": "application/json",
+            "X-CarbonScope-Signature": f"sha256={signature}",
+            "X-CarbonScope-Event": event_type,
+        }
 
+        delivery = WebhookDelivery(
+            webhook_id=wh.id,
+            event_type=event_type,
+            payload=payload_dict,
+        )
+
+        start = time.monotonic()
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.post(wh.url, content=payload, headers=headers)
+            elapsed_ms = int((time.monotonic() - start) * 1000)
+
+            delivery.status_code = resp.status_code
+            delivery.response_body = resp.text[:2048]
+            delivery.success = 1 if resp.status_code < 400 else 0
+            delivery.duration_ms = elapsed_ms
+
+            results.append({
+                "webhook_id": wh.id,
+                "url": wh.url,
+                "event": event_type,
+                "status": "success" if delivery.success else "failed",
+                "status_code": resp.status_code,
+            })
+        except Exception as exc:
+            elapsed_ms = int((time.monotonic() - start) * 1000)
+            delivery.success = 0
+            delivery.error = str(exc)[:2048]
+            delivery.duration_ms = elapsed_ms
+
+            logger.warning(
+                "Webhook delivery failed: webhook=%s url=%s error=%s",
+                wh.id, wh.url, exc,
+            )
+            results.append({
+                "webhook_id": wh.id,
+                "url": wh.url,
+                "event": event_type,
+                "status": "error",
+                "error": str(exc),
+            })
+
+        db.add(delivery)
+
+    await db.commit()
     return results
+
+
+async def list_deliveries(
+    db: AsyncSession,
+    webhook_id: str,
+    company_id: str,
+    limit: int = 50,
+    offset: int = 0,
+) -> tuple[list[WebhookDelivery], int]:
+    """List delivery logs for a webhook (scoped to company)."""
+    from sqlalchemy import func
+
+    # Verify webhook belongs to the company
+    wh_result = await db.execute(
+        select(Webhook).where(
+            Webhook.id == webhook_id,
+            Webhook.company_id == company_id,
+        )
+    )
+    if wh_result.scalar_one_or_none() is None:
+        return [], 0
+
+    base = select(WebhookDelivery).where(WebhookDelivery.webhook_id == webhook_id)
+    total = (await db.execute(select(func.count()).select_from(base.subquery()))).scalar() or 0
+    result = await db.execute(
+        base.order_by(WebhookDelivery.created_at.desc()).limit(limit).offset(offset)
+    )
+    return list(result.scalars().all()), total

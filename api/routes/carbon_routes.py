@@ -17,6 +17,7 @@ from api.schemas import (
     PaginatedResponse,
 )
 from api.services.subnet_bridge import estimate_emissions_local
+from api.services.webhooks import dispatch_event
 
 router = APIRouter(tags=["carbon"])
 
@@ -90,6 +91,14 @@ async def create_estimate(
     db.add(report)
     await db.commit()
     await db.refresh(report)
+
+    # Dispatch webhook event (fire-and-forget; errors are logged)
+    await dispatch_event(db, user.company_id, "report.created", {
+        "report_id": report.id,
+        "year": report.year,
+        "total": report.total,
+    })
+
     return report
 
 

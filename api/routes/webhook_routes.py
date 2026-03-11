@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.database import get_db
 from api.deps import get_current_user
 from api.models import User
-from api.schemas import WebhookCreate, WebhookOut
-from api.services.webhooks import create_webhook, delete_webhook, list_webhooks, toggle_webhook
+from api.schemas import PaginatedResponse, WebhookCreate, WebhookDeliveryOut, WebhookOut
+from api.services.webhooks import create_webhook, delete_webhook, list_deliveries, list_webhooks, toggle_webhook
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
@@ -61,3 +61,26 @@ async def remove_webhook(
     removed = await delete_webhook(db, webhook_id, user.company_id)
     if not removed:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Webhook not found")
+
+
+@router.get("/{webhook_id}/deliveries", response_model=PaginatedResponse[WebhookDeliveryOut])
+async def get_deliveries(
+    webhook_id: str,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """List delivery logs for a webhook."""
+    items, total = await list_deliveries(db, webhook_id, user.company_id, limit, offset)
+    if total == 0:
+        # Could be webhook not found — check ownership
+        from sqlalchemy import select
+        from api.models import Webhook
+
+        result = await db.execute(
+            select(Webhook).where(Webhook.id == webhook_id, Webhook.company_id == user.company_id)
+        )
+        if result.scalar_one_or_none() is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Webhook not found")
+    return PaginatedResponse(items=items, total=total, limit=limit, offset=offset)

@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.database import get_db
 from api.deps import get_current_user
 from api.models import Company, DataUpload, User, _utcnow
+from api.services.webhooks import dispatch_event
 from api.schemas import (
     CompanyOut,
     CompanyUpdate,
@@ -77,6 +78,12 @@ async def upload_data(
     db.add(upload)
     await db.commit()
     await db.refresh(upload)
+
+    await dispatch_event(db, user.company_id, "data.uploaded", {
+        "upload_id": upload.id,
+        "year": upload.year,
+    })
+
     return upload
 
 
