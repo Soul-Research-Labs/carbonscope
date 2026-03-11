@@ -1,7 +1,9 @@
-feat: frontend error boundaries, 404 page, and loading state
+feat: Docker and production configuration
 
-- Add app-level error.tsx error boundary with retry button
-- Add custom not-found.tsx 404 page
-- Add loading.tsx with animated spinner
-- Add route-level error boundaries for dashboard and reports
-- All 170 backend tests pass
+- Add multi-stage Dockerfile (backend + frontend targets)
+- Add docker-compose.yml with health checks and volume mounts
+- Enable Next.js standalone output for containerized deployment
+- Make backend URL configurable via BACKEND_URL env var
+- Add .dockerignore for lean builds
+- Add .env.example with all configurable env vars
+- All 170 tests pass
