@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import csv
+import io
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -132,6 +136,68 @@ async def list_reports(
     sort_expr = sort_col.asc() if order == "asc" else sort_col.desc()
     result = await db.execute(base.order_by(sort_expr).limit(limit).offset(offset))
     return PaginatedResponse(items=result.scalars().all(), total=total, limit=limit, offset=offset)
+
+
+# ── Export (must be before /reports/{report_id} so FastAPI matches it) ──
+
+
+@router.get("/reports/export")
+async def export_reports(
+    format: str = Query(default="csv", pattern="^(csv|json)$"),
+    year: int | None = Query(default=None),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Export emission reports as CSV or JSON."""
+    base = select(EmissionReport).where(
+        EmissionReport.company_id == user.company_id,
+        EmissionReport.deleted_at.is_(None),
+    )
+    if year is not None:
+        base = base.where(EmissionReport.year == year)
+
+    result = await db.execute(base.order_by(EmissionReport.year.desc()))
+    reports = result.scalars().all()
+
+    if format == "json":
+        import json
+
+        data = [
+            {
+                "id": r.id,
+                "year": r.year,
+                "scope1": r.scope1,
+                "scope2": r.scope2,
+                "scope3": r.scope3,
+                "total": r.total,
+                "confidence": r.confidence,
+                "methodology_version": r.methodology_version,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in reports
+        ]
+        return StreamingResponse(
+            io.BytesIO(json.dumps(data, indent=2).encode()),
+            media_type="application/json",
+            headers={"Content-Disposition": "attachment; filename=reports.json"},
+        )
+
+    # CSV format
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["id", "year", "scope1", "scope2", "scope3", "total", "confidence", "methodology_version", "created_at"])
+    for r in reports:
+        writer.writerow([
+            r.id, r.year, r.scope1, r.scope2, r.scope3, r.total,
+            r.confidence, r.methodology_version,
+            r.created_at.isoformat() if r.created_at else "",
+        ])
+
+    return StreamingResponse(
+        io.BytesIO(output.getvalue().encode()),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=reports.csv"},
+    )
 
 
 @router.get("/reports/{report_id}", response_model=EmissionReportOut)

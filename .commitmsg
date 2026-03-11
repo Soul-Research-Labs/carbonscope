@@ -1,10 +1,8 @@
-feat: webhook HTTP dispatch with delivery logging
+feat: report export endpoint (CSV and JSON)
 
-- Add WebhookDelivery model for tracking delivery attempts
-- Replace stub dispatch with real httpx HTTP POST requests
-- Sign payloads with HMAC-SHA256 (X-CarbonScope-Signature header)
-- Log status_code, response_body, duration_ms, success/error per delivery
-- Add GET /webhooks/{id}/deliveries endpoint with pagination
-- Wire dispatch_event into data upload and estimate endpoints
-- Add WebhookDeliveryOut schema
-- All 167 tests pass
+- Add GET /reports/export with format=csv|json and optional year filter
+- Route placed before /reports/{report_id} to avoid path conflict
+- CSV output with proper headers and Content-Disposition
+- JSON export with indented formatting
+- Respects soft-delete filter
+- 3 new tests for export (170 tests pass)

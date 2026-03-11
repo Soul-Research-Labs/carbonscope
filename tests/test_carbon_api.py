@@ -147,6 +147,48 @@ class TestReportRoutes:
 
 
 @pytest.mark.asyncio
+class TestExport:
+    async def _create_report(self, client: AsyncClient, year: int = 2025) -> dict:
+        upload_resp = await client.post("/api/v1/data", json={
+            "year": year,
+            "provided_data": {"electricity_kwh": 100_000, "employee_count": 50},
+        })
+        upload_id = upload_resp.json()["id"]
+        resp = await client.post("/api/v1/estimate", json={"data_upload_id": upload_id})
+        return resp.json()
+
+    async def test_export_csv(self, auth_client: AsyncClient):
+        await self._create_report(auth_client, 2024)
+        await self._create_report(auth_client, 2025)
+
+        resp = await auth_client.get("/api/v1/reports/export?format=csv")
+        assert resp.status_code == 200
+        assert "text/csv" in resp.headers["content-type"]
+        lines = resp.text.strip().split("\n")
+        assert len(lines) == 3  # header + 2 data rows
+        assert "scope1" in lines[0]
+
+    async def test_export_json(self, auth_client: AsyncClient):
+        await self._create_report(auth_client, 2024)
+
+        resp = await auth_client.get("/api/v1/reports/export?format=json")
+        assert resp.status_code == 200
+        assert "application/json" in resp.headers["content-type"]
+        data = resp.json()
+        assert isinstance(data, list)
+        assert len(data) == 1
+        assert data[0]["year"] == 2024
+
+    async def test_export_csv_year_filter(self, auth_client: AsyncClient):
+        await self._create_report(auth_client, 2024)
+        await self._create_report(auth_client, 2025)
+
+        resp = await auth_client.get("/api/v1/reports/export?format=csv&year=2025")
+        lines = resp.text.strip().split("\n")
+        assert len(lines) == 2  # header + 1 data row
+
+
+@pytest.mark.asyncio
 class TestDashboard:
     async def test_dashboard_empty(self, auth_client: AsyncClient):
         resp = await auth_client.get("/api/v1/dashboard")
