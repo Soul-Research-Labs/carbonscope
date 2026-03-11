@@ -195,7 +195,7 @@ class TestWebhooks:
             "event_types": ["data.uploaded"],
         })
         wh_id = create_resp.json()["id"]
-        resp = await auth_client.patch(f"/api/v1/webhooks/{wh_id}?active=false")
+        resp = await auth_client.patch(f"/api/v1/webhooks/{wh_id}", json={"active": False})
         assert resp.status_code == 200
         assert resp.json()["active"] is False
 

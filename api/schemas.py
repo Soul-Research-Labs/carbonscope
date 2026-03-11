@@ -267,6 +267,10 @@ class WebhookCreate(BaseModel):
     event_types: list[str] = Field(min_length=1)
 
 
+class WebhookToggle(BaseModel):
+    active: bool
+
+
 class WebhookOut(BaseModel):
     """Full webhook details — includes secret (returned only on creation)."""
     id: str

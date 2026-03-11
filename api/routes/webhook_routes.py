@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.database import get_db
 from api.deps import get_current_user
 from api.models import User
-from api.schemas import PaginatedResponse, WebhookCreate, WebhookDeliveryOut, WebhookOut, WebhookOutPublic
+from api.schemas import PaginatedResponse, WebhookCreate, WebhookDeliveryOut, WebhookOut, WebhookOutPublic, WebhookToggle
 from api.services.webhooks import create_webhook, delete_webhook, list_deliveries, list_webhooks, toggle_webhook
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
@@ -40,12 +40,12 @@ async def get_webhooks(
 @router.patch("/{webhook_id}", response_model=WebhookOutPublic)
 async def update_webhook(
     webhook_id: str,
-    active: bool = True,
+    body: WebhookToggle,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Enable or disable a webhook."""
-    wh = await toggle_webhook(db, webhook_id, user.company_id, active)
+    wh = await toggle_webhook(db, webhook_id, user.company_id, body.active)
     if not wh:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Webhook not found")
     return wh
