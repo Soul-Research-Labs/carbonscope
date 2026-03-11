@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.auth import authenticate_user, create_access_token, hash_password
+from api.config import RATE_LIMIT_AUTH
 from api.database import get_db
+from api.limiter import limiter
 from api.models import Company, User
 from api.schemas import Token, UserLogin, UserOut, UserRegister
 
@@ -15,7 +17,8 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
-async def register(body: UserRegister, db: AsyncSession = Depends(get_db)):
+@limiter.limit(RATE_LIMIT_AUTH)
+async def register(request: Request, body: UserRegister, db: AsyncSession = Depends(get_db)):
     """Register a new user and company."""
     # Check for existing email
     existing = await db.execute(select(User).where(User.email == body.email))
@@ -44,7 +47,8 @@ async def register(body: UserRegister, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/login", response_model=Token)
-async def login(body: UserLogin, db: AsyncSession = Depends(get_db)):
+@limiter.limit(RATE_LIMIT_AUTH)
+async def login(request: Request, body: UserLogin, db: AsyncSession = Depends(get_db)):
     """Authenticate and return a JWT."""
     user = await authenticate_user(db, body.email, body.password)
     if user is None:

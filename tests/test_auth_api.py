@@ -11,7 +11,7 @@ class TestAuthRoutes:
     async def test_register_success(self, client: AsyncClient):
         resp = await client.post("/api/v1/auth/register", json={
             "email": "new@example.com",
-            "password": "password123",
+            "password": "Password123",
             "full_name": "New User",
             "company_name": "NewCorp",
             "industry": "technology",
@@ -27,7 +27,7 @@ class TestAuthRoutes:
     async def test_register_duplicate_email(self, client: AsyncClient):
         payload = {
             "email": "dup@example.com",
-            "password": "password123",
+            "password": "Password123",
             "full_name": "Dup User",
             "company_name": "DupCorp",
             "industry": "retail",
@@ -50,14 +50,14 @@ class TestAuthRoutes:
     async def test_login_success(self, client: AsyncClient):
         await client.post("/api/v1/auth/register", json={
             "email": "login@example.com",
-            "password": "password123",
+            "password": "Password123",
             "full_name": "Login User",
             "company_name": "LoginCorp",
             "industry": "manufacturing",
         })
         resp = await client.post("/api/v1/auth/login", json={
             "email": "login@example.com",
-            "password": "password123",
+            "password": "Password123",
         })
         assert resp.status_code == 200
         data = resp.json()
@@ -67,20 +67,20 @@ class TestAuthRoutes:
     async def test_login_wrong_password(self, client: AsyncClient):
         await client.post("/api/v1/auth/register", json={
             "email": "wrong@example.com",
-            "password": "password123",
+            "password": "Password123",
             "full_name": "Wrong User",
             "company_name": "WrongCorp",
             "industry": "manufacturing",
         })
         resp = await client.post("/api/v1/auth/login", json={
             "email": "wrong@example.com",
-            "password": "badpassword",
+            "password": "Badpassword1",
         })
         assert resp.status_code == 401
 
     async def test_login_nonexistent_user(self, client: AsyncClient):
         resp = await client.post("/api/v1/auth/login", json={
             "email": "ghost@example.com",
-            "password": "password123",
+            "password": "Password123",
         })
         assert resp.status_code == 401

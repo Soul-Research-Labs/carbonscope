@@ -11,6 +11,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 
 from api.database import Base, get_db
+from api.limiter import limiter
 from api.main import app
 
 # In-memory SQLite for tests
@@ -28,10 +29,13 @@ def event_loop():
 
 @pytest_asyncio.fixture(autouse=True)
 async def setup_db():
-    """Create tables before each test and drop after."""
+    """Create tables before each test, drop after, and reset rate limiter."""
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    # Disable rate limits for tests so they don't interfere
+    limiter.enabled = False
     yield
+    limiter.enabled = True
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
 
@@ -57,7 +61,7 @@ async def auth_client(client: AsyncClient) -> AsyncClient:
     # Register
     await client.post("/api/v1/auth/register", json={
         "email": "test@example.com",
-        "password": "securepass123",
+        "password": "Securepass123",
         "full_name": "Test User",
         "company_name": "TestCorp",
         "industry": "manufacturing",
@@ -66,7 +70,7 @@ async def auth_client(client: AsyncClient) -> AsyncClient:
     # Login
     resp = await client.post("/api/v1/auth/login", json={
         "email": "test@example.com",
-        "password": "securepass123",
+        "password": "Securepass123",
     })
     token = resp.json()["access_token"]
     client.headers["Authorization"] = f"Bearer {token}"

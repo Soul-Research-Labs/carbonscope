@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 # ── Paths ───────────────────────────────────────────────────────────
 
@@ -18,9 +21,37 @@ DATABASE_URL: str = os.getenv(
 
 # ── Auth ────────────────────────────────────────────────────────────
 
-SECRET_KEY: str = os.getenv("SECRET_KEY", "change-me-in-production")
+_DEFAULT_SECRET = "change-me-in-production"
+SECRET_KEY: str = os.getenv("SECRET_KEY", _DEFAULT_SECRET)
+if SECRET_KEY == _DEFAULT_SECRET:
+    logger.warning(
+        "SECRET_KEY is using the default value. Set SECRET_KEY env var in production!"
+    )
 ALGORITHM: str = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
+
+# ── CORS ────────────────────────────────────────────────────────────
+
+ALLOWED_ORIGINS: list[str] = [
+    o.strip()
+    for o in os.getenv(
+        "ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"
+    ).split(",")
+    if o.strip()
+]
+
+# ── Rate Limiting ───────────────────────────────────────────────────
+
+RATE_LIMIT_AUTH: str = os.getenv("RATE_LIMIT_AUTH", "10/minute")
+RATE_LIMIT_DEFAULT: str = os.getenv("RATE_LIMIT_DEFAULT", "60/minute")
+
+# ── Logging ─────────────────────────────────────────────────────────
+
+LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
+logging.basicConfig(
+    level=getattr(logging, LOG_LEVEL.upper(), logging.INFO),
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+)
 
 # ── Bittensor ───────────────────────────────────────────────────────
 

@@ -11,6 +11,7 @@ passlib[bcrypt]>=1.7.4
 PyJWT>=2.8.0
 pydantic[email]>=2.0
 httpx>=0.24.0
+slowapi>=0.1.9
 
 # Testing
 pytest>=7.0.0
