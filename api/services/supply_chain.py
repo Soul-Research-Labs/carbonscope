@@ -57,10 +57,13 @@ async def create_link(
 async def list_suppliers(
     db: AsyncSession,
     buyer_company_id: str,
-) -> list[dict[str, Any]]:
+    limit: int = 50,
+    offset: int = 0,
+) -> tuple[list[dict[str, Any]], int]:
     """List all suppliers for a buyer, with their latest emissions if available.
 
     Uses a single query with a correlated subquery to avoid N+1 performance issues.
+    Returns (items, total) for pagination.
     """
     # Subquery: latest report created_at per company
     latest_ts = (
@@ -75,6 +78,14 @@ async def list_suppliers(
 
     LatestReport = aliased(EmissionReport)
 
+    base_where = SupplyChainLink.buyer_company_id == buyer_company_id
+
+    # Total count
+    count_result = await db.execute(
+        select(func.count()).select_from(SupplyChainLink).where(base_where)
+    )
+    total = count_result.scalar() or 0
+
     stmt = (
         select(SupplyChainLink, Company, LatestReport)
         .join(Company, Company.id == SupplyChainLink.supplier_company_id)
@@ -86,8 +97,10 @@ async def list_suppliers(
                 LatestReport.deleted_at.is_(None),
             ),
         )
-        .where(SupplyChainLink.buyer_company_id == buyer_company_id)
+        .where(base_where)
         .order_by(Company.name)
+        .limit(limit)
+        .offset(offset)
     )
 
     result = await db.execute(stmt)
@@ -113,22 +126,33 @@ async def list_suppliers(
             "created_at": link.created_at.isoformat(),
         })
 
-    return suppliers
+    return suppliers, total
 
 
 async def list_buyers(
     db: AsyncSession,
     supplier_company_id: str,
-) -> list[dict[str, Any]]:
-    """List all buyers that this company supplies."""
+    limit: int = 50,
+    offset: int = 0,
+) -> tuple[list[dict[str, Any]], int]:
+    """List all buyers that this company supplies. Returns (items, total)."""
+    base_where = SupplyChainLink.supplier_company_id == supplier_company_id
+
+    count_result = await db.execute(
+        select(func.count()).select_from(SupplyChainLink).where(base_where)
+    )
+    total = count_result.scalar() or 0
+
     result = await db.execute(
         select(SupplyChainLink, Company)
         .join(Company, Company.id == SupplyChainLink.buyer_company_id)
-        .where(SupplyChainLink.supplier_company_id == supplier_company_id)
+        .where(base_where)
         .order_by(Company.name)
+        .limit(limit)
+        .offset(offset)
     )
 
-    return [
+    items = [
         {
             "link_id": link.id,
             "company_id": company.id,
@@ -141,6 +165,7 @@ async def list_buyers(
         }
         for link, company in result.all()
     ]
+    return items, total
 
 
 async def calc_supplier_scope3(

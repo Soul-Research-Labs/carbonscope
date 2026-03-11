@@ -44,20 +44,26 @@ async def add_supplier(
 
 @router.get("/suppliers")
 async def get_suppliers(
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """List all suppliers and their emission data."""
-    return await list_suppliers(db, user.company_id)
+    items, total = await list_suppliers(db, user.company_id, limit=limit, offset=offset)
+    return {"items": items, "total": total, "limit": limit, "offset": offset}
 
 
 @router.get("/buyers")
 async def get_buyers(
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """List all buyers this company supplies to."""
-    return await list_buyers(db, user.company_id)
+    items, total = await list_buyers(db, user.company_id, limit=limit, offset=offset)
+    return {"items": items, "total": total, "limit": limit, "offset": offset}
 
 
 @router.get("/scope3-from-suppliers")
