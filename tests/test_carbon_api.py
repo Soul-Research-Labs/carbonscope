@@ -83,7 +83,10 @@ class TestReportRoutes:
 
         resp = await auth_client.get("/api/v1/reports")
         assert resp.status_code == 200
-        reports = resp.json()
+        body = resp.json()
+        assert "items" in body
+        assert body["total"] == 2
+        reports = body["items"]
         assert len(reports) == 2
 
     async def test_filter_reports_by_year(self, auth_client: AsyncClient):
@@ -91,7 +94,8 @@ class TestReportRoutes:
         await self._create_report(auth_client, 2025)
 
         resp = await auth_client.get("/api/v1/reports?year=2025")
-        reports = resp.json()
+        body = resp.json()
+        reports = body["items"]
         assert all(r["year"] == 2025 for r in reports)
 
     async def test_get_report_by_id(self, auth_client: AsyncClient):
@@ -101,6 +105,45 @@ class TestReportRoutes:
         resp = await auth_client.get(f"/api/v1/reports/{report_id}")
         assert resp.status_code == 200
         assert resp.json()["id"] == report_id
+
+    async def test_delete_report(self, auth_client: AsyncClient):
+        report = await self._create_report(auth_client)
+        report_id = report["id"]
+
+        resp = await auth_client.delete(f"/api/v1/reports/{report_id}")
+        assert resp.status_code == 204
+
+        resp = await auth_client.get(f"/api/v1/reports/{report_id}")
+        assert resp.status_code == 404
+
+    async def test_delete_nonexistent_report(self, auth_client: AsyncClient):
+        resp = await auth_client.delete("/api/v1/reports/nonexistent")
+        assert resp.status_code == 404
+
+    async def test_list_reports_pagination(self, auth_client: AsyncClient):
+        for yr in (2023, 2024, 2025):
+            await self._create_report(auth_client, yr)
+
+        resp = await auth_client.get("/api/v1/reports?limit=2&offset=0")
+        body = resp.json()
+        assert body["total"] == 3
+        assert len(body["items"]) == 2
+
+        resp2 = await auth_client.get("/api/v1/reports?limit=2&offset=2")
+        body2 = resp2.json()
+        assert len(body2["items"]) == 1
+
+    async def test_list_reports_sort_by_year(self, auth_client: AsyncClient):
+        await self._create_report(auth_client, 2024)
+        await self._create_report(auth_client, 2025)
+
+        resp = await auth_client.get("/api/v1/reports?sort_by=year&order=asc")
+        items = resp.json()["items"]
+        assert items[0]["year"] <= items[1]["year"]
+
+        resp2 = await auth_client.get("/api/v1/reports?sort_by=year&order=desc")
+        items2 = resp2.json()["items"]
+        assert items2[0]["year"] >= items2[1]["year"]
 
 
 @pytest.mark.asyncio

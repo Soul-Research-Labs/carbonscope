@@ -64,7 +64,10 @@ class TestDataUploadRoutes:
 
         resp = await auth_client.get("/api/v1/data")
         assert resp.status_code == 200
-        uploads = resp.json()
+        body = resp.json()
+        assert "items" in body
+        assert body["total"] == 2
+        uploads = body["items"]
         assert len(uploads) == 2
         # Should be ordered by year desc
         assert uploads[0]["year"] >= uploads[1]["year"]
@@ -83,3 +86,74 @@ class TestDataUploadRoutes:
     async def test_get_nonexistent_upload(self, auth_client: AsyncClient):
         resp = await auth_client.get("/api/v1/data/nonexistent")
         assert resp.status_code == 404
+
+    async def test_patch_upload(self, auth_client: AsyncClient):
+        create_resp = await auth_client.post("/api/v1/data", json={
+            "year": 2024,
+            "provided_data": {"electricity_kwh": 100_000},
+            "notes": "original",
+        })
+        upload_id = create_resp.json()["id"]
+
+        resp = await auth_client.patch(f"/api/v1/data/{upload_id}", json={
+            "year": 2025,
+            "notes": "updated",
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["year"] == 2025
+        assert data["notes"] == "updated"
+
+    async def test_patch_nonexistent_upload(self, auth_client: AsyncClient):
+        resp = await auth_client.patch("/api/v1/data/nonexistent", json={"year": 2025})
+        assert resp.status_code == 404
+
+    async def test_delete_upload(self, auth_client: AsyncClient):
+        create_resp = await auth_client.post("/api/v1/data", json={
+            "year": 2024,
+            "provided_data": {"electricity_kwh": 50_000},
+        })
+        upload_id = create_resp.json()["id"]
+
+        resp = await auth_client.delete(f"/api/v1/data/{upload_id}")
+        assert resp.status_code == 204
+
+        # Verify it's gone
+        resp = await auth_client.get(f"/api/v1/data/{upload_id}")
+        assert resp.status_code == 404
+
+    async def test_delete_nonexistent_upload(self, auth_client: AsyncClient):
+        resp = await auth_client.delete("/api/v1/data/nonexistent")
+        assert resp.status_code == 404
+
+    async def test_list_uploads_pagination(self, auth_client: AsyncClient):
+        for i in range(3):
+            await auth_client.post("/api/v1/data", json={
+                "year": 2023 + i,
+                "provided_data": {"electricity_kwh": 10_000},
+            })
+
+        resp = await auth_client.get("/api/v1/data?limit=2&offset=0")
+        body = resp.json()
+        assert body["total"] == 3
+        assert len(body["items"]) == 2
+        assert body["limit"] == 2
+        assert body["offset"] == 0
+
+        resp2 = await auth_client.get("/api/v1/data?limit=2&offset=2")
+        body2 = resp2.json()
+        assert body2["total"] == 3
+        assert len(body2["items"]) == 1
+
+    async def test_list_uploads_filter_year(self, auth_client: AsyncClient):
+        await auth_client.post("/api/v1/data", json={
+            "year": 2024, "provided_data": {"electricity_kwh": 10_000},
+        })
+        await auth_client.post("/api/v1/data", json={
+            "year": 2025, "provided_data": {"electricity_kwh": 20_000},
+        })
+
+        resp = await auth_client.get("/api/v1/data?year=2025")
+        body = resp.json()
+        assert body["total"] == 1
+        assert body["items"][0]["year"] == 2025

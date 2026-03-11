@@ -14,6 +14,7 @@ from api.schemas import (
     CompanyOut,
     EmissionReportOut,
     EstimateRequest,
+    PaginatedResponse,
 )
 from api.services.subnet_bridge import estimate_emissions_local
 
@@ -94,23 +95,30 @@ async def create_estimate(
 # ── Reports ─────────────────────────────────────────────────────────
 
 
-@router.get("/reports", response_model=list[EmissionReportOut])
+@router.get("/reports", response_model=PaginatedResponse[EmissionReportOut])
 async def list_reports(
     year: int | None = Query(default=None),
+    confidence_min: float | None = Query(default=None, ge=0, le=1),
+    sort_by: str = Query(default="created_at", pattern="^(created_at|year|total|confidence)$"),
+    order: str = Query(default="desc", pattern="^(asc|desc)$"),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get all emission reports for the current company, optionally filtered by year."""
-    stmt = (
-        select(EmissionReport)
-        .where(EmissionReport.company_id == user.company_id)
-        .order_by(EmissionReport.year.desc(), EmissionReport.created_at.desc())
-    )
+    """List emission reports with pagination, filtering, and sorting."""
+    base = select(EmissionReport).where(EmissionReport.company_id == user.company_id)
     if year is not None:
-        stmt = stmt.where(EmissionReport.year == year)
+        base = base.where(EmissionReport.year == year)
+    if confidence_min is not None:
+        base = base.where(EmissionReport.confidence >= confidence_min)
 
-    result = await db.execute(stmt)
-    return result.scalars().all()
+    total = (await db.execute(select(func.count()).select_from(base.subquery()))).scalar() or 0
+
+    sort_col = getattr(EmissionReport, sort_by)
+    sort_expr = sort_col.asc() if order == "asc" else sort_col.desc()
+    result = await db.execute(base.order_by(sort_expr).limit(limit).offset(offset))
+    return PaginatedResponse(items=result.scalars().all(), total=total, limit=limit, offset=offset)
 
 
 @router.get("/reports/{report_id}", response_model=EmissionReportOut)
@@ -130,6 +138,26 @@ async def get_report(
     if report is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
     return report
+
+
+@router.delete("/reports/{report_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_report(
+    report_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete a specific emission report."""
+    result = await db.execute(
+        select(EmissionReport).where(
+            EmissionReport.id == report_id,
+            EmissionReport.company_id == user.company_id,
+        )
+    )
+    report = result.scalar_one_or_none()
+    if report is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
+    await db.delete(report)
+    await db.commit()
 
 
 # ── Dashboard ───────────────────────────────────────────────────────

@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import re
 from datetime import datetime
-from typing import Any
+from typing import Any, Generic, TypeVar
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
+
+T = TypeVar("T")
 
 
 # ── Auth ────────────────────────────────────────────────────────────
@@ -82,6 +84,12 @@ class DataUploadCreate(BaseModel):
     notes: str | None = None
 
 
+class DataUploadUpdate(BaseModel):
+    year: int | None = Field(default=None, ge=2000, le=2030)
+    provided_data: dict[str, Any] | None = None
+    notes: str | None = None
+
+
 class DataUploadOut(BaseModel):
     id: str
     company_id: str
@@ -118,6 +126,16 @@ class EmissionReportOut(BaseModel):
 class EstimateRequest(BaseModel):
     """Trigger an emission estimation for a specific data upload."""
     data_upload_id: str
+
+
+# ── Paginated response ──────────────────────────────────────────────
+
+
+class PaginatedResponse(BaseModel, Generic[T]):
+    items: list[T]
+    total: int
+    limit: int
+    offset: int
 
 
 # ── Dashboard ───────────────────────────────────────────────────────
@@ -240,4 +258,3 @@ class WebhookOut(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
-    year_over_year: list[dict[str, Any]] = []
