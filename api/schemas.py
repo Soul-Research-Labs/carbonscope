@@ -142,6 +142,11 @@ class EmissionReportOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ReportUpdate(BaseModel):
+    year: int | None = Field(default=None, ge=2000, le=2030)
+    notes: str | None = None
+
+
 class EstimateRequest(BaseModel):
     """Trigger an emission estimation for a specific data upload."""
     data_upload_id: str
@@ -362,6 +367,11 @@ class QuestionUpdate(BaseModel):
     status: str | None = Field(default=None, pattern="^(draft|reviewed|approved)$")
 
 
+class QuestionnaireUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=500)
+    status: str | None = Field(default=None, pattern="^(uploaded|extracting|extracted|reviewed|exported)$")
+
+
 class QuestionnaireDetail(BaseModel):
     questionnaire: QuestionnaireOut
     questions: list[QuestionOut]
@@ -375,6 +385,11 @@ class ScenarioCreate(BaseModel):
     description: str | None = None
     base_report_id: str | None = None
     parameters: dict[str, Any]
+
+
+class ScenarioUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    description: str | None = None
 
 
 class ScenarioOut(BaseModel):

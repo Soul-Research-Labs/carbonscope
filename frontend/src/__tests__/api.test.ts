@@ -58,6 +58,7 @@ describe("API Client request function", () => {
     });
 
     const { getProfile } = await import("@/lib/api");
-    await expect(getProfile()).rejects.toThrow("Invalid token");
+    // With auto-refresh: 401 triggers refresh attempt which also gets 401 → "Session expired"
+    await expect(getProfile()).rejects.toThrow("Session expired");
   });
 });

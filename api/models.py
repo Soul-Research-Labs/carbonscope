@@ -121,6 +121,7 @@ class EmissionReport(Base):
     # Scoring metadata (from validator)
     miner_scores: dict | None = Column(JSON, nullable=True)
 
+    notes: str | None = Column(Text, nullable=True)
     created_at: datetime = Column(DateTime(timezone=True), default=_utcnow)
     deleted_at: datetime | None = Column(DateTime(timezone=True), nullable=True, default=None)
 
@@ -181,6 +182,9 @@ class WebhookDelivery(Base):
     success: bool = Column(Boolean, nullable=False, default=False)
     error: str | None = Column(Text, nullable=True)
     duration_ms: int | None = Column(Integer, nullable=True)
+    retry_count: int = Column(Integer, nullable=False, default=0)
+    max_retries: int = Column(Integer, nullable=False, default=3)
+    next_retry_at: datetime | None = Column(DateTime(timezone=True), nullable=True)
     created_at: datetime = Column(DateTime(timezone=True), default=_utcnow)
 
     webhook = relationship("Webhook")

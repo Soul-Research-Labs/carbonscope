@@ -22,11 +22,14 @@ logger = logging.getLogger(__name__)
 
 _scheduler_task: asyncio.Task | None = None
 _credit_reset_task: asyncio.Task | None = None
+_webhook_retry_task: asyncio.Task | None = None
 
 # Check interval in seconds (default: 1 hour)
 CHECK_INTERVAL_SECONDS = 3600
 # Credit reset interval (default: 24 hours — checks daily, resets monthly)
 CREDIT_RESET_INTERVAL_SECONDS = 86400
+# Webhook retry interval (default: 30 seconds)
+WEBHOOK_RETRY_INTERVAL_SECONDS = 30
 
 
 async def _get_latest_alert_report_ids(db: AsyncSession, company_id: str) -> set[str]:
@@ -128,21 +131,42 @@ async def _run_monthly_credit_reset() -> None:
             logger.exception("Credit reset error — will retry next cycle")
 
 
+async def _run_webhook_retries() -> None:
+    """Background loop that processes pending webhook delivery retries."""
+    from api.services.webhooks import process_pending_retries
+
+    while True:
+        try:
+            await asyncio.sleep(WEBHOOK_RETRY_INTERVAL_SECONDS)
+            async with async_session() as db:
+                processed = await process_pending_retries(db)
+                if processed > 0:
+                    logger.info("Processed %d webhook retries", processed)
+        except asyncio.CancelledError:
+            logger.info("Webhook retry scheduler shutting down")
+            break
+        except Exception:
+            logger.exception("Webhook retry error — will retry next cycle")
+
+
 def start_scheduler() -> None:
     """Start the background scheduler tasks."""
-    global _scheduler_task, _credit_reset_task
+    global _scheduler_task, _credit_reset_task, _webhook_retry_task
     if _scheduler_task is None or _scheduler_task.done():
         _scheduler_task = asyncio.create_task(_run_periodic_checks())
         logger.info("Background alert scheduler started (interval=%ds)", CHECK_INTERVAL_SECONDS)
     if _credit_reset_task is None or _credit_reset_task.done():
         _credit_reset_task = asyncio.create_task(_run_monthly_credit_reset())
         logger.info("Monthly credit reset scheduler started")
+    if _webhook_retry_task is None or _webhook_retry_task.done():
+        _webhook_retry_task = asyncio.create_task(_run_webhook_retries())
+        logger.info("Webhook retry scheduler started (interval=%ds)", WEBHOOK_RETRY_INTERVAL_SECONDS)
 
 
 async def stop_scheduler() -> None:
     """Stop the background scheduler tasks."""
-    global _scheduler_task, _credit_reset_task
-    for task in [_scheduler_task, _credit_reset_task]:
+    global _scheduler_task, _credit_reset_task, _webhook_retry_task
+    for task in [_scheduler_task, _credit_reset_task, _webhook_retry_task]:
         if task and not task.done():
             task.cancel()
             try:
@@ -151,4 +175,5 @@ async def stop_scheduler() -> None:
                 pass
     _scheduler_task = None
     _credit_reset_task = None
+    _webhook_retry_task = None
     logger.info("Background schedulers stopped")

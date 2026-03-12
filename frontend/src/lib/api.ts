@@ -8,6 +8,21 @@ function getCsrfToken(): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
+/** Prevent multiple concurrent refresh attempts. */
+let refreshPromise: Promise<string> | null = null;
+
+async function doRefresh(): Promise<string> {
+  const res = await fetch(`${BASE}/auth/refresh`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+  });
+  if (!res.ok) throw new ApiError(res.status, "Session expired");
+  const data = await res.json();
+  localStorage.setItem("token", data.access_token);
+  return data.access_token;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token =
     typeof window !== "undefined" ? localStorage.getItem("token") : null;
@@ -29,6 +44,35 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     headers,
     credentials: "include",
   });
+
+  // Auto-refresh: on 401, try refreshing the token once and retry
+  if (res.status === 401 && token && path !== "/auth/refresh") {
+    try {
+      if (!refreshPromise) refreshPromise = doRefresh();
+      const newToken = await refreshPromise;
+      refreshPromise = null;
+      headers["Authorization"] = `Bearer ${newToken}`;
+      const retry = await fetch(`${BASE}${path}`, {
+        ...init,
+        headers,
+        credentials: "include",
+      });
+      if (!retry.ok) {
+        const body = await retry.json().catch(() => ({}));
+        throw new ApiError(retry.status, body.detail ?? retry.statusText);
+      }
+      if (retry.status === 204) return undefined as T;
+      return retry.json();
+    } catch (err) {
+      refreshPromise = null;
+      // If refresh also failed, clear auth state
+      if (err instanceof ApiError && err.status === 401) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+      }
+      throw err;
+    }
+  }
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));

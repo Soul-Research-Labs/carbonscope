@@ -17,6 +17,7 @@ from api.schemas import (
     PaginatedResponse,
     QuestionnaireDetail,
     QuestionnaireOut,
+    QuestionnaireUpdate,
     QuestionOut,
     QuestionUpdate,
 )
@@ -235,6 +236,34 @@ async def delete_questionnaire(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Questionnaire not found")
     q.deleted_at = _utcnow()
     await db.commit()
+
+
+@router.patch("/{questionnaire_id}", response_model=QuestionnaireOut)
+async def update_questionnaire(
+    questionnaire_id: str,
+    body: QuestionnaireUpdate,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update a questionnaire's title or status."""
+    result = await db.execute(
+        select(Questionnaire).where(
+            Questionnaire.id == questionnaire_id,
+            Questionnaire.company_id == user.company_id,
+            Questionnaire.deleted_at.is_(None),
+        )
+    )
+    q = result.scalar_one_or_none()
+    if not q:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Questionnaire not found")
+
+    updates = body.model_dump(exclude_unset=True)
+    for key, value in updates.items():
+        setattr(q, key, value)
+
+    await db.commit()
+    await db.refresh(q)
+    return q
 
 
 @router.get("/{questionnaire_id}/export/pdf")

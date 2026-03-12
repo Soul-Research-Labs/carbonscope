@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.database import get_db
 from api.deps import get_current_user
 from api.models import EmissionReport, Scenario, User
-from api.schemas import PaginatedResponse, ScenarioCreate, ScenarioOut
+from api.schemas import PaginatedResponse, ScenarioCreate, ScenarioOut, ScenarioUpdate
 from api.services.scenarios import run_scenario
 
 router = APIRouter(prefix="/scenarios", tags=["scenarios"])
@@ -91,6 +91,33 @@ async def get_scenario(
     scenario = result.scalar_one_or_none()
     if not scenario:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Scenario not found")
+    return scenario
+
+
+@router.patch("/{scenario_id}", response_model=ScenarioOut)
+async def update_scenario(
+    scenario_id: str,
+    body: ScenarioUpdate,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update a scenario's name or description."""
+    result = await db.execute(
+        select(Scenario).where(
+            Scenario.id == scenario_id,
+            Scenario.company_id == user.company_id,
+        )
+    )
+    scenario = result.scalar_one_or_none()
+    if not scenario:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Scenario not found")
+
+    updates = body.model_dump(exclude_unset=True)
+    for key, value in updates.items():
+        setattr(scenario, key, value)
+
+    await db.commit()
+    await db.refresh(scenario)
     return scenario
 
 

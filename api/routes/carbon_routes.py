@@ -21,6 +21,7 @@ from api.schemas import (
     EmissionReportOut,
     EstimateRequest,
     PaginatedResponse,
+    ReportUpdate,
 )
 from api.services.subnet_bridge import estimate_emissions, estimate_emissions_local
 from api.services.webhooks import dispatch_event
@@ -227,6 +228,38 @@ async def get_report(
     report = result.scalar_one_or_none()
     if report is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
+    return report
+
+
+@router.patch("/reports/{report_id}", response_model=EmissionReportOut)
+async def update_report(
+    report_id: str,
+    body: ReportUpdate,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update a report's year or notes."""
+    result = await db.execute(
+        select(EmissionReport).where(
+            EmissionReport.id == report_id,
+            EmissionReport.company_id == user.company_id,
+            EmissionReport.deleted_at.is_(None),
+        )
+    )
+    report = result.scalar_one_or_none()
+    if report is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
+
+    updates = body.model_dump(exclude_unset=True)
+    for key, value in updates.items():
+        setattr(report, key, value)
+
+    await audit.record(
+        db, user_id=user.id, company_id=user.company_id,
+        action="update", resource_type="emission_report", resource_id=report_id,
+    )
+    await db.commit()
+    await db.refresh(report)
     return report
 
 
