@@ -36,6 +36,7 @@ async def create_compliance_report(
         select(EmissionReport).where(
             EmissionReport.id == body.report_id,
             EmissionReport.company_id == user.company_id,
+            EmissionReport.deleted_at.is_(None),
         )
     )
     report = result.scalar_one_or_none()

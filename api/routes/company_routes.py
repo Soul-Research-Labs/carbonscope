@@ -7,7 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.database import get_db
-from api.deps import get_current_user
+from api.deps import get_current_user, require_admin
 from api.models import Company, DataUpload, User, _utcnow
 from api.services.webhooks import dispatch_event
 from api.services import audit
@@ -42,7 +42,7 @@ async def get_company(
 @router.patch("/company", response_model=CompanyOut)
 async def update_company(
     body: CompanyUpdate,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
     """Update company profile fields."""

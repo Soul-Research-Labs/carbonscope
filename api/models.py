@@ -482,3 +482,15 @@ class RevokedToken(Base):
     user_id: str = Column(String(32), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     revoked_at: datetime = Column(DateTime(timezone=True), default=_utcnow)
     expires_at: datetime = Column(DateTime(timezone=True), nullable=False)
+
+
+class PasswordResetToken(Base):
+    """Persistent password-reset token — replaces in-memory _reset_tokens dict."""
+    __tablename__ = "password_reset_tokens"
+
+    id: str = Column(String(32), primary_key=True, default=_new_id)
+    user_id: str = Column(String(32), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    email: str = Column(String(255), nullable=False)
+    token_hash: str = Column(String(128), unique=True, nullable=False, index=True)
+    expires_at: datetime = Column(DateTime(timezone=True), nullable=False)
+    created_at: datetime = Column(DateTime(timezone=True), default=_utcnow)

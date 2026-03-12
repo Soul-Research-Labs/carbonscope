@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.database import get_db
-from api.deps import get_current_user
+from api.deps import get_current_user, require_admin
 from api.models import User
 from api.schemas import SupplyChainLinkCreate, SupplyChainLinkOut, SupplyChainLinkUpdate
 from api.services.supply_chain import (
@@ -80,7 +80,7 @@ async def scope3_from_suppliers(
 async def update_link(
     link_id: str,
     body: SupplyChainLinkUpdate,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
     """Update a supply chain link's verification status."""

@@ -13,7 +13,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.config import ACCESS_TOKEN_EXPIRE_MINUTES, ALGORITHM, SECRET_KEY
-from api.models import User, RefreshToken, RevokedToken
+from api.models import User, RefreshToken, RevokedToken, PasswordResetToken
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -22,9 +22,8 @@ REFRESH_TOKEN_EXPIRE_DAYS = 30
 # Password reset token expiry
 RESET_TOKEN_EXPIRE_MINUTES = 15
 
-# In-memory store for password reset tokens only (short-lived, 15 min)
-# Refresh tokens + revoked access tokens are in the database.
-_reset_tokens: dict[str, dict] = {}  # token -> {"user_id", "email", "exp"}
+# Password reset tokens are now persisted in the database (PasswordResetToken model),
+# following the same pattern as RefreshToken for consistency and multi-instance safety.
 
 
 def _hash_token(token: str) -> str:
@@ -126,21 +125,38 @@ def decode_access_token(token: str) -> dict:
 # ── Password reset ──────────────────────────────────────────────────
 
 
-def create_reset_token(user_id: str, email: str) -> str:
-    """Create a short-lived password reset token."""
+async def create_reset_token(db: AsyncSession, user_id: str, email: str) -> str:
+    """Create a short-lived password reset token (persisted in DB)."""
     token = secrets.token_urlsafe(32)
     exp = datetime.now(timezone.utc) + timedelta(minutes=RESET_TOKEN_EXPIRE_MINUTES)
-    _reset_tokens[token] = {"user_id": user_id, "email": email, "exp": exp}
+    db.add(PasswordResetToken(
+        user_id=user_id,
+        email=email,
+        token_hash=_hash_token(token),
+        expires_at=exp,
+    ))
+    await db.flush()
     return token
 
 
-def validate_reset_token(token: str) -> dict | None:
+async def validate_reset_token(db: AsyncSession, token: str) -> dict | None:
     """Validate and consume a password reset token (single use)."""
-    data = _reset_tokens.pop(token, None)
-    if data is None:
+    hashed = _hash_token(token)
+    result = await db.execute(
+        select(PasswordResetToken).where(PasswordResetToken.token_hash == hashed)
+    )
+    row = result.scalar_one_or_none()
+    if row is None:
         return None
-    if datetime.now(timezone.utc) > data["exp"]:
+    expires = row.expires_at if row.expires_at.tzinfo else row.expires_at.replace(tzinfo=timezone.utc)
+    if datetime.now(timezone.utc) > expires:
+        await db.delete(row)
+        await db.flush()
         return None
+    data = {"user_id": row.user_id, "email": row.email}
+    # Consume (single-use)
+    await db.delete(row)
+    await db.flush()
     return data
 
 
@@ -148,9 +164,14 @@ def validate_reset_token(token: str) -> dict | None:
 
 
 async def authenticate_user(db: AsyncSession, email: str, password: str) -> User | None:
-    """Return the user if credentials are valid, else None."""
+    """Return the user if credentials are valid, else None.
+
+    Rejects inactive or soft-deleted accounts.
+    """
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
     if user is None or not verify_password(password, user.hashed_password):
+        return None
+    if not user.is_active or user.deleted_at is not None:
         return None
     return user

@@ -199,7 +199,8 @@ class TestPasswordReset:
         async with TestSessionLocal() as session:
             result = await session.execute(select(User).where(User.email == "reset@example.com"))
             user = result.scalar_one()
-            token = create_reset_token(user.id, user.email)
+            token = await create_reset_token(session, user.id, user.email)
+            await session.commit()
 
         # Reset password
         resp = await client.post("/api/v1/auth/reset-password", json={

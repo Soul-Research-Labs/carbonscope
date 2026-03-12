@@ -502,6 +502,7 @@ cd frontend && npm install && npm run dev   # http://localhost:3000
 ### v0.7.0
 
 **Phase 4 — Polish & Nice-to-Have**
+
 - Password strength: require lowercase + special character in all password fields
 - Python Enum types for 15 role/status string columns across 9 models
 - Navbar highlights active item on deep/nested routes
@@ -511,6 +512,7 @@ cd frontend && npm install && npm run dev   # http://localhost:3000
 - Removed stale `dark:` Tailwind prefixes — consistent CSS variable theming
 
 **Phase 3 — Quality, Performance & Documentation**
+
 - Soft delete on Company, Subscription, SupplyChainLink
 - CHECK constraints on EmissionReport (scope1/2/3 ≥ 0, 0 ≤ confidence ≤ 1) and CreditLedger
 - Structured JSON logging with sensitive data masking
@@ -521,12 +523,14 @@ cd frontend && npm install && npm run dev   # http://localhost:3000
 - Pinned backend dependency versions, DEPLOYMENT.md
 
 **Phase 2 — Feature Completeness & Test Coverage**
+
 - PATCH/DELETE for reports, questionnaires; PATCH for scenarios
 - Webhook exponential-backoff retry system
 - DataTable, FormField reusable components
 - Auto token refresh, 104 backend + 21 frontend tests
 
 **Phase 1 — Auth Hardening & Production Safety**
+
 - Persistent token storage (RefreshToken/RevokedToken DB models)
 - POST /auth/logout with JWT revocation
 - Account lockout after 5 failed logins

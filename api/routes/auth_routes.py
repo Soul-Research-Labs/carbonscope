@@ -228,7 +228,8 @@ async def change_password(
 
 
 @router.post("/refresh", response_model=TokenWithRefresh)
-async def refresh_token(body: RefreshRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit(RATE_LIMIT_AUTH)
+async def refresh_token(request: Request, body: RefreshRequest, db: AsyncSession = Depends(get_db)):
     """Exchange a refresh token for a new access + refresh token pair (rotation)."""
     data = await validate_refresh_token(db, body.refresh_token)
     if data is None:
@@ -295,7 +296,8 @@ async def forgot_password(
     result = await db.execute(select(User).where(User.email == body.email))
     user = result.scalar_one_or_none()
     if user is not None:
-        token = create_reset_token(user.id, user.email)
+        token = await create_reset_token(db, user.id, user.email)
+        await db.commit()
         from api.services.email_async import send_password_reset_email
         await send_password_reset_email(user.email, token)
     # Always return 204 to prevent email enumeration
@@ -309,7 +311,7 @@ async def reset_password(
     db: AsyncSession = Depends(get_db),
 ):
     """Reset password using a valid reset token."""
-    data = validate_reset_token(body.token)
+    data = await validate_reset_token(db, body.token)
     if data is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

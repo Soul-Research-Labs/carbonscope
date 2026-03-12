@@ -69,6 +69,7 @@ async def audit_trail(
         select(EmissionReport).where(
             EmissionReport.id == body.report_id,
             EmissionReport.company_id == user.company_id,
+            EmissionReport.deleted_at.is_(None),
         )
     )
     report = result.scalar_one_or_none()
@@ -105,6 +106,7 @@ async def get_recommendations(
         select(EmissionReport).where(
             EmissionReport.id == report_id,
             EmissionReport.company_id == user.company_id,
+            EmissionReport.deleted_at.is_(None),
         )
     )
     report = result.scalar_one_or_none()

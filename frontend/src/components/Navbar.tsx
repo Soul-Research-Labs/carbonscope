@@ -51,19 +51,20 @@ export default function Navbar() {
             {NAV_ITEMS.map((item) => {
               const isActive =
                 pathname === item.href ||
-                (item.href !== "/dashboard" && pathname.startsWith(item.href + "/"));
+                (item.href !== "/dashboard" &&
+                  pathname.startsWith(item.href + "/"));
               return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  isActive
-                    ? "bg-[var(--primary)] text-black"
-                    : "text-[var(--muted)] hover:text-[var(--foreground)]"
-                }`}
-              >
-                {item.icon} {item.label}
-              </Link>
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    isActive
+                      ? "bg-[var(--primary)] text-black"
+                      : "text-[var(--muted)] hover:text-[var(--foreground)]"
+                  }`}
+                >
+                  {item.icon} {item.label}
+                </Link>
               );
             })}
           </div>
@@ -120,19 +121,20 @@ export default function Navbar() {
           {NAV_ITEMS.map((item) => {
             const isActive =
               pathname === item.href ||
-              (item.href !== "/dashboard" && pathname.startsWith(item.href + "/"));
+              (item.href !== "/dashboard" &&
+                pathname.startsWith(item.href + "/"));
             return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                isActive
-                  ? "bg-[var(--primary)] text-black"
-                  : "text-[var(--muted)] hover:text-[var(--foreground)]"
-              }`}
-            >
-              {item.icon} {item.label}
-            </Link>
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  isActive
+                    ? "bg-[var(--primary)] text-black"
+                    : "text-[var(--muted)] hover:text-[var(--foreground)]"
+                }`}
+              >
+                {item.icon} {item.label}
+              </Link>
             );
           })}
         </div>

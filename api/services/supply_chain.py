@@ -13,7 +13,7 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
-from api.models import Company, EmissionReport, SupplyChainLink
+from api.models import Company, EmissionReport, SupplyChainLink, _utcnow
 
 
 # ── Link management ──────────────────────────────────────────────────
@@ -31,11 +31,12 @@ async def create_link(
     if buyer_company_id == supplier_company_id:
         raise ValueError("A company cannot be its own supplier")
 
-    # Check no duplicate
+    # Check no duplicate (among non-deleted links)
     existing = await db.execute(
         select(SupplyChainLink).where(
             SupplyChainLink.buyer_company_id == buyer_company_id,
             SupplyChainLink.supplier_company_id == supplier_company_id,
+            SupplyChainLink.deleted_at.is_(None),
         )
     )
     if existing.scalar_one_or_none():
@@ -78,7 +79,10 @@ async def list_suppliers(
 
     LatestReport = aliased(EmissionReport)
 
-    base_where = SupplyChainLink.buyer_company_id == buyer_company_id
+    base_where = and_(
+        SupplyChainLink.buyer_company_id == buyer_company_id,
+        SupplyChainLink.deleted_at.is_(None),
+    )
 
     # Total count
     count_result = await db.execute(
@@ -136,7 +140,10 @@ async def list_buyers(
     offset: int = 0,
 ) -> tuple[list[dict[str, Any]], int]:
     """List all buyers that this company supplies. Returns (items, total)."""
-    base_where = SupplyChainLink.supplier_company_id == supplier_company_id
+    base_where = and_(
+        SupplyChainLink.supplier_company_id == supplier_company_id,
+        SupplyChainLink.deleted_at.is_(None),
+    )
 
     count_result = await db.execute(
         select(func.count()).select_from(SupplyChainLink).where(base_where)
@@ -212,6 +219,7 @@ async def calc_supplier_scope3(
         .where(
             SupplyChainLink.buyer_company_id == buyer_company_id,
             SupplyChainLink.status == "verified",
+            SupplyChainLink.deleted_at.is_(None),
         )
     )
 
@@ -222,7 +230,8 @@ async def calc_supplier_scope3(
         # Count all links for coverage calc
         all_count_r = await db.execute(
             select(func.count()).select_from(SupplyChainLink).where(
-                SupplyChainLink.buyer_company_id == buyer_company_id
+                SupplyChainLink.buyer_company_id == buyer_company_id,
+                SupplyChainLink.deleted_at.is_(None),
             )
         )
         all_count = all_count_r.scalar() or 0
@@ -262,7 +271,8 @@ async def calc_supplier_scope3(
     # Count total suppliers for coverage calc
     all_count_r = await db.execute(
         select(func.count()).select_from(SupplyChainLink).where(
-            SupplyChainLink.buyer_company_id == buyer_company_id
+            SupplyChainLink.buyer_company_id == buyer_company_id,
+            SupplyChainLink.deleted_at.is_(None),
         )
     )
     all_count = all_count_r.scalar() or 0
@@ -281,18 +291,19 @@ async def remove_link(
     link_id: str,
     company_id: str,
 ) -> bool:
-    """Remove a supply chain link (only if the requester is the buyer)."""
+    """Soft-delete a supply chain link (only if the requester is the buyer)."""
     result = await db.execute(
         select(SupplyChainLink).where(
             SupplyChainLink.id == link_id,
             SupplyChainLink.buyer_company_id == company_id,
+            SupplyChainLink.deleted_at.is_(None),
         )
     )
     link = result.scalar_one_or_none()
     if not link:
         return False
 
-    await db.delete(link)
+    link.deleted_at = _utcnow()
     await db.commit()
     return True
 
@@ -308,6 +319,7 @@ async def update_link_status(
         select(SupplyChainLink).where(
             SupplyChainLink.id == link_id,
             SupplyChainLink.buyer_company_id == company_id,
+            SupplyChainLink.deleted_at.is_(None),
         )
     )
     link = result.scalar_one_or_none()

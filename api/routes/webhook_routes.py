@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.database import get_db
-from api.deps import get_current_user
+from api.deps import get_current_user, require_admin
 from api.models import User
 from api.schemas import PaginatedResponse, WebhookCreate, WebhookDeliveryOut, WebhookOut, WebhookOutPublic, WebhookToggle
 from api.services.webhooks import create_webhook, delete_webhook, list_deliveries, list_webhooks, toggle_webhook
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 @router.post("/", response_model=WebhookOut, status_code=status.HTTP_201_CREATED)
 async def add_webhook(
     body: WebhookCreate,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
     """Register a new webhook endpoint."""
@@ -54,7 +54,7 @@ async def update_webhook(
 @router.delete("/{webhook_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def remove_webhook(
     webhook_id: str,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
     """Delete a webhook."""

@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.database import get_db
-from api.deps import get_current_user
+from api.deps import get_current_user, require_admin
 from api.models import User
 from api.schemas import (
     CreditBalanceOut,
@@ -41,7 +41,7 @@ async def get_subscription(
 @router.post("/subscription", response_model=SubscriptionOut)
 async def update_subscription(
     body: SubscriptionCreate,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
     """Change the company's subscription plan."""
@@ -90,12 +90,10 @@ async def list_plans():
 @router.post("/credits/grant", response_model=CreditBalanceOut)
 async def admin_grant_credits(
     amount: int,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
     """Grant credits manually (admin only)."""
-    if user.role != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
     if amount <= 0:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Amount must be positive")
 
