@@ -37,7 +37,9 @@ export function FormField({
               : "border-gray-300 focus:ring-green-500 dark:border-gray-600"
           } ${className}`}
           aria-invalid={!!error}
-          aria-describedby={error ? `${id}-error` : hint ? `${id}-hint` : undefined}
+          aria-describedby={
+            error ? `${id}-error` : hint ? `${id}-hint` : undefined
+          }
           {...inputProps}
         />
       )}

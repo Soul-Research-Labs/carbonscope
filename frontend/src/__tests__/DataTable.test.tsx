@@ -29,7 +29,9 @@ describe("DataTable", () => {
   });
 
   it("renders empty message when no data", () => {
-    render(<DataTable columns={columns} data={[]} emptyMessage="Nothing here" />);
+    render(
+      <DataTable columns={columns} data={[]} emptyMessage="Nothing here" />,
+    );
     expect(screen.getByText("Nothing here")).toBeInTheDocument();
   });
 
@@ -53,7 +55,11 @@ describe("DataTable", () => {
   it("renders custom column renderer", () => {
     const cols: Column<TestRow>[] = [
       { key: "name", header: "Name" },
-      { key: "value", header: "Value", render: (row) => <strong>{row.value * 2}</strong> },
+      {
+        key: "value",
+        header: "Value",
+        render: (row) => <strong>{row.value * 2}</strong>,
+      },
     ];
     render(<DataTable columns={cols} data={sampleData} />);
     expect(screen.getByText("20")).toBeInTheDocument(); // 10 * 2

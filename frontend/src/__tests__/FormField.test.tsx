@@ -5,7 +5,9 @@ import { FormField } from "@/components/FormField";
 
 describe("FormField", () => {
   it("renders label and input", () => {
-    render(<FormField label="Email" type="email" placeholder="you@example.com" />);
+    render(
+      <FormField label="Email" type="email" placeholder="you@example.com" />,
+    );
     expect(screen.getByLabelText("Email")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("you@example.com")).toBeInTheDocument();
   });
@@ -13,7 +15,10 @@ describe("FormField", () => {
   it("shows error message", () => {
     render(<FormField label="Password" error="Too short" />);
     expect(screen.getByRole("alert")).toHaveTextContent("Too short");
-    expect(screen.getByLabelText("Password")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText("Password")).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
   });
 
   it("shows hint when no error", () => {

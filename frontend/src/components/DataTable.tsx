@@ -29,8 +29,7 @@ export function DataTable<T extends Record<string, unknown>>({
   offset = 0,
   onPageChange,
 }: DataTableProps<T>) {
-  const hasPagination =
-    total != null && limit != null && onPageChange != null;
+  const hasPagination = total != null && limit != null && onPageChange != null;
   const totalPages = hasPagination ? Math.ceil(total / limit) : 0;
   const currentPage = hasPagination ? Math.floor(offset / limit) + 1 : 1;
 
@@ -76,9 +75,7 @@ export function DataTable<T extends Record<string, unknown>>({
                     key={col.key}
                     className="whitespace-nowrap px-4 py-3 text-sm text-gray-700 dark:text-gray-300"
                   >
-                    {col.render
-                      ? col.render(row)
-                      : String(row[col.key] ?? "")}
+                    {col.render ? col.render(row) : String(row[col.key] ?? "")}
                   </td>
                 ))}
               </tr>
