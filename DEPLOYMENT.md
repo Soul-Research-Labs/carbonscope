@@ -55,6 +55,7 @@ EMAIL_FROM=noreply@example.com
 ### Production Safety Checks
 
 The application **refuses to start** in production if:
+
 - `SECRET_KEY` is the default value or shorter than 32 characters
 - `DATABASE_URL` contains `sqlite` (PostgreSQL required)
 
@@ -200,10 +201,10 @@ The Dockerfile runs as a non-root `appuser` for security.
 
 ## 7. Monitoring & Health
 
-| Endpoint    | Purpose                                   |
-|-------------|-------------------------------------------|
-| `/health`   | DB connectivity, email/Bittensor config   |
-| `/metrics`  | Uptime, total request count, version      |
+| Endpoint   | Purpose                                 |
+| ---------- | --------------------------------------- |
+| `/health`  | DB connectivity, email/Bittensor config |
+| `/metrics` | Uptime, total request count, version    |
 
 Set up external monitoring (e.g., UptimeRobot, Datadog) to poll `/health` every 60s.
 

@@ -27,7 +27,11 @@ export default function Breadcrumbs({ items }: BreadcrumbsProps) {
             <li key={i} className="flex items-center gap-1.5">
               {i > 0 && <span aria-hidden="true">/</span>}
               {isLast || !item.href ? (
-                <span className={isLast ? "text-[var(--foreground)] font-medium" : ""}>
+                <span
+                  className={
+                    isLast ? "text-[var(--foreground)] font-medium" : ""
+                  }
+                >
                   {item.label}
                 </span>
               ) : (

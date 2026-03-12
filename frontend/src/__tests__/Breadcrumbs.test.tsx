@@ -37,13 +37,13 @@ describe("Breadcrumbs", () => {
     render(
       <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Page" }]} />,
     );
-    expect(screen.getByRole("navigation", { name: "Breadcrumb" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("navigation", { name: "Breadcrumb" }),
+    ).toBeInTheDocument();
   });
 
   it("renders separator between items", () => {
-    render(
-      <Breadcrumbs items={[{ label: "A", href: "/" }, { label: "B" }]} />,
-    );
+    render(<Breadcrumbs items={[{ label: "A", href: "/" }, { label: "B" }]} />);
     expect(screen.getByText("/")).toBeInTheDocument();
   });
 });

@@ -25,7 +25,9 @@ export default function ReportsPage() {
     "created_at" | "year" | "total" | "confidence"
   >(() => {
     const s = searchParams.get("sort");
-    return (["created_at", "year", "total", "confidence"] as const).includes(s as never)
+    return (["created_at", "year", "total", "confidence"] as const).includes(
+      s as never,
+    )
       ? (s as "created_at" | "year" | "total" | "confidence")
       : "created_at";
   });
