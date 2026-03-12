@@ -70,8 +70,9 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-Request-ID"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Request-ID", "X-CSRF-Token"],
+    expose_headers=["X-Request-ID", "X-Total-Count"],
 )
 
 # Routes
@@ -92,20 +93,34 @@ app.include_router(marketplace_router, prefix="/api/v1")
 
 @app.get("/health")
 async def health():
-    """Health check — tests DB connectivity."""
+    """Health check — tests DB connectivity and reports service status."""
     from sqlalchemy import text as sa_text
 
-    db_ok = True
+    checks: dict[str, str] = {}
+
+    # Database
     try:
         async for session in get_db():
             await session.execute(sa_text("SELECT 1"))
             break
+        checks["database"] = "connected"
     except Exception:
-        db_ok = False
+        checks["database"] = "unavailable"
+
+    # Email (SMTP config present)
+    import os as _os
+    smtp_host = _os.getenv("SMTP_HOST", "")
+    checks["email"] = "configured" if smtp_host else "not_configured"
+
+    # Bittensor (config present, not a live check)
+    from api.config import ESTIMATION_MODE, BT_NETWORK
+    checks["bittensor"] = f"{ESTIMATION_MODE}/{BT_NETWORK}"
+
+    all_ok = checks["database"] == "connected"
     return {
-        "status": "ok" if db_ok else "degraded",
+        "status": "ok" if all_ok else "degraded",
         "version": "0.7.0",
-        "database": "connected" if db_ok else "unavailable",
+        **checks,
     }
 
 

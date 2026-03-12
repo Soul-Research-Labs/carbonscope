@@ -80,10 +80,10 @@ COOKIE_DOMAIN: str | None = os.getenv("COOKIE_DOMAIN", None)
 # ── Logging ─────────────────────────────────────────────────────────
 
 LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
-logging.basicConfig(
-    level=getattr(logging, LOG_LEVEL.upper(), logging.INFO),
-    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
-)
+LOG_JSON: bool = os.getenv("LOG_JSON", "false" if ENV != "production" else "true").lower() == "true"
+
+from api.logging_config import setup_logging  # noqa: E402
+setup_logging(level=LOG_LEVEL, json_output=LOG_JSON)
 
 # ── Bittensor ───────────────────────────────────────────────────────
 

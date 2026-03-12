@@ -1,8 +1,9 @@
-"""Middleware for CarbonScope API — security headers, request IDs, error handling."""
+"""Middleware for CarbonScope API — security headers, request IDs, logging, error handling."""
 
 from __future__ import annotations
 
 import logging
+import time
 import uuid
 
 from fastapi import FastAPI, Request
@@ -10,6 +11,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 logger = logging.getLogger(__name__)
+access_logger = logging.getLogger("api.access")
 
 
 class RequestIDMiddleware(BaseHTTPMiddleware):
@@ -23,6 +25,25 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
         return response
 
 
+class RequestLoggingMiddleware(BaseHTTPMiddleware):
+    """Log each request with method, path, status, and duration."""
+
+    async def dispatch(self, request: Request, call_next):
+        start = time.perf_counter()
+        response = await call_next(request)
+        duration_ms = round((time.perf_counter() - start) * 1000, 1)
+        request_id = getattr(request.state, "request_id", "-")
+        access_logger.info(
+            "%s %s %s %sms [%s]",
+            request.method,
+            request.url.path,
+            response.status_code,
+            duration_ms,
+            request_id,
+        )
+        return response
+
+
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Add security headers to every response."""
 
@@ -33,6 +54,15 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data:; "
+            "font-src 'self'; "
+            "connect-src 'self'; "
+            "frame-ancestors 'none'"
+        )
         if request.url.scheme == "https":
             response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
         return response
@@ -54,5 +84,6 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
 def register_middleware(app: FastAPI) -> None:
     """Register all custom middleware on the FastAPI app."""
     app.add_middleware(RequestIDMiddleware)
+    app.add_middleware(RequestLoggingMiddleware)
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_exception_handler(Exception, global_exception_handler)

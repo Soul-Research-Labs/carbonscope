@@ -1,16 +1,32 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { listAuditLogs, AuditLogEntry, ApiError } from "@/lib/api";
+import { SkeletonRows } from "@/components/Skeleton";
 
 const PAGE_SIZE = 25;
 
 export default function AuditLogsPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [total, setTotal] = useState(0);
-  const [offset, setOffset] = useState(0);
+  const [offset, setOffset] = useState(() => {
+    const p = searchParams.get("page");
+    return p ? (Math.max(1, Number(p)) - 1) * PAGE_SIZE : 0;
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // Sync page to URL
+  useEffect(() => {
+    const page = Math.floor(offset / PAGE_SIZE) + 1;
+    const params = new URLSearchParams();
+    if (page > 1) params.set("page", String(page));
+    const qs = params.toString();
+    router.replace(`/audit-logs${qs ? `?${qs}` : ""}`, { scroll: false });
+  }, [offset, router]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -56,14 +72,7 @@ export default function AuditLogsPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr>
-                <td
-                  colSpan={4}
-                  className="py-8 text-center text-[var(--muted)]"
-                >
-                  Loading...
-                </td>
-              </tr>
+              <SkeletonRows rows={5} columns={4} />
             ) : logs.length === 0 ? (
               <tr>
                 <td

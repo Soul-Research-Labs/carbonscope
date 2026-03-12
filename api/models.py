@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     Column,
     DateTime,
     Float,
@@ -47,6 +48,7 @@ class Company(Base):
     revenue_usd: float | None = Column(Float, nullable=True)
     created_at: datetime = Column(DateTime(timezone=True), default=_utcnow)
     updated_at: datetime = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
+    deleted_at: datetime | None = Column(DateTime(timezone=True), nullable=True, default=None)
 
     # relationships
     data_uploads = relationship("DataUpload", back_populates="company", cascade="all, delete-orphan")
@@ -100,6 +102,10 @@ class EmissionReport(Base):
     __tablename__ = "emission_reports"
     __table_args__ = (
         Index("ix_emission_reports_company_year", "company_id", "year"),
+        CheckConstraint("scope1 >= 0", name="ck_emission_reports_scope1_non_negative"),
+        CheckConstraint("scope2 >= 0", name="ck_emission_reports_scope2_non_negative"),
+        CheckConstraint("scope3 >= 0", name="ck_emission_reports_scope3_non_negative"),
+        CheckConstraint("confidence >= 0 AND confidence <= 1", name="ck_emission_reports_confidence_range"),
     )
 
     id: str = Column(String(32), primary_key=True, default=_new_id)
@@ -145,6 +151,7 @@ class SupplyChainLink(Base):
     status: str = Column(String(50), default="pending")  # pending | verified | rejected
     notes: str | None = Column(Text, nullable=True)
     created_at: datetime = Column(DateTime(timezone=True), default=_utcnow)
+    deleted_at: datetime | None = Column(DateTime(timezone=True), nullable=True, default=None)
 
     buyer = relationship("Company", foreign_keys=[buyer_company_id])
     supplier = relationship("Company", foreign_keys=[supplier_company_id])
@@ -286,6 +293,7 @@ class Subscription(Base):
     current_period_end: datetime | None = Column(DateTime(timezone=True), nullable=True)
     created_at: datetime = Column(DateTime(timezone=True), default=_utcnow)
     updated_at: datetime = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
+    deleted_at: datetime | None = Column(DateTime(timezone=True), nullable=True, default=None)
 
     company = relationship("Company")
 
@@ -300,6 +308,10 @@ class CreditLedger(Base):
     reason: str = Column(String(255), nullable=False)  # subscription_grant | estimate_usage | export_usage | manual
     balance_after: int = Column(Integer, nullable=False)
     created_at: datetime = Column(DateTime(timezone=True), default=_utcnow)
+
+    __table_args__ = (
+        CheckConstraint("balance_after >= 0", name="ck_credit_ledger_balance_non_negative"),
+    )
 
     company = relationship("Company")
 

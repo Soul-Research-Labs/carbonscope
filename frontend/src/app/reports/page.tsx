@@ -1,26 +1,54 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { listReports, exportReports, type EmissionReport } from "@/lib/api";
+import { CardSkeleton } from "@/components/Skeleton";
 
 const PAGE_SIZE = 10;
 
 export default function ReportsPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Initialise state from URL params
   const [reports, setReports] = useState<EmissionReport[]>([]);
   const [total, setTotal] = useState(0);
-  const [offset, setOffset] = useState(0);
+  const [offset, setOffset] = useState(() => {
+    const p = searchParams.get("page");
+    return p ? (Math.max(1, Number(p)) - 1) * PAGE_SIZE : 0;
+  });
   const [sortBy, setSortBy] = useState<
     "created_at" | "year" | "total" | "confidence"
-  >("created_at");
-  const [order, setOrder] = useState<"asc" | "desc">("desc");
-  const [yearFilter, setYearFilter] = useState<string>("");
+  >(() => {
+    const s = searchParams.get("sort");
+    return (["created_at", "year", "total", "confidence"] as const).includes(s as never)
+      ? (s as "created_at" | "year" | "total" | "confidence")
+      : "created_at";
+  });
+  const [order, setOrder] = useState<"asc" | "desc">(() =>
+    searchParams.get("order") === "asc" ? "asc" : "desc",
+  );
+  const [yearFilter, setYearFilter] = useState<string>(
+    () => searchParams.get("year") ?? "",
+  );
   const [error, setError] = useState("");
   const [fetching, setFetching] = useState(true);
+
+  // Sync state changes back to URL
+  useEffect(() => {
+    const params = new URLSearchParams();
+    const page = Math.floor(offset / PAGE_SIZE) + 1;
+    if (page > 1) params.set("page", String(page));
+    if (sortBy !== "created_at") params.set("sort", sortBy);
+    if (order !== "desc") params.set("order", order);
+    if (yearFilter) params.set("year", yearFilter);
+    const qs = params.toString();
+    router.replace(`/reports${qs ? `?${qs}` : ""}`, { scroll: false });
+  }, [offset, sortBy, order, yearFilter, router]);
 
   const fetchReports = useCallback(async () => {
     setFetching(true);
@@ -71,7 +99,13 @@ export default function ReportsPage() {
   };
 
   if (loading || (fetching && reports.length === 0)) {
-    return <div className="p-8 text-[var(--muted)]">Loading reports...</div>;
+    return (
+      <div className="max-w-5xl mx-auto p-8 space-y-3">
+        <CardSkeleton />
+        <CardSkeleton />
+        <CardSkeleton />
+      </div>
+    );
   }
 
   return (

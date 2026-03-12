@@ -24,10 +24,13 @@ export default function ConfirmDialog({
   onCancel,
 }: ConfirmDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (open) {
       dialogRef.current?.showModal();
+      // Focus the cancel button when dialog opens for safer default
+      cancelRef.current?.focus();
     } else {
       dialogRef.current?.close();
     }
@@ -35,7 +38,27 @@ export default function ConfirmDialog({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === "Escape") onCancel();
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onCancel();
+        return;
+      }
+      // Focus trap: Tab cycles within dialog
+      if (e.key === "Tab") {
+        const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (!focusable || focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     },
     [onCancel],
   );
@@ -67,6 +90,7 @@ export default function ConfirmDialog({
         </p>
         <div className="mt-6 flex justify-end gap-3">
           <button
+            ref={cancelRef}
             onClick={onCancel}
             className="px-4 py-2 rounded-lg text-sm border border-[var(--card-border)] text-[var(--muted)] hover:text-[var(--foreground)]"
           >
