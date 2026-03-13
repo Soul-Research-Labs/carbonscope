@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { PageSkeleton } from "@/components/Skeleton";
+import { useToast } from "@/components/Toast";
 import {
   browseListings,
   purchaseListing,
@@ -21,6 +22,7 @@ export default function MarketplacePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { toast } = useToast();
   const [data, setData] = useState<PaginatedResponse<DataListingOut> | null>(
     null,
   );
@@ -79,7 +81,7 @@ export default function MarketplacePage() {
     setPurchaseTarget(null);
     try {
       await purchaseListing(id);
-      alert("Purchase successful!");
+      toast("Purchase successful!", "success");
       await fetchListings();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Purchase failed");
@@ -198,8 +200,11 @@ export default function MarketplacePage() {
           <h2 className="text-lg font-semibold mb-4">Create New Listing</h2>
           <form onSubmit={handleCreate} className="space-y-4">
             <div>
-              <label className="label">Title</label>
+              <label htmlFor="listing-title" className="label">
+                Title
+              </label>
               <input
+                id="listing-title"
                 className="input w-full"
                 value={createForm.title}
                 onChange={(e) =>
@@ -209,8 +214,11 @@ export default function MarketplacePage() {
               />
             </div>
             <div>
-              <label className="label">Description</label>
+              <label htmlFor="listing-description" className="label">
+                Description
+              </label>
               <input
+                id="listing-description"
                 className="input w-full"
                 value={createForm.description}
                 onChange={(e) =>
@@ -220,8 +228,11 @@ export default function MarketplacePage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="label">Report</label>
+                <label htmlFor="listing-report" className="label">
+                  Report
+                </label>
                 <select
+                  id="listing-report"
                   className="input w-full"
                   value={createForm.report_id}
                   onChange={(e) =>
@@ -238,8 +249,11 @@ export default function MarketplacePage() {
                 </select>
               </div>
               <div>
-                <label className="label">Price (Credits)</label>
+                <label htmlFor="listing-price" className="label">
+                  Price (Credits)
+                </label>
                 <input
+                  id="listing-price"
                   type="number"
                   className="input w-full"
                   min={0}

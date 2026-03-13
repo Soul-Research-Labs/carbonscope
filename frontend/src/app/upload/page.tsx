@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { uploadData, createEstimate } from "@/lib/api";
+import { PageSkeleton } from "@/components/Skeleton";
 
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -36,6 +37,8 @@ export default function UploadPage() {
   const [freightTonMiles, setFreightTonMiles] = useState("");
 
   const [notes, setNotes] = useState("");
+
+  if (loading) return <PageSkeleton />;
 
   if (!loading && !user) {
     router.replace("/login");

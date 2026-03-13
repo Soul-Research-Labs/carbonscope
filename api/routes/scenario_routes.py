@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,6 +12,7 @@ from api.models import EmissionReport, Scenario, User, _utcnow
 from api.schemas import PaginatedResponse, ScenarioCreate, ScenarioOut, ScenarioUpdate
 from api.services import audit
 from api.services.scenarios import run_scenario
+from api.limiter import limiter
 
 router = APIRouter(prefix="/scenarios", tags=["scenarios"])
 
@@ -137,7 +138,9 @@ async def update_scenario(
 
 
 @router.post("/{scenario_id}/compute", response_model=ScenarioOut)
+@limiter.limit("5/minute")
 async def compute_scenario(
+    request: Request,
     scenario_id: str,
     user: User = Depends(require_credits("scenario_compute")),
     db: AsyncSession = Depends(get_db),

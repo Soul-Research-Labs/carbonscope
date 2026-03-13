@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import io
 
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, File, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,6 +23,7 @@ from api.schemas import (
 )
 from api.services.questionnaire import extract_text, process_questionnaire
 from api.services.templates import get_template, list_templates
+from api.limiter import limiter
 
 router = APIRouter(prefix="/questionnaires", tags=["questionnaires"])
 
@@ -36,7 +37,9 @@ _MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
 
 @router.post("/upload", response_model=QuestionnaireOut, status_code=status.HTTP_201_CREATED)
+@limiter.limit("5/minute")
 async def upload_questionnaire(
+    request: Request,
     file: UploadFile = File(...),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -259,7 +262,9 @@ async def get_questionnaire(
 
 
 @router.post("/{questionnaire_id}/extract", response_model=QuestionnaireDetail)
+@limiter.limit("5/minute")
 async def extract_questions(
+    request: Request,
     questionnaire_id: str,
     user: User = Depends(require_credits("questionnaire_extract")),
     db: AsyncSession = Depends(get_db),

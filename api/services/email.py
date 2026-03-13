@@ -1,5 +1,10 @@
 """Email notification service.
 
+.. deprecated::
+    This module is not actively used in production routes. It exists for
+    reference and test coverage only. Prefer async email delivery via a
+    task queue (e.g. Celery + SendGrid) for production use.
+
 Sends transactional emails for alerts, reports, and subscription changes.
 Configurable via SMTP or API-based providers (SendGrid, SES).
 Currently logs emails when SMTP is not configured (development mode).

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.database import get_db
@@ -18,6 +18,7 @@ from api.schemas import (
 )
 from api.services.marketplace import browse_listings, create_listing, list_my_listings, purchase_listing, withdraw_listing, list_my_sales, get_seller_revenue
 from api.services import audit
+from api.limiter import limiter
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +89,9 @@ async def get_listing(
 
 
 @router.post("/listings/{listing_id}/purchase", response_model=DataPurchaseOut)
+@limiter.limit("10/minute")
 async def purchase_data(
+    request: Request,
     listing_id: str,
     user: User = Depends(require_plan("marketplace")),
     db: AsyncSession = Depends(get_db),

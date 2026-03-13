@@ -344,8 +344,11 @@ export default function SettingsPage() {
 
         <div className="card space-y-4 mb-4">
           <div>
-            <label className="label">Endpoint URL</label>
+            <label htmlFor="webhook-url" className="label">
+              Endpoint URL
+            </label>
             <input
+              id="webhook-url"
               type="url"
               className="input"
               value={whUrl}
@@ -354,8 +357,14 @@ export default function SettingsPage() {
             />
           </div>
           <div>
-            <label className="label">Events</label>
-            <div className="flex flex-wrap gap-2 mt-1">
+            <label id="events-label" className="label">
+              Events
+            </label>
+            <div
+              className="flex flex-wrap gap-2 mt-1"
+              role="group"
+              aria-labelledby="events-label"
+            >
               {ALL_EVENTS.map((evt) => (
                 <label
                   key={evt}
