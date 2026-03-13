@@ -1,0 +1,21 @@
+# ConfigMap for non-secret environment configuration.
+# Secret values (SECRET_KEY, POSTGRES_PASSWORD, etc.) must be
+# stored in the companion Secret resource — see secrets.yaml.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: carbonscope-config
+  namespace: carbonscope
+data:
+  ENV: "production"
+  LOG_LEVEL: "INFO"
+  LOG_JSON: "true"
+  ALLOWED_ORIGINS: "https://carbonscope.io"
+  RATE_LIMIT_AUTH: "10/minute"
+  RATE_LIMIT_DEFAULT: "60/minute"
+  COOKIE_SECURE: "true"
+  EMAIL_FROM: "noreply@carbonscope.io"
+  ESTIMATION_MODE: "local"
+  BT_NETWORK: "test"
+  BT_NETUID: "1"
+  REDIS_URL: "redis://redis:6379/0"

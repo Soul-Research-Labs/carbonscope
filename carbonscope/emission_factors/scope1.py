@@ -6,7 +6,11 @@ and fugitive emissions (refrigerant leaks).
 
 from __future__ import annotations
 
+import logging
+
 from .loader import load_factors, get_fuel_factor
+
+_logger = logging.getLogger(__name__)
 
 
 # ── Stationary combustion ───────────────────────────────────────────
@@ -42,6 +46,7 @@ def calc_stationary_combustion(
     fuels = load_factors("epa_stationary")["fuels"]
     fuel = fuels.get(fuel_type)
     if fuel is None:
+        _logger.warning("Unknown fuel_type '%s', falling back to 'diesel'", fuel_type)
         fuel = fuels["diesel"]
 
     factor = fuel["total_kgco2e_per_unit"]
@@ -90,6 +95,7 @@ def calc_mobile_combustion(
     if distance_km > 0:
         vt = mobile["vehicle_types"].get(vehicle_type)
         if vt is None:
+            _logger.warning("Unknown vehicle_type '%s', falling back to 'heavy_truck_diesel'", vehicle_type)
             vt = mobile["vehicle_types"]["heavy_truck_diesel"]
         return round(distance_km * vt["kgco2e_per_km"], 2)
 
@@ -129,4 +135,5 @@ def calc_fugitive_emissions(
         return round(kg_leaked * gwp_val, 2)
 
     # Unknown refrigerant — use HFC-134a as conservative default
+    _logger.warning("Unknown refrigerant_type '%s', falling back to HFC-134a (GWP=1530)", refrigerant_type)
     return round(kg_leaked * 1530, 2)

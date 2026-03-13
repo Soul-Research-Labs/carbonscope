@@ -1,4 +1,4 @@
-# Production docker-compose with PostgreSQL
+# Production docker-compose with PostgreSQL, Redis, and Nginx
 # Usage: docker compose -f docker-compose.prod.yml up --build -d
 
 services:
@@ -24,13 +24,32 @@ services:
     security_opt:
       - no-new-privileges:true
 
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
+    security_opt:
+      - no-new-privileges:true
+
   backend:
     build:
       context: .
       target: backend
     restart: unless-stopped
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     environment:
       - ENV=production
       - DATABASE_URL=postgresql+asyncpg://carbonscope:${POSTGRES_PASSWORD}@db:5432/carbonscope
@@ -49,8 +68,11 @@ services:
       - EMAIL_FROM=${EMAIL_FROM:-noreply@carbonscope.io}
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}
       - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}
+      - REDIS_URL=redis://redis:6379/0
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test:
@@ -76,8 +98,8 @@ services:
       context: .
       target: frontend
     restart: unless-stopped
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     environment:
       - HOSTNAME=0.0.0.0
       - BACKEND_URL=http://backend:8000
@@ -97,5 +119,33 @@ services:
     security_opt:
       - no-new-privileges:true
 
+  nginx:
+    image: nginx:1.25-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.5"
+    security_opt:
+      - no-new-privileges:true
+
 volumes:
   pgdata:
+  redisdata:

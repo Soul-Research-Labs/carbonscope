@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import json
+import logging
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
+
+_logger = logging.getLogger(__name__)
 
 _DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "emission_factors"
 
@@ -122,4 +125,23 @@ def get_transport_factor(mode: str, detail: str | None = None) -> float:
 def get_industry_profile(industry: str) -> dict[str, Any]:
     """Return the industry average profile dict, falling back to manufacturing."""
     industries = load_factors("industry")["industries"]
+    if industry not in industries:
+        _logger.warning("Unknown industry '%s', falling back to 'manufacturing'", industry)
     return industries.get(industry, industries["manufacturing"])
+
+
+def log_dataset_versions() -> dict[str, str]:
+    """Log and return loaded dataset file sizes / metadata for auditing.
+
+    Called at miner/validator startup to record which factor versions are active.
+    """
+    versions: dict[str, str] = {}
+    for name, filename in _DATASET_FILES.items():
+        path = _DATA_DIR / filename
+        if path.exists():
+            size = path.stat().st_size
+            versions[name] = f"{filename} ({size} bytes)"
+        else:
+            versions[name] = f"{filename} (MISSING)"
+    _logger.info("Emission factor datasets loaded: %s", versions)
+    return versions
