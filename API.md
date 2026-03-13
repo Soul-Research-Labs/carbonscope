@@ -1101,7 +1101,9 @@ Authorization: Bearer <token>
   "total_financed_emissions_tco2e": 12500.0,
   "total_outstanding": 50000000.0,
   "weighted_data_quality": 2.4,
-  "by_asset_class": { "business_loans": { "count": 3, "financed_emissions_tco2e": 8000.0 } }
+  "by_asset_class": {
+    "business_loans": { "count": 3, "financed_emissions_tco2e": 8000.0 }
+  }
 }
 ```
 
@@ -1280,7 +1282,12 @@ Authorization: Bearer <token>
 
 ```json
 {
-  "company_emissions": { "scope1": 1200, "scope2": 800, "scope3": 3000, "total": 5000 },
+  "company_emissions": {
+    "scope1": 1200,
+    "scope2": 800,
+    "scope3": 3000,
+    "total": 5000
+  },
   "industry_average": { "avg_scope1_tco2e": 1000, "avg_total_tco2e": 4100 },
   "vs_average": { "scope1": 20.0, "scope2": null, "total": 21.95 },
   "percentile_rank": "bottom_25"
