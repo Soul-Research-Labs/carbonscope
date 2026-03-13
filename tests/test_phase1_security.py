@@ -5,6 +5,8 @@ from __future__ import annotations
 import pytest
 from httpx import AsyncClient
 
+from api.main import APP_VERSION
+
 
 @pytest.mark.asyncio
 class TestTokenRevocationAndLogout:
@@ -195,15 +197,15 @@ class TestMetricsEndpoint:
         data = resp.json()
         assert "uptime_seconds" in data
         assert "total_requests" in data
-        assert data["version"] == "0.7.0"
+        assert data["version"] == APP_VERSION
         assert data["total_requests"] >= 1
 
 
 @pytest.mark.asyncio
 class TestHealthEndpoint:
-    """Verify health endpoint returns v0.7.0."""
+    """Verify health endpoint returns current APP_VERSION."""
 
     async def test_health_version(self, client: AsyncClient):
         resp = await client.get("/health")
         assert resp.status_code == 200
-        assert resp.json()["version"] == "0.7.0"
+        assert resp.json()["version"] == APP_VERSION

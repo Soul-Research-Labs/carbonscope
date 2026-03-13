@@ -15,42 +15,49 @@ import json
 import logging
 import os
 import re
+import threading
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
 # Optional LLM client — only used if API key is set
 _llm_client = None
+_llm_lock = threading.Lock()
 
 
 def _get_llm_client():
-    """Lazy-init LLM client if API key is available."""
+    """Lazy-init LLM client if API key is available (thread-safe)."""
     global _llm_client
     if _llm_client is not None:
         return _llm_client
 
-    api_key = os.getenv("OPENAI_API_KEY") or os.getenv("ANTHROPIC_API_KEY")
-    provider = "anthropic" if os.getenv("ANTHROPIC_API_KEY") else "openai"
+    with _llm_lock:
+        # Double-checked locking
+        if _llm_client is not None:
+            return _llm_client
 
-    if not api_key:
-        return None
+        api_key = os.getenv("OPENAI_API_KEY") or os.getenv("ANTHROPIC_API_KEY")
+        provider = "anthropic" if os.getenv("ANTHROPIC_API_KEY") else "openai"
 
-    if provider == "anthropic":
-        try:
-            import anthropic
-            _llm_client = anthropic.Anthropic(api_key=api_key)
-        except ImportError:
-            logger.warning("anthropic package not installed; LLM features disabled")
-            return None
-    else:
-        try:
-            import openai
-            _llm_client = openai.OpenAI(api_key=api_key)
-        except ImportError:
-            logger.warning("openai package not installed; LLM features disabled")
+        if not api_key:
             return None
 
-    return _llm_client
+        if provider == "anthropic":
+            try:
+                import anthropic
+                _llm_client = anthropic.Anthropic(api_key=api_key)
+            except ImportError:
+                logger.warning("anthropic package not installed; LLM features disabled")
+                return None
+        else:
+            try:
+                import openai
+                _llm_client = openai.OpenAI(api_key=api_key)
+            except ImportError:
+                logger.warning("openai package not installed; LLM features disabled")
+                return None
+
+        return _llm_client
 
 
 # ── Rule-based extraction (fallback) ────────────────────────────────

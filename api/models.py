@@ -152,7 +152,7 @@ class User(Base):
     email: str = Column(String(255), unique=True, nullable=False, index=True)
     hashed_password: str = Column(String(255), nullable=False)
     full_name: str = Column(String(255), nullable=False)
-    company_id: str = Column(String(32), ForeignKey("companies.id"), nullable=False)
+    company_id: str = Column(String(32), ForeignKey("companies.id"), nullable=False, index=True)
     role: str = Column(Enum(UserRole, native_enum=False, length=50), default=UserRole.member)
     is_active: bool = Column(Boolean, nullable=False, default=True)
     deleted_at: datetime | None = Column(DateTime(timezone=True), nullable=True, default=None)
@@ -259,6 +259,7 @@ class Webhook(Base):
     created_at: datetime = Column(DateTime(timezone=True), default=_utcnow)
 
     company = relationship("Company")
+    deliveries = relationship("WebhookDelivery", back_populates="webhook", cascade="all, delete-orphan", passive_deletes=True)
 
 
 # ── Webhook delivery logs ────────────────────────────────────────────
@@ -266,6 +267,10 @@ class Webhook(Base):
 
 class WebhookDelivery(Base):
     __tablename__ = "webhook_deliveries"
+    __table_args__ = (
+        Index("ix_webhook_deliveries_created_at", "created_at"),
+        Index("ix_webhook_deliveries_next_retry", "next_retry_at"),
+    )
 
     id: str = Column(String(32), primary_key=True, default=_new_id)
     webhook_id: str = Column(String(32), ForeignKey("webhooks.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -281,7 +286,7 @@ class WebhookDelivery(Base):
     next_retry_at: datetime | None = Column(DateTime(timezone=True), nullable=True)
     created_at: datetime = Column(DateTime(timezone=True), default=_utcnow)
 
-    webhook = relationship("Webhook")
+    webhook = relationship("Webhook", back_populates="deliveries")
 
 
 # ── Audit Log ───────────────────────────────────────────────────────
@@ -289,6 +294,9 @@ class WebhookDelivery(Base):
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"
+    __table_args__ = (
+        Index("ix_audit_logs_company_created", "company_id", "created_at"),
+    )
 
     id: str = Column(String(32), primary_key=True, default=_new_id)
     user_id: str = Column(String(32), ForeignKey("users.id"), nullable=False, index=True)
@@ -297,7 +305,7 @@ class AuditLog(Base):
     resource_type: str = Column(String(100), nullable=False)
     resource_id: str | None = Column(String(32), nullable=True)
     detail: str | None = Column(Text, nullable=True)
-    created_at: datetime = Column(DateTime(timezone=True), default=_utcnow)
+    created_at: datetime = Column(DateTime(timezone=True), default=_utcnow, index=True)
 
 
 # ── Questionnaire ───────────────────────────────────────────────────
@@ -398,7 +406,7 @@ class CreditLedger(Base):
     amount: int = Column(Integer, nullable=False)  # positive = add, negative = deduct
     reason: str = Column(Enum(CreditReason, native_enum=False, length=255), nullable=False)
     balance_after: int = Column(Integer, nullable=False)
-    created_at: datetime = Column(DateTime(timezone=True), default=_utcnow)
+    created_at: datetime = Column(DateTime(timezone=True), default=_utcnow, index=True)
 
     __table_args__ = (
         CheckConstraint("balance_after >= 0", name="ck_credit_ledger_balance_non_negative"),
@@ -423,7 +431,7 @@ class Alert(Base):
     is_read: bool = Column(Boolean, nullable=False, default=False)
     acknowledged_at: datetime | None = Column(DateTime(timezone=True), nullable=True)
     metadata_json: dict | None = Column(JSON, nullable=True)
-    created_at: datetime = Column(DateTime(timezone=True), default=_utcnow)
+    created_at: datetime = Column(DateTime(timezone=True), default=_utcnow, index=True)
 
     company = relationship("Company")
 

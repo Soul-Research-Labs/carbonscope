@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+
 from starlette.requests import Request
 from slowapi import Limiter
 
@@ -19,4 +21,13 @@ def _get_real_ip(request: Request) -> str:
     return "127.0.0.1"
 
 
-limiter = Limiter(key_func=_get_real_ip, default_limits=[RATE_LIMIT_DEFAULT])
+# Use Redis for rate limit storage when REDIS_URL is set (shared across replicas).
+# Falls back to in-memory storage for local development.
+_redis_url = os.getenv("REDIS_URL")
+_storage_uri = _redis_url if _redis_url else "memory://"
+
+limiter = Limiter(
+    key_func=_get_real_ip,
+    default_limits=[RATE_LIMIT_DEFAULT],
+    storage_uri=_storage_uri,
+)

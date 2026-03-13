@@ -8,6 +8,7 @@ import pytest
 from httpx import AsyncClient
 
 from api.logging_config import _redact, SensitiveFilter, JSONFormatter, setup_logging
+from api.main import APP_VERSION
 
 
 # ── Sensitive data redaction ────────────────────────────────────────
@@ -131,7 +132,7 @@ class TestHealthCheck:
     async def test_health_has_version(self, client: AsyncClient):
         resp = await client.get("/health")
         data = resp.json()
-        assert data["version"] == "0.7.0"
+        assert data["version"] == APP_VERSION
 
 
 # ── Metrics endpoint ───────────────────────────────────────────────

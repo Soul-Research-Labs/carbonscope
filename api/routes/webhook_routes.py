@@ -41,9 +41,7 @@ async def get_webhooks(
     db: AsyncSession = Depends(get_db),
 ):
     """List all webhooks for the current company."""
-    all_webhooks = await list_webhooks(db, user.company_id)
-    total = len(all_webhooks)
-    items = all_webhooks[offset : offset + limit]
+    items, total = await list_webhooks(db, user.company_id, limit=limit, offset=offset)
     return PaginatedResponse(items=items, total=total, limit=limit, offset=offset)
 
 

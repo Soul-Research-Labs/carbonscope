@@ -185,3 +185,68 @@ async def withdraw_listing(
     listing.status = "withdrawn"
     await db.flush()
     return listing
+
+
+async def list_my_sales(
+    db: AsyncSession,
+    company_id: str,
+    limit: int = 20,
+    offset: int = 0,
+) -> tuple[list[DataPurchase], int]:
+    """List purchases of my listings (seller view — who bought my data)."""
+    from sqlalchemy.orm import selectinload
+
+    query = (
+        select(DataPurchase)
+        .join(DataListing, DataPurchase.listing_id == DataListing.id)
+        .where(DataListing.seller_company_id == company_id)
+        .options(selectinload(DataPurchase.listing))
+    )
+    count_query = (
+        select(func.count())
+        .select_from(DataPurchase)
+        .join(DataListing, DataPurchase.listing_id == DataListing.id)
+        .where(DataListing.seller_company_id == company_id)
+    )
+    total = (await db.execute(count_query)).scalar() or 0
+    result = await db.execute(
+        query.order_by(DataPurchase.created_at.desc()).offset(offset).limit(limit)
+    )
+    return list(result.scalars().all()), total
+
+
+async def get_seller_revenue(db: AsyncSession, company_id: str) -> dict:
+    """Get total revenue earned from marketplace sales."""
+    total_revenue = (
+        await db.execute(
+            select(func.coalesce(func.sum(DataPurchase.price_credits), 0))
+            .join(DataListing, DataPurchase.listing_id == DataListing.id)
+            .where(DataListing.seller_company_id == company_id)
+        )
+    ).scalar() or 0
+
+    total_sales = (
+        await db.execute(
+            select(func.count())
+            .select_from(DataPurchase)
+            .join(DataListing, DataPurchase.listing_id == DataListing.id)
+            .where(DataListing.seller_company_id == company_id)
+        )
+    ).scalar() or 0
+
+    active_listings = (
+        await db.execute(
+            select(func.count())
+            .select_from(DataListing)
+            .where(
+                DataListing.seller_company_id == company_id,
+                DataListing.status == "active",
+            )
+        )
+    ).scalar() or 0
+
+    return {
+        "total_revenue_credits": total_revenue,
+        "total_sales": total_sales,
+        "active_listings": active_listings,
+    }

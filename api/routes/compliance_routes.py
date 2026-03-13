@@ -46,7 +46,9 @@ async def create_compliance_report(
     company_result = await db.execute(select(Company).where(Company.id == user.company_id))
     company = company_result.scalar_one()
 
-    # Commit credit deduction before generating report
+    # Deduct credits only after successful validation
+    from api.services.subscriptions import deduct_operation_credits
+    await deduct_operation_credits(db, user.company_id, "estimate")
     await db.commit()
 
     if body.framework == "ghg_protocol":

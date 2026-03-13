@@ -52,6 +52,9 @@ async def create_scenario(
 
 @router.get("/", response_model=PaginatedResponse[ScenarioOut])
 async def list_scenarios(
+    status: str | None = Query(default=None, pattern="^(draft|computed|archived)$"),
+    sort_by: str = Query(default="created_at", pattern="^(created_at|updated_at|name)$"),
+    order: str = Query(default="desc", pattern="^(asc|desc)$"),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     user: User = Depends(get_current_user),
@@ -62,13 +65,15 @@ async def list_scenarios(
         Scenario.company_id == user.company_id,
         Scenario.deleted_at.is_(None),
     )
+    if status is not None:
+        base = base.where(Scenario.status == status)
+
     total = (await db.execute(select(func.count()).select_from(base.subquery()))).scalar() or 0
+
+    sort_col = getattr(Scenario, sort_by)
+    sort_expr = sort_col.asc() if order == "asc" else sort_col.desc()
     rows = (
-        await db.execute(
-            base.order_by(Scenario.created_at.desc())
-            .offset(offset)
-            .limit(limit)
-        )
+        await db.execute(base.order_by(sort_expr).offset(offset).limit(limit))
     ).scalars().all()
 
     return PaginatedResponse[ScenarioOut](
@@ -142,6 +147,11 @@ async def compute_scenario(
         scenario = await run_scenario(db, scenario_id, user.company_id)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+    # Deduct credits only after computation succeeded
+    from api.services.subscriptions import deduct_operation_credits
+    await deduct_operation_credits(db, user.company_id, "scenario_compute")
+
     return scenario
 
 

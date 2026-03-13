@@ -423,3 +423,53 @@ class TestPlanGating:
             "price_credits": 0,
         })
         assert resp.status_code == 201
+
+
+# ── Marketplace Seller Dashboard ─────────────────────────────────────
+
+
+@pytest.mark.asyncio
+class TestMarketplaceSeller:
+    async def test_my_sales_empty(self, auth_client: AsyncClient):
+        """Seller with no sales returns empty list."""
+        resp = await auth_client.get("/api/v1/marketplace/my-sales")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["items"] == []
+        assert data["total"] == 0
+
+    async def test_my_revenue_empty(self, auth_client: AsyncClient):
+        """Seller with no sales returns zero revenue."""
+        resp = await auth_client.get("/api/v1/marketplace/my-revenue")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total_revenue_credits"] == 0
+        assert data["total_sales"] == 0
+        assert data["active_listings"] == 0
+
+    async def test_my_revenue_with_listing(self, auth_client: AsyncClient):
+        """Active listing counts in revenue summary."""
+        await _upgrade_plan(auth_client, "pro")
+        report_id = await _create_report(auth_client)
+        await auth_client.post("/api/v1/marketplace/listings", json={
+            "title": "Revenue Test",
+            "data_type": "emission_report",
+            "report_id": report_id,
+            "price_credits": 25,
+        })
+        resp = await auth_client.get("/api/v1/marketplace/my-revenue")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["active_listings"] >= 1
+        # No purchases yet
+        assert data["total_sales"] == 0
+
+    async def test_my_sales_pagination(self, auth_client: AsyncClient):
+        """Sales endpoint respects limit/offset params."""
+        resp = await auth_client.get(
+            "/api/v1/marketplace/my-sales", params={"limit": 5, "offset": 0}
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["limit"] == 5
+        assert data["offset"] == 0

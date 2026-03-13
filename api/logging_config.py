@@ -9,10 +9,14 @@ automatically redacted from log output via a custom filter.
 
 from __future__ import annotations
 
+import contextvars
 import json
 import logging
 import re
 from datetime import datetime, timezone
+
+# Contextvar for request ID — set by RequestIDMiddleware, read by RequestIDFilter
+request_id_var: contextvars.ContextVar[str | None] = contextvars.ContextVar("request_id", default=None)
 
 
 # Patterns to redact in log messages
@@ -50,6 +54,14 @@ class SensitiveFilter(logging.Filter):
         return True
 
 
+class RequestIDFilter(logging.Filter):
+    """Inject the current request ID (from contextvars) into every log record."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        record.request_id = request_id_var.get() or "-"
+        return True
+
+
 class JSONFormatter(logging.Formatter):
     """Emit one JSON object per log line."""
 
@@ -81,8 +93,9 @@ def setup_logging(level: str = "INFO", json_output: bool = False) -> None:
         handler.setFormatter(JSONFormatter())
     else:
         handler.setFormatter(
-            logging.Formatter("%(asctime)s %(levelname)s [%(name)s] %(message)s")
+            logging.Formatter("%(asctime)s %(levelname)s [%(name)s] [%(request_id)s] %(message)s")
         )
 
+    handler.addFilter(RequestIDFilter())
     handler.addFilter(SensitiveFilter())
     root.addHandler(handler)

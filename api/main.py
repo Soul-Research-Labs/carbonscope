@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import logging
+import os
 import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import PlainTextResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
@@ -29,11 +30,15 @@ from api.routes.scenario_routes import router as scenario_router
 from api.routes.billing_routes import router as billing_router
 from api.routes.alert_routes import router as alert_router
 from api.routes.marketplace_routes import router as marketplace_router
+from api.routes.stripe_routes import router as stripe_router
 
 logger = logging.getLogger(__name__)
 
+APP_VERSION = "0.16.0"
 _start_time: float = 0.0
 _request_count: int = 0
+_request_errors: int = 0
+_status_counts: dict[int, int] = {}
 
 
 @asynccontextmanager
@@ -44,7 +49,13 @@ async def lifespan(app: FastAPI):
         await init_db()
     global _start_time
     _start_time = time.monotonic()
-    logger.info("CarbonScope API v0.7.0 started (env=%s)", ENV)
+    logger.info("CarbonScope API %s started (env=%s)", APP_VERSION, ENV)
+
+    # Warn if SMTP is not configured in production
+    if ENV == "production":
+        import os as _os
+        if not (_os.getenv("SMTP_HOST") and _os.getenv("SMTP_USER") and _os.getenv("SMTP_PASSWORD")):
+            logger.warning("SMTP not configured — email notifications will be disabled in production")
 
     from api.services.scheduler import start_scheduler, stop_scheduler
 
@@ -53,11 +64,19 @@ async def lifespan(app: FastAPI):
     await stop_scheduler()
 
 
+# Disable OpenAPI/Swagger UI in production (information-disclosure risk)
+_docs_url = None if ENV == "production" else "/docs"
+_redoc_url = None if ENV == "production" else "/redoc"
+_openapi_url = None if ENV == "production" else "/openapi.json"
+
 app = FastAPI(
     title="CarbonScope Platform API",
     description="Decentralized corporate carbon emission estimation powered by Bittensor",
-    version="0.7.0",
+    version=APP_VERSION,
     lifespan=lifespan,
+    docs_url=_docs_url,
+    redoc_url=_redoc_url,
+    openapi_url=_openapi_url,
 )
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -89,6 +108,7 @@ app.include_router(scenario_router, prefix="/api/v1")
 app.include_router(billing_router, prefix="/api/v1")
 app.include_router(alert_router, prefix="/api/v1")
 app.include_router(marketplace_router, prefix="/api/v1")
+app.include_router(stripe_router, prefix="/api/v1")
 
 
 @app.get("/health")
@@ -119,24 +139,60 @@ async def health():
     all_ok = checks["database"] == "connected"
     return {
         "status": "ok" if all_ok else "degraded",
-        "version": "0.7.0",
+        "version": APP_VERSION,
         **checks,
     }
 
 
 @app.middleware("http")
 async def _count_requests(request: Request, call_next):
-    global _request_count
+    global _request_count, _request_errors
     _request_count += 1
-    return await call_next(request)
+    response = await call_next(request)
+    status_bucket = response.status_code
+    _status_counts[status_bucket] = _status_counts.get(status_bucket, 0) + 1
+    if response.status_code >= 500:
+        _request_errors += 1
+    return response
 
 
 @app.get("/metrics")
-async def metrics():
-    """Basic operational metrics."""
+async def metrics(request: Request):
+    """Operational metrics. Returns Prometheus text format when Accept header
+    contains 'text/plain' or PROMETHEUS_ENABLED is set, otherwise JSON."""
     uptime = time.monotonic() - _start_time if _start_time else 0
+
+    accept = request.headers.get("accept", "")
+    prometheus = (
+        "text/plain" in accept
+        or os.getenv("PROMETHEUS_ENABLED", "false").lower() in ("true", "1")
+    )
+
+    if prometheus:
+        lines = [
+            "# HELP carbonscope_uptime_seconds Seconds since API started.",
+            "# TYPE carbonscope_uptime_seconds gauge",
+            f"carbonscope_uptime_seconds {uptime:.1f}",
+            "# HELP carbonscope_requests_total Total HTTP requests.",
+            "# TYPE carbonscope_requests_total counter",
+            f"carbonscope_requests_total {_request_count}",
+            "# HELP carbonscope_errors_total Total HTTP 5xx responses.",
+            "# TYPE carbonscope_errors_total counter",
+            f"carbonscope_errors_total {_request_errors}",
+            "# HELP carbonscope_http_requests_by_status HTTP requests by status code.",
+            "# TYPE carbonscope_http_requests_by_status counter",
+        ]
+        for code, count in sorted(_status_counts.items()):
+            lines.append(f'carbonscope_http_requests_by_status{{status="{code}"}} {count}')
+        lines.append(f"# HELP carbonscope_info Application version info.")
+        lines.append(f"# TYPE carbonscope_info gauge")
+        lines.append(f'carbonscope_info{{version="{APP_VERSION}",env="{ENV}"}} 1')
+        return PlainTextResponse("\n".join(lines) + "\n", media_type="text/plain; version=0.0.4")
+
     return {
         "uptime_seconds": round(uptime, 1),
         "total_requests": _request_count,
-        "version": "0.7.0",
+        "total_errors": _request_errors,
+        "status_codes": dict(sorted(_status_counts.items())),
+        "version": APP_VERSION,
     }

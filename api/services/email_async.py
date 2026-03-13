@@ -52,7 +52,7 @@ async def send_email(to: str, subject: str, html_body: str) -> bool:
 
         logger.info("Email sent: to=%s subject=%s", to, subject)
         return True
-    except Exception:
+    except (OSError, ConnectionError) as exc:
         logger.exception("Failed to send email to %s", to)
         return False
 
@@ -135,3 +135,49 @@ async def send_password_reset_email(to: str, reset_token: str) -> bool:
     </div>
     """
     return await send_email(to, "[CarbonScope] Password Reset", html_body)
+
+
+async def send_marketplace_purchase_email(
+    to: str, listing_title: str, price_credits: int, data_type: str,
+) -> bool:
+    """Send email to buyer confirming a marketplace purchase."""
+    html_body = f"""
+    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: #0891b2; color: white; padding: 16px; border-radius: 8px 8px 0 0;">
+            <h2 style="margin: 0;">&#128722; Marketplace Purchase Confirmed</h2>
+        </div>
+        <div style="border: 1px solid #e5e7eb; padding: 24px; border-radius: 0 0 8px 8px;">
+            <p>Your marketplace purchase has been completed.</p>
+            <p><strong>Listing:</strong> {_esc(listing_title)}</p>
+            <p><strong>Data type:</strong> {_esc(data_type)}</p>
+            <p><strong>Credits spent:</strong> {price_credits}</p>
+            <p>Log in to your dashboard to access the purchased data.</p>
+        </div>
+    </div>
+    """
+    return await send_email(
+        to, f"[CarbonScope] Purchase confirmed: {_esc(listing_title)}", html_body,
+    )
+
+
+async def send_marketplace_sale_email(
+    to: str, listing_title: str, price_credits: int,
+) -> bool:
+    """Send email to seller when one of their listings is purchased."""
+    html_body = f"""
+    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: #059669; color: white; padding: 16px; border-radius: 8px 8px 0 0;">
+            <h2 style="margin: 0;">&#128176; Marketplace Sale</h2>
+        </div>
+        <div style="border: 1px solid #e5e7eb; padding: 24px; border-radius: 0 0 8px 8px;">
+            <p>Your marketplace listing has been purchased!</p>
+            <p><strong>Listing:</strong> {_esc(listing_title)}</p>
+            <p><strong>Credits earned:</strong> {price_credits}</p>
+            <p>The credits have been added to your account balance.
+               Log in to view your updated credit balance and sales history.</p>
+        </div>
+    </div>
+    """
+    return await send_email(
+        to, f"[CarbonScope] Your listing was purchased: {_esc(listing_title)}", html_body,
+    )

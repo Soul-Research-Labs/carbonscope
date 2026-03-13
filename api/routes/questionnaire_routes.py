@@ -92,6 +92,10 @@ async def upload_questionnaire(
 
 @router.get("/", response_model=PaginatedResponse[QuestionnaireOut])
 async def list_questionnaires(
+    status: str | None = Query(default=None, pattern="^(uploaded|extracting|extracted|reviewed|exported)$"),
+    file_type: str | None = Query(default=None, pattern="^(pdf|xlsx|docx|csv)$"),
+    sort_by: str = Query(default="created_at", pattern="^(created_at|updated_at|title)$"),
+    order: str = Query(default="desc", pattern="^(asc|desc)$"),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     user: User = Depends(get_current_user),
@@ -102,13 +106,17 @@ async def list_questionnaires(
         Questionnaire.company_id == user.company_id,
         Questionnaire.deleted_at.is_(None),
     )
+    if status is not None:
+        base = base.where(Questionnaire.status == status)
+    if file_type is not None:
+        base = base.where(Questionnaire.file_type == file_type)
+
     total = (await db.execute(select(func.count()).select_from(base.subquery()))).scalar() or 0
+
+    sort_col = getattr(Questionnaire, sort_by)
+    sort_expr = sort_col.asc() if order == "asc" else sort_col.desc()
     rows = (
-        await db.execute(
-            base.order_by(Questionnaire.created_at.desc())
-            .offset(offset)
-            .limit(limit)
-        )
+        await db.execute(base.order_by(sort_expr).offset(offset).limit(limit))
     ).scalars().all()
 
     return PaginatedResponse[QuestionnaireOut](
@@ -276,6 +284,10 @@ async def extract_questions(
 
     await process_questionnaire(db, questionnaire_id, user.company_id)
 
+    # Deduct credits only after extraction succeeded
+    from api.services.subscriptions import deduct_operation_credits
+    await deduct_operation_credits(db, user.company_id, "questionnaire_extract")
+
     # Re-fetch with questions
     result = await db.execute(
         select(Questionnaire)
@@ -426,7 +438,9 @@ async def export_questionnaire_pdf(
         questions=questions_data,
     )
 
-    # Commit credit deduction
+    # Deduct credits only after PDF generation succeeded
+    from api.services.subscriptions import deduct_operation_credits
+    await deduct_operation_credits(db, user.company_id, "pdf_export")
     await db.commit()
 
     return StreamingResponse(

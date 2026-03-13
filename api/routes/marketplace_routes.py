@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,8 +16,10 @@ from api.schemas import (
     DataPurchaseOut,
     PaginatedResponse,
 )
-from api.services.marketplace import browse_listings, create_listing, list_my_listings, purchase_listing, withdraw_listing
+from api.services.marketplace import browse_listings, create_listing, list_my_listings, purchase_listing, withdraw_listing, list_my_sales, get_seller_revenue
 from api.services import audit
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/marketplace", tags=["marketplace"])
 
@@ -96,7 +100,7 @@ async def purchase_data(
         # Refresh with relationships loaded
         from sqlalchemy.orm import selectinload
         from sqlalchemy import select
-        from api.models import DataPurchase
+        from api.models import DataPurchase, DataListing, User as UserModel
 
         result = await db.execute(
             select(DataPurchase)
@@ -108,6 +112,33 @@ async def purchase_data(
             db, user_id=user.id, company_id=user.company_id,
             action="create", resource_type="data_purchase", resource_id=purchase.id,
         )
+
+        # Send email notifications (best-effort, don't fail the purchase)
+        try:
+            from api.services.email_async import (
+                send_marketplace_purchase_email,
+                send_marketplace_sale_email,
+            )
+            listing = purchase.listing
+            # Notify buyer
+            await send_marketplace_purchase_email(
+                user.email, listing.title, listing.price_credits, listing.data_type,
+            )
+            # Notify seller
+            seller_result = await db.execute(
+                select(UserModel).where(
+                    UserModel.company_id == listing.seller_company_id,
+                    UserModel.is_active.is_(True),
+                ).limit(1)
+            )
+            seller_user = seller_result.scalar_one_or_none()
+            if seller_user:
+                await send_marketplace_sale_email(
+                    seller_user.email, listing.title, listing.price_credits,
+                )
+        except Exception:
+            logger.warning("Email notification failed for marketplace purchase %s", purchase.id)
+
         return purchase
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -138,3 +169,24 @@ async def withdraw_data_listing(
     await db.commit()
     await db.refresh(listing)
     return listing
+
+
+@router.get("/my-sales", response_model=PaginatedResponse[DataPurchaseOut])
+async def get_my_sales(
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """List purchases of your listings (seller view — who bought your data)."""
+    sales, total = await list_my_sales(db, user.company_id, limit, offset)
+    return PaginatedResponse(items=sales, total=total, limit=limit, offset=offset)
+
+
+@router.get("/my-revenue")
+async def get_my_revenue(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get revenue summary from marketplace sales."""
+    return await get_seller_revenue(db, user.company_id)

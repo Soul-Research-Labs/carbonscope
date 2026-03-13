@@ -99,19 +99,23 @@ def require_plan(feature: str) -> Callable:
 
 
 def require_credits(operation: str) -> Callable:
-    """Dependency factory that checks and deducts credits for an operation.
+    """Dependency factory that checks credits for an operation (without deducting).
 
     Usage: Depends(require_credits("estimate"))
+
+    Only validates that the company has sufficient balance. The route handler
+    must call ``deduct_operation_credits(db, user.company_id, operation)``
+    after the operation succeeds to actually consume the credits.
     """
 
     async def _check(
         user: User = Depends(get_current_user),
         db: AsyncSession = Depends(get_db),
     ) -> User:
-        from api.services.subscriptions import check_credit_and_deduct
+        from api.services.subscriptions import check_credit_balance
 
         try:
-            await check_credit_and_deduct(db, user.company_id, operation)
+            await check_credit_balance(db, user.company_id, operation)
         except ValueError as e:
             raise HTTPException(
                 status_code=status.HTTP_402_PAYMENT_REQUIRED,

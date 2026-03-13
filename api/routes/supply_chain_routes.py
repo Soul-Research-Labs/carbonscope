@@ -18,6 +18,7 @@ from api.services.supply_chain import (
     update_link_status,
 )
 from api.services import audit
+from api.services.webhooks import dispatch_event
 
 router = APIRouter(prefix="/supply-chain", tags=["supply-chain"])
 
@@ -38,6 +39,11 @@ async def add_supplier(
             category=body.category,
             notes=body.notes,
         )
+        await dispatch_event(db, user.company_id, "supply_chain.link_created", {
+            "link_id": link.id,
+            "supplier_company_id": body.supplier_company_id,
+            "category": body.category or "general",
+        })
         return link
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -115,6 +121,11 @@ async def update_link(
         db, user_id=user.id, company_id=user.company_id,
         action="update", resource_type="supply_chain_link", resource_id=link_id,
     )
+    if body.status == "verified":
+        await dispatch_event(db, user.company_id, "supply_chain.link_verified", {
+            "link_id": link_id,
+            "status": "verified",
+        })
     return link
 
 

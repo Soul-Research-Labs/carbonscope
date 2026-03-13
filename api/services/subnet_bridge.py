@@ -7,6 +7,7 @@ best-scoring result, and returns it.
 from __future__ import annotations
 
 import logging
+import threading
 from typing import Any
 
 from carbonscope.protocol import CarbonSynapse
@@ -22,6 +23,7 @@ _dendrite = None
 _subtensor = None
 _metagraph = None
 _wallet = None
+_bt_lock = threading.Lock()
 
 
 def _init_bt() -> None:
@@ -29,15 +31,20 @@ def _init_bt() -> None:
     if _bt_inited:
         return
 
-    import bittensor as bt
-    from api.config import BT_NETUID, BT_NETWORK, BT_WALLET_HOTKEY, BT_WALLET_NAME
+    with _bt_lock:
+        # Double-checked locking
+        if _bt_inited:
+            return
 
-    _wallet = bt.Wallet(name=BT_WALLET_NAME, hotkey=BT_WALLET_HOTKEY)
-    _subtensor = bt.Subtensor(network=BT_NETWORK)
-    _metagraph = bt.Metagraph(netuid=BT_NETUID, network=BT_NETWORK)
-    _dendrite = bt.Dendrite(wallet=_wallet)
-    _bt_inited = True
-    logger.info("Bittensor bridge initialised (network=%s, netuid=%s)", BT_NETWORK, BT_NETUID)
+        import bittensor as bt
+        from api.config import BT_NETUID, BT_NETWORK, BT_WALLET_HOTKEY, BT_WALLET_NAME
+
+        _wallet = bt.Wallet(name=BT_WALLET_NAME, hotkey=BT_WALLET_HOTKEY)
+        _subtensor = bt.Subtensor(network=BT_NETWORK)
+        _metagraph = bt.Metagraph(netuid=BT_NETUID, network=BT_NETWORK)
+        _dendrite = bt.Dendrite(wallet=_wallet)
+        _bt_inited = True
+        logger.info("Bittensor bridge initialised (network=%s, netuid=%s)", BT_NETWORK, BT_NETUID)
 
 
 def _get_miner_axons() -> list:

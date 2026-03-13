@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.database import get_db
 from api.deps import get_current_user, require_admin
+from api.limiter import limiter
 from api.models import User
 from api.schemas import (
     CreditBalanceOut,
@@ -40,7 +41,9 @@ async def get_subscription(
 
 
 @router.post("/subscription", response_model=SubscriptionOut)
+@limiter.limit("5/minute")
 async def update_subscription(
+    request: Request,
     body: SubscriptionCreate,
     user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),

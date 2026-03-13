@@ -82,7 +82,11 @@ async def create_estimate(
     from api.config import ESTIMATION_MODE
 
     if ESTIMATION_MODE == "subnet":
-        est = await estimate_emissions(questionnaire)
+        try:
+            est = await estimate_emissions(questionnaire)
+        except RuntimeError:
+            logger.warning("Subnet estimation failed, falling back to local estimation")
+            est = estimate_emissions_local(questionnaire)
     else:
         est = estimate_emissions_local(questionnaire)
 
@@ -104,6 +108,11 @@ async def create_estimate(
         miner_scores=est.get("miner_scores"),
     )
     db.add(report)
+
+    # Deduct credits only after estimation succeeded
+    from api.services.subscriptions import deduct_operation_credits
+    await deduct_operation_credits(db, user.company_id, "estimate")
+
     await db.commit()
     await db.refresh(report)
 
@@ -112,12 +121,40 @@ async def create_estimate(
         action="create", resource_type="emission_report", resource_id=report.id,
     )
 
-    # Dispatch webhook event (fire-and-forget; errors are logged)
+    # Dispatch webhook events (fire-and-forget; errors are logged)
     await dispatch_event(db, user.company_id, "report.created", {
         "report_id": report.id,
         "year": report.year,
         "total": report.total,
     })
+    await dispatch_event(db, user.company_id, "estimate.completed", {
+        "report_id": report.id,
+        "year": report.year,
+        "total": report.total,
+        "confidence": report.confidence,
+    })
+
+    # Check for confidence improvement vs prior report for the same year
+    prior = (await db.execute(
+        select(EmissionReport.confidence)
+        .where(
+            EmissionReport.company_id == user.company_id,
+            EmissionReport.year == report.year,
+            EmissionReport.id != report.id,
+            EmissionReport.deleted_at.is_(None),
+        )
+        .order_by(EmissionReport.created_at.desc())
+        .limit(1)
+    )).scalar_one_or_none()
+
+    if prior is not None and report.confidence > prior:
+        await dispatch_event(db, user.company_id, "confidence.improved", {
+            "report_id": report.id,
+            "year": report.year,
+            "old_confidence": round(prior, 4),
+            "new_confidence": round(report.confidence, 4),
+            "improvement": round(report.confidence - prior, 4),
+        })
 
     return report
 
@@ -291,7 +328,9 @@ async def export_report_pdf(
     company_result = await db.execute(select(Company).where(Company.id == user.company_id))
     company = company_result.scalar_one()
 
-    # Commit credit deduction before generating PDF
+    # Deduct credits only after successful lookup
+    from api.services.subscriptions import deduct_operation_credits
+    await deduct_operation_credits(db, user.company_id, "pdf_export")
     await db.commit()
 
     pdf_bytes = generate_report_pdf(

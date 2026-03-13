@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import logging
+import os
 import time
 import uuid
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
+
+from api.logging_config import request_id_var
 
 logger = logging.getLogger(__name__)
 access_logger = logging.getLogger("api.access")
@@ -20,6 +23,7 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         request_id = request.headers.get("X-Request-ID", uuid.uuid4().hex)
         request.state.request_id = request_id
+        request_id_var.set(request_id)
         response = await call_next(request)
         response.headers["X-Request-ID"] = request_id
         return response
@@ -87,3 +91,71 @@ def register_middleware(app: FastAPI) -> None:
     app.add_middleware(RequestLoggingMiddleware)
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_exception_handler(Exception, global_exception_handler)
+
+    # Optional Sentry integration — only active when SENTRY_DSN is set
+    _init_sentry(app)
+
+    # Optional OpenTelemetry tracing — only active when OTEL_EXPORTER_OTLP_ENDPOINT is set
+    _init_opentelemetry(app)
+
+
+def _init_sentry(app: FastAPI) -> None:
+    """Initialize Sentry SDK if SENTRY_DSN is configured."""
+    dsn = os.getenv("SENTRY_DSN")
+    if not dsn:
+        return
+
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.fastapi import FastApiIntegration
+        from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+
+        sentry_sdk.init(
+            dsn=dsn,
+            environment=os.getenv("ENV", "development"),
+            release=f"carbonscope@{os.getenv('APP_VERSION', 'unknown')}",
+            traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1")),
+            integrations=[
+                FastApiIntegration(transaction_style="endpoint"),
+                SqlalchemyIntegration(),
+            ],
+            send_default_pii=False,
+        )
+        logger.info("Sentry initialized (environment=%s)", os.getenv("ENV", "development"))
+    except ImportError:
+        logger.debug("sentry-sdk not installed; Sentry integration disabled")
+
+
+def _init_opentelemetry(app: FastAPI) -> None:
+    """Initialize OpenTelemetry tracing if OTEL_EXPORTER_OTLP_ENDPOINT is configured."""
+    endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+    if not endpoint:
+        return
+
+    try:
+        from opentelemetry import trace
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import BatchSpanProcessor
+        from opentelemetry.sdk.resources import Resource
+        from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+        from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+        from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+
+        resource = Resource.create({
+            "service.name": "carbonscope-api",
+            "service.version": os.getenv("APP_VERSION", "unknown"),
+            "deployment.environment": os.getenv("ENV", "development"),
+        })
+
+        provider = TracerProvider(resource=resource)
+        provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=endpoint)))
+        trace.set_tracer_provider(provider)
+
+        FastAPIInstrumentor.instrument_app(app)
+
+        from api.database import engine
+        SQLAlchemyInstrumentor().instrument(engine=engine.sync_engine)
+
+        logger.info("OpenTelemetry tracing initialized (endpoint=%s)", endpoint)
+    except ImportError:
+        logger.debug("opentelemetry packages not installed; tracing disabled")

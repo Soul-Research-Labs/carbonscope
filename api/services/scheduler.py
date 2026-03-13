@@ -2,12 +2,14 @@
 
 Uses asyncio tasks running within the FastAPI lifespan.
 Checks alerts (with dedup), sends email notifications, and resets monthly credits.
+Supports distributed locking via Redis to prevent duplicate execution across replicas.
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from datetime import datetime, timezone
 from typing import Any
 
@@ -15,7 +17,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.database import async_session
-from api.models import Alert, Company, EmissionReport
+from api.models import Alert, Company, EmissionReport, RefreshToken, RevokedToken, PasswordResetToken
 from api.services.alerts import check_company_alerts
 
 logger = logging.getLogger(__name__)
@@ -23,6 +25,7 @@ logger = logging.getLogger(__name__)
 _scheduler_task: asyncio.Task | None = None
 _credit_reset_task: asyncio.Task | None = None
 _webhook_retry_task: asyncio.Task | None = None
+_token_cleanup_task: asyncio.Task | None = None
 
 # Check interval in seconds (default: 1 hour)
 CHECK_INTERVAL_SECONDS = 3600
@@ -30,6 +33,48 @@ CHECK_INTERVAL_SECONDS = 3600
 CREDIT_RESET_INTERVAL_SECONDS = 86400
 # Webhook retry interval (default: 30 seconds)
 WEBHOOK_RETRY_INTERVAL_SECONDS = 30
+# Token cleanup interval (default: 24 hours)
+TOKEN_CLEANUP_INTERVAL_SECONDS = 86400
+
+# Redis distributed lock TTL (seconds) — prevents duplicate scheduler runs across replicas
+_LOCK_TTL_ALERTS = CHECK_INTERVAL_SECONDS - 60  # slightly shorter than interval
+_LOCK_TTL_CREDIT = 3600  # 1 hour — credit reset should finish well within this
+_LOCK_TTL_WEBHOOK = WEBHOOK_RETRY_INTERVAL_SECONDS - 5
+_LOCK_TTL_TOKEN_CLEANUP = 3600
+
+_redis_client = None
+
+
+def _get_redis():
+    """Lazily init a Redis client for distributed locking. Returns None if Redis unavailable."""
+    global _redis_client
+    if _redis_client is not None:
+        return _redis_client
+    redis_url = os.getenv("REDIS_URL")
+    if not redis_url:
+        return None
+    try:
+        import redis
+        _redis_client = redis.from_url(redis_url, decode_responses=True)
+        _redis_client.ping()
+        logger.info("Scheduler distributed lock: Redis connected")
+        return _redis_client
+    except Exception:
+        logger.debug("Redis unavailable for scheduler lock — running without distributed lock")
+        _redis_client = None
+        return None
+
+
+def _acquire_lock(lock_name: str, ttl: int) -> bool:
+    """Try to acquire a distributed lock. Returns True if acquired or Redis is unavailable."""
+    r = _get_redis()
+    if r is None:
+        return True  # no Redis = single-instance mode, always proceed
+    try:
+        return bool(r.set(f"carbonscope:lock:{lock_name}", "1", nx=True, ex=ttl))
+    except Exception:
+        logger.debug("Redis lock acquire failed for %s — proceeding anyway", lock_name)
+        return True
 
 
 async def _get_latest_alert_report_ids(db: AsyncSession, company_id: str) -> set[str]:
@@ -53,6 +98,9 @@ async def _run_periodic_checks() -> None:
     while True:
         try:
             await asyncio.sleep(CHECK_INTERVAL_SECONDS)
+            if not _acquire_lock("alert_check", _LOCK_TTL_ALERTS):
+                logger.debug("Alert check skipped — another instance holds the lock")
+                continue
             logger.info("Running periodic alert checks...")
 
             async with async_session() as db:
@@ -100,6 +148,9 @@ async def _run_monthly_credit_reset() -> None:
 
             # Only reset on the 1st of the month, once per month
             if now.day == 1 and last_reset_month != now.month:
+                if not _acquire_lock("credit_reset", _LOCK_TTL_CREDIT):
+                    logger.debug("Credit reset skipped — another instance holds the lock")
+                    continue
                 logger.info("Running monthly credit reset...")
                 from api.services.subscriptions import (
                     PLAN_LIMITS,
@@ -138,6 +189,8 @@ async def _run_webhook_retries() -> None:
     while True:
         try:
             await asyncio.sleep(WEBHOOK_RETRY_INTERVAL_SECONDS)
+            if not _acquire_lock("webhook_retry", _LOCK_TTL_WEBHOOK):
+                continue
             async with async_session() as db:
                 processed = await process_pending_retries(db)
                 if processed > 0:
@@ -149,9 +202,41 @@ async def _run_webhook_retries() -> None:
             logger.exception("Webhook retry error — will retry next cycle")
 
 
+async def _run_token_cleanup() -> None:
+    """Background loop that purges expired tokens daily."""
+    while True:
+        try:
+            await asyncio.sleep(TOKEN_CLEANUP_INTERVAL_SECONDS)
+            if not _acquire_lock("token_cleanup", _LOCK_TTL_TOKEN_CLEANUP):
+                logger.debug("Token cleanup skipped — another instance holds the lock")
+                continue
+            logger.info("Running expired token cleanup...")
+            now = datetime.now(timezone.utc)
+            async with async_session() as db:
+                total = 0
+                for model in (RevokedToken, RefreshToken, PasswordResetToken):
+                    result = await db.execute(
+                        select(model).where(model.expires_at < now)
+                    )
+                    rows = result.scalars().all()
+                    for row in rows:
+                        await db.delete(row)
+                    total += len(rows)
+                await db.commit()
+                if total > 0:
+                    logger.info("Cleaned up %d expired tokens", total)
+                else:
+                    logger.debug("No expired tokens to clean up")
+        except asyncio.CancelledError:
+            logger.info("Token cleanup scheduler shutting down")
+            break
+        except Exception:
+            logger.exception("Token cleanup error — will retry next cycle")
+
+
 def start_scheduler() -> None:
     """Start the background scheduler tasks."""
-    global _scheduler_task, _credit_reset_task, _webhook_retry_task
+    global _scheduler_task, _credit_reset_task, _webhook_retry_task, _token_cleanup_task
     if _scheduler_task is None or _scheduler_task.done():
         _scheduler_task = asyncio.create_task(_run_periodic_checks())
         logger.info("Background alert scheduler started (interval=%ds)", CHECK_INTERVAL_SECONDS)
@@ -161,12 +246,15 @@ def start_scheduler() -> None:
     if _webhook_retry_task is None or _webhook_retry_task.done():
         _webhook_retry_task = asyncio.create_task(_run_webhook_retries())
         logger.info("Webhook retry scheduler started (interval=%ds)", WEBHOOK_RETRY_INTERVAL_SECONDS)
+    if _token_cleanup_task is None or _token_cleanup_task.done():
+        _token_cleanup_task = asyncio.create_task(_run_token_cleanup())
+        logger.info("Token cleanup scheduler started (interval=%ds)", TOKEN_CLEANUP_INTERVAL_SECONDS)
 
 
 async def stop_scheduler() -> None:
     """Stop the background scheduler tasks."""
-    global _scheduler_task, _credit_reset_task, _webhook_retry_task
-    for task in [_scheduler_task, _credit_reset_task, _webhook_retry_task]:
+    global _scheduler_task, _credit_reset_task, _webhook_retry_task, _token_cleanup_task
+    for task in [_scheduler_task, _credit_reset_task, _webhook_retry_task, _token_cleanup_task]:
         if task and not task.done():
             task.cancel()
             try:
@@ -176,4 +264,5 @@ async def stop_scheduler() -> None:
     _scheduler_task = None
     _credit_reset_task = None
     _webhook_retry_task = None
+    _token_cleanup_task = None
     logger.info("Background schedulers stopped")

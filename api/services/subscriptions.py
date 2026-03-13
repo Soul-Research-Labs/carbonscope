@@ -205,6 +205,28 @@ async def check_credit_and_deduct(db: AsyncSession, company_id: str, operation: 
         await deduct_credits(db, company_id, cost, f"{operation}_usage")
 
 
+async def check_credit_balance(db: AsyncSession, company_id: str, operation: str) -> None:
+    """Verify a company has enough credits for an operation without deducting.
+
+    Raises ValueError if insufficient credits. Call deduct_credits separately
+    after the operation succeeds to avoid credit loss on failure.
+    """
+    await get_or_create_subscription(db, company_id)
+    cost = CREDIT_COSTS.get(operation, 0)
+    if cost > 0:
+        balance = await get_credit_balance(db, company_id)
+        if balance < cost:
+            raise ValueError(f"Insufficient credits: have {balance}, need {cost}")
+
+
+async def deduct_operation_credits(db: AsyncSession, company_id: str, operation: str) -> None:
+    """Deduct credits for a completed operation. Call after the operation succeeds."""
+    cost = CREDIT_COSTS.get(operation, 0)
+    if cost > 0:
+        await deduct_credits(db, company_id, cost, f"{operation}_usage")
+        await db.commit()
+
+
 async def get_credit_ledger(
     db: AsyncSession, company_id: str, limit: int = 50, offset: int = 0,
 ) -> tuple[list[CreditLedger], int]:

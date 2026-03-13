@@ -71,12 +71,26 @@ async def create_webhook(
 async def list_webhooks(
     db: AsyncSession,
     company_id: str,
-) -> list[Webhook]:
-    """List all webhooks for a company."""
-    result = await db.execute(
-        select(Webhook).where(Webhook.company_id == company_id)
-    )
-    return list(result.scalars().all())
+    limit: int | None = None,
+    offset: int | None = None,
+) -> tuple[list[Webhook], int]:
+    """List webhooks for a company with optional DB-level pagination.
+
+    Returns (items, total_count). If limit/offset are None, returns all.
+    """
+    from sqlalchemy import func
+
+    base = select(Webhook).where(Webhook.company_id == company_id)
+    total = (await db.execute(select(func.count()).select_from(base.subquery()))).scalar() or 0
+
+    query = base.order_by(Webhook.created_at.desc())
+    if limit is not None:
+        query = query.limit(limit)
+    if offset is not None:
+        query = query.offset(offset)
+
+    result = await db.execute(query)
+    return list(result.scalars().all()), total
 
 
 async def delete_webhook(
@@ -137,7 +151,7 @@ async def dispatch_event(
     Performs real HTTP POST requests and logs delivery results.
     Returns a list of dispatch results (webhook_id, status, error).
     """
-    webhooks = await list_webhooks(db, company_id)
+    webhooks, _ = await list_webhooks(db, company_id)
     results = []
 
     for wh in webhooks:
@@ -188,7 +202,7 @@ async def dispatch_event(
                 "status": "success" if delivery.success else "failed",
                 "status_code": resp.status_code,
             })
-        except Exception as exc:
+        except (httpx.RequestError, httpx.TimeoutException, OSError) as exc:
             elapsed_ms = int((time.monotonic() - start) * 1000)
             delivery.success = False
             delivery.error = str(exc)[:2048]
@@ -304,7 +318,7 @@ async def process_pending_retries(db: AsyncSession) -> int:
             delivery.success = resp.status_code < 400
             delivery.duration_ms = elapsed_ms
             delivery.error = None
-        except Exception as exc:
+        except (httpx.RequestError, httpx.TimeoutException, OSError) as exc:
             elapsed_ms = int((time.monotonic() - start) * 1000)
             delivery.duration_ms = elapsed_ms
             delivery.error = str(exc)[:2048]
