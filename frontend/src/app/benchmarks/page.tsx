@@ -51,17 +51,24 @@ export default function BenchmarksPage() {
           value={industry}
           onChange={(e) => setIndustry(e.target.value)}
         >
-          {["technology", "manufacturing", "finance", "energy", "retail", "healthcare"].map(
-            (ind) => (
-              <option key={ind} value={ind}>
-                {ind.charAt(0).toUpperCase() + ind.slice(1)}
-              </option>
-            )
-          )}
+          {[
+            "technology",
+            "manufacturing",
+            "finance",
+            "energy",
+            "retail",
+            "healthcare",
+          ].map((ind) => (
+            <option key={ind} value={ind}>
+              {ind.charAt(0).toUpperCase() + ind.slice(1)}
+            </option>
+          ))}
         </select>
       </div>
 
-      {error && <p className="mb-4 rounded bg-red-900/30 p-3 text-red-400">{error}</p>}
+      {error && (
+        <p className="mb-4 rounded bg-red-900/30 p-3 text-red-400">{error}</p>
+      )}
 
       {/* Benchmark metrics */}
       {benchmarks && (
@@ -71,8 +78,13 @@ export default function BenchmarksPage() {
           </h2>
           <div className="grid gap-4 sm:grid-cols-3">
             {Object.entries(benchmarks).map(([key, val]) => (
-              <div key={key} className="rounded-lg border border-gray-700 bg-gray-800 p-4">
-                <p className="text-sm text-gray-400">{key.replace(/_/g, " ")}</p>
+              <div
+                key={key}
+                className="rounded-lg border border-gray-700 bg-gray-800 p-4"
+              >
+                <p className="text-sm text-gray-400">
+                  {key.replace(/_/g, " ")}
+                </p>
                 <p className="mt-1 text-2xl font-bold">
                   {typeof val === "number" ? val.toLocaleString() : String(val)}
                 </p>
@@ -101,7 +113,9 @@ export default function BenchmarksPage() {
                 <tr>
                   {Object.values(peers).map((val, i) => (
                     <td key={i} className="px-4 py-3">
-                      {typeof val === "number" ? val.toLocaleString() : String(val)}
+                      {typeof val === "number"
+                        ? val.toLocaleString()
+                        : String(val)}
                     </td>
                   ))}
                 </tr>

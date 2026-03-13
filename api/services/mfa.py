@@ -60,3 +60,9 @@ def verify_totp(secret: str, code: str, window: int = 1) -> bool:
         if hmac.compare_digest(_hotp(secret, current_step + offset), code):
             return True
     return False
+
+
+def generate_totp_code(secret: str) -> str:
+    """Generate the current valid TOTP code for a secret (useful for testing)."""
+    current_step = int(time.time()) // 30
+    return _hotp(secret, current_step)

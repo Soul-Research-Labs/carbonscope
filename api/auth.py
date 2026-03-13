@@ -57,6 +57,23 @@ def create_access_token(user_id: str, company_id: str) -> str:
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
+# Short-lived token issued when password is correct but MFA is still required.
+MFA_PENDING_TOKEN_EXPIRE_MINUTES = 5
+
+
+def create_mfa_pending_token(user_id: str, company_id: str) -> str:
+    """Create a limited-scope token that can only be used to complete MFA verification."""
+    expire = datetime.now(timezone.utc) + timedelta(minutes=MFA_PENDING_TOKEN_EXPIRE_MINUTES)
+    payload = {
+        "sub": user_id,
+        "company_id": company_id,
+        "exp": expire,
+        "type": "mfa_pending",
+        "jti": uuid.uuid4().hex,
+    }
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+
+
 async def create_refresh_token(db: AsyncSession, user_id: str, company_id: str) -> str:
     """Create a persistent refresh token stored in the database."""
     token = secrets.token_urlsafe(48)

@@ -6,6 +6,7 @@ import logging
 from typing import Any
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models import Company, DataListing, DataPurchase, EmissionReport
@@ -144,7 +145,11 @@ async def purchase_listing(
         price_credits=listing.price_credits,
     )
     db.add(purchase)
-    await db.flush()
+    try:
+        await db.flush()
+    except IntegrityError:
+        await db.rollback()
+        raise ValueError("Already purchased this listing")
     return purchase
 
 

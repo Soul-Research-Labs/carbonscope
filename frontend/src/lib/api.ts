@@ -1099,50 +1099,78 @@ export interface PortfolioSummary {
   by_asset_class: Record<string, number>;
 }
 
-export async function listPortfolios(params?: { limit?: number; offset?: number }) {
+export async function listPortfolios(params?: {
+  limit?: number;
+  offset?: number;
+}) {
   const q = new URLSearchParams();
   if (params?.limit != null) q.set("limit", String(params.limit));
   if (params?.offset != null) q.set("offset", String(params.offset));
   const qs = q.toString();
-  return request<{ items: FinancedPortfolio[]; total: number }>(`/pcaf/portfolios${qs ? `?${qs}` : ""}`);
+  return request<{ items: FinancedPortfolio[]; total: number }>(
+    `/pcaf/portfolios${qs ? `?${qs}` : ""}`,
+  );
 }
 
 export async function createPortfolio(data: { name: string; year: number }) {
-  return request<FinancedPortfolio>("/pcaf/portfolios", { method: "POST", body: JSON.stringify(data) });
+  return request<FinancedPortfolio>("/pcaf/portfolios", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
 }
 
 export async function getPortfolioSummary(portfolioId: string) {
-  return request<PortfolioSummary>(`/pcaf/portfolios/${encodeURIComponent(portfolioId)}/summary`);
+  return request<PortfolioSummary>(
+    `/pcaf/portfolios/${encodeURIComponent(portfolioId)}/summary`,
+  );
 }
 
-export async function listPortfolioAssets(portfolioId: string, params?: { limit?: number; offset?: number }) {
+export async function listPortfolioAssets(
+  portfolioId: string,
+  params?: { limit?: number; offset?: number },
+) {
   const q = new URLSearchParams();
   if (params?.limit != null) q.set("limit", String(params.limit));
   if (params?.offset != null) q.set("offset", String(params.offset));
   const qs = q.toString();
-  return request<{ items: FinancedAsset[]; total: number }>(`/pcaf/portfolios/${encodeURIComponent(portfolioId)}/assets${qs ? `?${qs}` : ""}`);
+  return request<{ items: FinancedAsset[]; total: number }>(
+    `/pcaf/portfolios/${encodeURIComponent(portfolioId)}/assets${qs ? `?${qs}` : ""}`,
+  );
 }
 
-export async function addPortfolioAsset(portfolioId: string, data: {
-  asset_name: string;
-  asset_class: string;
-  outstanding_amount: number;
-  total_equity_debt: number;
-  investee_emissions_tco2e: number;
-  data_quality_score: number;
-  industry?: string;
-  region?: string;
-  notes?: string;
-}) {
-  return request<FinancedAsset>(`/pcaf/portfolios/${encodeURIComponent(portfolioId)}/assets`, {
-    method: "POST", body: JSON.stringify(data),
-  });
+export async function addPortfolioAsset(
+  portfolioId: string,
+  data: {
+    asset_name: string;
+    asset_class: string;
+    outstanding_amount: number;
+    total_equity_debt: number;
+    investee_emissions_tco2e: number;
+    data_quality_score: number;
+    industry?: string;
+    region?: string;
+    notes?: string;
+  },
+) {
+  return request<FinancedAsset>(
+    `/pcaf/portfolios/${encodeURIComponent(portfolioId)}/assets`,
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    },
+  );
 }
 
-export async function deletePortfolioAsset(portfolioId: string, assetId: string) {
-  return request<void>(`/pcaf/portfolios/${encodeURIComponent(portfolioId)}/assets/${encodeURIComponent(assetId)}`, {
-    method: "DELETE",
-  });
+export async function deletePortfolioAsset(
+  portfolioId: string,
+  assetId: string,
+) {
+  return request<void>(
+    `/pcaf/portfolios/${encodeURIComponent(portfolioId)}/assets/${encodeURIComponent(assetId)}`,
+    {
+      method: "DELETE",
+    },
+  );
 }
 
 // ── Data Reviews ─────────────────────────────────────────────────
@@ -1158,26 +1186,42 @@ export interface DataReview {
   created_at: string;
 }
 
-export async function listReviews(params?: { limit?: number; offset?: number }) {
+export async function listReviews(params?: {
+  limit?: number;
+  offset?: number;
+}) {
   const q = new URLSearchParams();
   if (params?.limit != null) q.set("limit", String(params.limit));
   if (params?.offset != null) q.set("offset", String(params.offset));
   const qs = q.toString();
-  return request<{ items: DataReview[]; total: number }>(`/reviews${qs ? `?${qs}` : ""}`);
+  return request<{ items: DataReview[]; total: number }>(
+    `/reviews${qs ? `?${qs}` : ""}`,
+  );
 }
 
 export async function createReview(reportId: string) {
-  return request<DataReview>("/reviews", { method: "POST", body: JSON.stringify({ report_id: reportId }) });
+  return request<DataReview>("/reviews", {
+    method: "POST",
+    body: JSON.stringify({ report_id: reportId }),
+  });
 }
 
 export async function getReview(reviewId: string) {
   return request<DataReview>(`/reviews/${encodeURIComponent(reviewId)}`);
 }
 
-export async function reviewAction(reviewId: string, action: string, notes?: string) {
-  return request<DataReview>(`/reviews/${encodeURIComponent(reviewId)}/action`, {
-    method: "POST", body: JSON.stringify({ action, notes }),
-  });
+export async function reviewAction(
+  reviewId: string,
+  action: string,
+  notes?: string,
+) {
+  return request<DataReview>(
+    `/reviews/${encodeURIComponent(reviewId)}/action`,
+    {
+      method: "POST",
+      body: JSON.stringify({ action, notes }),
+    },
+  );
 }
 
 // ── MFA ──────────────────────────────────────────────────────────
@@ -1202,19 +1246,22 @@ export async function setupMFA() {
 
 export async function verifyMFA(totpCode: string) {
   return request<MFAStatus>("/auth/mfa/verify", {
-    method: "POST", body: JSON.stringify({ totp_code: totpCode }),
+    method: "POST",
+    body: JSON.stringify({ totp_code: totpCode }),
   });
 }
 
 export async function validateMFA(totpCode: string) {
   return request<MFAStatus>("/auth/mfa/validate", {
-    method: "POST", body: JSON.stringify({ totp_code: totpCode }),
+    method: "POST",
+    body: JSON.stringify({ totp_code: totpCode }),
   });
 }
 
 export async function disableMFA(totpCode: string) {
   return request<void>("/auth/mfa/disable", {
-    method: "DELETE", body: JSON.stringify({ totp_code: totpCode }),
+    method: "DELETE",
+    body: JSON.stringify({ totp_code: totpCode }),
   });
 }
 

@@ -80,8 +80,14 @@ export default function MFAPage() {
     <main className="mx-auto max-w-2xl p-8">
       <h1 className="mb-8 text-3xl font-bold">Multi-Factor Authentication</h1>
 
-      {error && <p className="mb-4 rounded bg-red-900/30 p-3 text-red-400">{error}</p>}
-      {success && <p className="mb-4 rounded bg-emerald-900/30 p-3 text-emerald-400">{success}</p>}
+      {error && (
+        <p className="mb-4 rounded bg-red-900/30 p-3 text-red-400">{error}</p>
+      )}
+      {success && (
+        <p className="mb-4 rounded bg-emerald-900/30 p-3 text-emerald-400">
+          {success}
+        </p>
+      )}
 
       {status && (
         <div className="mb-6 rounded-lg border border-gray-700 bg-gray-800 p-6">
@@ -114,7 +120,8 @@ export default function MFAPage() {
 
           <div className="mb-4">
             <p className="mb-1 text-sm text-gray-400">
-              Scan this QR code with your authenticator app, or enter the secret manually:
+              Scan this QR code with your authenticator app, or enter the secret
+              manually:
             </p>
             <code className="block rounded bg-gray-900 p-3 text-sm text-emerald-400 break-all">
               {setup.secret}
@@ -122,7 +129,9 @@ export default function MFAPage() {
           </div>
 
           <div className="mb-4">
-            <p className="mb-1 text-sm text-gray-400">Backup codes (save securely):</p>
+            <p className="mb-1 text-sm text-gray-400">
+              Backup codes (save securely):
+            </p>
             <div className="grid grid-cols-2 gap-1">
               {setup.backup_codes.map((code, i) => (
                 <code key={i} className="rounded bg-gray-900 px-2 py-1 text-sm">
@@ -140,7 +149,10 @@ export default function MFAPage() {
               onChange={(e) => setTotpCode(e.target.value)}
               maxLength={6}
             />
-            <button onClick={handleVerify} className="rounded bg-emerald-600 px-4 py-2 text-white">
+            <button
+              onClick={handleVerify}
+              className="rounded bg-emerald-600 px-4 py-2 text-white"
+            >
               Verify & Enable
             </button>
           </div>
@@ -150,7 +162,9 @@ export default function MFAPage() {
       {/* Disable MFA */}
       {status?.mfa_enabled && (
         <div className="mt-6 rounded-lg border border-red-800 bg-red-900/10 p-6">
-          <h2 className="mb-2 text-lg font-semibold text-red-400">Disable MFA</h2>
+          <h2 className="mb-2 text-lg font-semibold text-red-400">
+            Disable MFA
+          </h2>
           <p className="mb-4 text-sm text-gray-400">
             Enter your current TOTP code to disable multi-factor authentication.
           </p>
@@ -162,7 +176,10 @@ export default function MFAPage() {
               onChange={(e) => setDisableCode(e.target.value)}
               maxLength={6}
             />
-            <button onClick={handleDisable} className="rounded bg-red-600 px-4 py-2 text-white">
+            <button
+              onClick={handleDisable}
+              className="rounded bg-red-600 px-4 py-2 text-white"
+            >
               Disable
             </button>
           </div>

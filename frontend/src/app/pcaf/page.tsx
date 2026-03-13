@@ -138,10 +138,16 @@ export default function PCAFPage() {
               value={newYear}
               onChange={(e) => setNewYear(Number(e.target.value))}
             />
-            <button onClick={handleCreate} className="rounded bg-emerald-600 px-4 py-2 text-white">
+            <button
+              onClick={handleCreate}
+              className="rounded bg-emerald-600 px-4 py-2 text-white"
+            >
               Create
             </button>
-            <button onClick={() => setShowCreate(false)} className="text-gray-400">
+            <button
+              onClick={() => setShowCreate(false)}
+              className="text-gray-400"
+            >
               Cancel
             </button>
           </div>
@@ -151,7 +157,9 @@ export default function PCAFPage() {
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Portfolio list */}
         <div className="space-y-2">
-          <h2 className="mb-2 text-lg font-semibold text-gray-300">Portfolios</h2>
+          <h2 className="mb-2 text-lg font-semibold text-gray-300">
+            Portfolios
+          </h2>
           {portfolios.map((p) => (
             <button
               key={p.id}
@@ -167,7 +175,9 @@ export default function PCAFPage() {
             </button>
           ))}
           {portfolios.length === 0 && (
-            <p className="text-gray-500">No portfolios yet. Create one to get started.</p>
+            <p className="text-gray-500">
+              No portfolios yet. Create one to get started.
+            </p>
           )}
         </div>
 
@@ -177,14 +187,18 @@ export default function PCAFPage() {
             <div>
               <div className="mb-4 grid grid-cols-3 gap-4">
                 <div className="rounded-lg bg-gray-800 p-4">
-                  <p className="text-sm text-gray-400">Total Financed Emissions</p>
+                  <p className="text-sm text-gray-400">
+                    Total Financed Emissions
+                  </p>
                   <p className="text-2xl font-bold text-emerald-400">
                     {summary.total_financed_emissions.toLocaleString()} tCO₂e
                   </p>
                 </div>
                 <div className="rounded-lg bg-gray-800 p-4">
                   <p className="text-sm text-gray-400">Weighted Data Quality</p>
-                  <p className="text-2xl font-bold">{summary.weighted_data_quality.toFixed(1)}/5</p>
+                  <p className="text-2xl font-bold">
+                    {summary.weighted_data_quality.toFixed(1)}/5
+                  </p>
                 </div>
                 <div className="rounded-lg bg-gray-800 p-4">
                   <p className="text-sm text-gray-400">Assets</p>
@@ -205,46 +219,115 @@ export default function PCAFPage() {
               {showAssetForm && (
                 <div className="mb-4 rounded-lg border border-gray-700 bg-gray-800 p-4">
                   <div className="grid grid-cols-2 gap-3">
-                    <input className="rounded bg-gray-700 px-3 py-2" placeholder="Asset name"
-                      onChange={(e) => setAssetForm({ ...assetForm, asset_name: e.target.value })} />
-                    <select className="rounded bg-gray-700 px-3 py-2"
-                      onChange={(e) => setAssetForm({ ...assetForm, asset_class: e.target.value })}>
+                    <input
+                      className="rounded bg-gray-700 px-3 py-2"
+                      placeholder="Asset name"
+                      onChange={(e) =>
+                        setAssetForm({
+                          ...assetForm,
+                          asset_name: e.target.value,
+                        })
+                      }
+                    />
+                    <select
+                      className="rounded bg-gray-700 px-3 py-2"
+                      onChange={(e) =>
+                        setAssetForm({
+                          ...assetForm,
+                          asset_class: e.target.value,
+                        })
+                      }
+                    >
                       <option value="corporate_bonds">Corporate Bonds</option>
                       <option value="listed_equity">Listed Equity</option>
                       <option value="business_loans">Business Loans</option>
                       <option value="project_finance">Project Finance</option>
                       <option value="mortgages">Mortgages</option>
                     </select>
-                    <input type="number" className="rounded bg-gray-700 px-3 py-2" placeholder="Outstanding amount"
-                      onChange={(e) => setAssetForm({ ...assetForm, outstanding_amount: Number(e.target.value) })} />
-                    <input type="number" className="rounded bg-gray-700 px-3 py-2" placeholder="Total equity/debt"
-                      onChange={(e) => setAssetForm({ ...assetForm, total_equity_debt: Number(e.target.value) })} />
-                    <input type="number" className="rounded bg-gray-700 px-3 py-2" placeholder="Investee emissions (tCO₂e)"
-                      onChange={(e) => setAssetForm({ ...assetForm, investee_emissions_tco2e: Number(e.target.value) })} />
-                    <select className="rounded bg-gray-700 px-3 py-2"
-                      onChange={(e) => setAssetForm({ ...assetForm, data_quality_score: Number(e.target.value) })}>
+                    <input
+                      type="number"
+                      className="rounded bg-gray-700 px-3 py-2"
+                      placeholder="Outstanding amount"
+                      onChange={(e) =>
+                        setAssetForm({
+                          ...assetForm,
+                          outstanding_amount: Number(e.target.value),
+                        })
+                      }
+                    />
+                    <input
+                      type="number"
+                      className="rounded bg-gray-700 px-3 py-2"
+                      placeholder="Total equity/debt"
+                      onChange={(e) =>
+                        setAssetForm({
+                          ...assetForm,
+                          total_equity_debt: Number(e.target.value),
+                        })
+                      }
+                    />
+                    <input
+                      type="number"
+                      className="rounded bg-gray-700 px-3 py-2"
+                      placeholder="Investee emissions (tCO₂e)"
+                      onChange={(e) =>
+                        setAssetForm({
+                          ...assetForm,
+                          investee_emissions_tco2e: Number(e.target.value),
+                        })
+                      }
+                    />
+                    <select
+                      className="rounded bg-gray-700 px-3 py-2"
+                      onChange={(e) =>
+                        setAssetForm({
+                          ...assetForm,
+                          data_quality_score: Number(e.target.value),
+                        })
+                      }
+                    >
                       {[1, 2, 3, 4, 5].map((s) => (
-                        <option key={s} value={s}>Quality Score: {s}</option>
+                        <option key={s} value={s}>
+                          Quality Score: {s}
+                        </option>
                       ))}
                     </select>
                   </div>
                   <div className="mt-3 flex gap-2">
-                    <button onClick={handleAddAsset} className="rounded bg-emerald-600 px-4 py-2 text-white">Add</button>
-                    <button onClick={() => setShowAssetForm(false)} className="text-gray-400">Cancel</button>
+                    <button
+                      onClick={handleAddAsset}
+                      className="rounded bg-emerald-600 px-4 py-2 text-white"
+                    >
+                      Add
+                    </button>
+                    <button
+                      onClick={() => setShowAssetForm(false)}
+                      className="text-gray-400"
+                    >
+                      Cancel
+                    </button>
                   </div>
                 </div>
               )}
 
               <div className="space-y-2">
                 {assets.map((a) => (
-                  <div key={a.id} className="flex items-center justify-between rounded-lg border border-gray-700 bg-gray-800 p-3">
+                  <div
+                    key={a.id}
+                    className="flex items-center justify-between rounded-lg border border-gray-700 bg-gray-800 p-3"
+                  >
                     <div>
                       <p className="font-medium">{a.asset_name}</p>
                       <p className="text-sm text-gray-400">
-                        {a.asset_class} · ${a.outstanding_amount.toLocaleString()} · {a.financed_emissions_tco2e.toFixed(1)} tCO₂e
+                        {a.asset_class} · $
+                        {a.outstanding_amount.toLocaleString()} ·{" "}
+                        {a.financed_emissions_tco2e.toFixed(1)} tCO₂e
                       </p>
                     </div>
-                    <button onClick={() => handleDeleteAsset(a.id)} className="text-red-400 hover:text-red-300">
+                    <button
+                      onClick={() => handleDeleteAsset(a.id)}
+                      className="text-red-400 hover:text-red-300"
+                    >
                       Delete
                     </button>
                   </div>

@@ -3,14 +3,23 @@
 from __future__ import annotations
 
 import json
+import secrets
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.config import RATE_LIMIT_AUTH
+from api.auth import create_access_token, create_refresh_token
+from api.config import (
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    COOKIE_DOMAIN,
+    COOKIE_SAMESITE,
+    COOKIE_SECURE,
+    RATE_LIMIT_AUTH,
+)
 from api.database import get_db
-from api.deps import get_current_user
+from api.deps import get_current_user, get_mfa_pending_user
 from api.limiter import limiter
 from api.models import MFASecret, User
 from api.schemas import MFASetupOut, MFAStatusOut, MFAVerifyRequest
@@ -24,6 +33,14 @@ from api.services.mfa import (
 from api.services import audit
 
 router = APIRouter(prefix="/auth/mfa", tags=["mfa"])
+
+
+class MFAValidateResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    csrf_token: str | None = None
+    token_type: str = "bearer"
+    mfa_verified: bool = True
 
 
 @router.get("/status", response_model=MFAStatusOut)
@@ -122,15 +139,19 @@ async def verify_and_enable_mfa(
     return {"mfa_enabled": True}
 
 
-@router.post("/validate", response_model=MFAStatusOut)
+@router.post("/validate", response_model=MFAValidateResponse)
 @limiter.limit(RATE_LIMIT_AUTH)
 async def validate_totp(
     request: Request,
     body: MFAVerifyRequest,
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_mfa_pending_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Validate a TOTP code (used during login second factor)."""
+    """Complete the MFA login step: validate TOTP code and issue full tokens.
+
+    Requires an ``mfa_pending`` token (returned by ``POST /auth/login`` when MFA
+    is enabled) in the Authorization header.
+    """
     result = await db.execute(
         select(MFASecret).where(MFASecret.user_id == user.id, MFASecret.is_enabled.is_(True))
     )
@@ -141,7 +162,35 @@ async def validate_totp(
     if not verify_totp(secret_row.totp_secret, body.totp_code):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid TOTP code")
 
-    return {"mfa_enabled": True}
+    # TOTP verified — issue full access + refresh tokens
+    access = create_access_token(user.id, user.company_id)
+    refresh = await create_refresh_token(db, user.id, user.company_id)
+    csrf = secrets.token_hex(32)
+    await db.commit()
+
+    await audit.record(
+        db, user_id=user.id, company_id=user.company_id,
+        action="login_mfa_verified", resource_type="user", resource_id=user.id,
+    )
+    await db.commit()
+
+    response = Response(
+        content=MFAValidateResponse(
+            access_token=access, refresh_token=refresh, csrf_token=csrf,
+        ).model_dump_json(),
+        media_type="application/json",
+    )
+    response.set_cookie(
+        key="access_token", value=access, httponly=True,
+        secure=COOKIE_SECURE, samesite=COOKIE_SAMESITE,
+        domain=COOKIE_DOMAIN, max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60, path="/",
+    )
+    response.set_cookie(
+        key="csrf_token", value=csrf, httponly=False,
+        secure=COOKIE_SECURE, samesite=COOKIE_SAMESITE,
+        domain=COOKIE_DOMAIN, max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60, path="/",
+    )
+    return response
 
 
 @router.delete("/disable", status_code=status.HTTP_204_NO_CONTENT)

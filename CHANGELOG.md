@@ -6,6 +6,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [0.20.0] — 2026-03-14 — Phase 26: MFA Enforcement, Race Conditions & Migrations
+
+### Fixed — MFA Login Enforcement
+
+- Login now checks MFA enrollment: if enabled, issues a short-lived `mfa_pending` token (5-min TTL) instead of full access tokens.
+- `get_current_user` rejects `mfa_pending` tokens with HTTP 403 — users must complete MFA before accessing any endpoint.
+- New `get_mfa_pending_user` dependency accepts only `mfa_pending` tokens for the `/auth/mfa/validate` endpoint.
+- `/auth/mfa/validate` rewritten: accepts pending token + TOTP code, issues full access + refresh tokens, sets auth cookies.
+
+### Fixed — Race Conditions
+
+- **Registration**: duplicate email/username now caught via `IntegrityError` → HTTP 409 instead of 500.
+- **Marketplace purchase**: duplicate purchase caught via `IntegrityError` → `ValueError` instead of crash.
+- Credit deduction already safe (`SELECT FOR UPDATE`) — no change needed.
+
+### Added — Alembic Migration
+
+- Migration `g4h5i6j7k8l9` adds 5 Phase 24 tables: `financed_portfolios`, `financed_assets`, `data_reviews`, `mfa_secrets`, `industry_benchmarks` with full FKs, indexes, and constraints.
+
+### Added — Frontend Tests
+
+- 4 new test files (16 tests): PCAFPage, ReviewsPage, MFAPage, BenchmarksPage.
+- Frontend tests: **99** passed (18 files), up from 83.
+
+### Added — Backend Tests
+
+- 7 new tests in `test_phase26_mfa_races.py`: MFA login enforcement (6), duplicate registration race (1).
+- Fixed `test_mfa_validate_after_enable` to use new mfa_pending flow.
+- Total backend tests: **647** (36 files). Total frontend tests: **99** (18 files).
+
+---
+
 ## [0.19.0] — 2026-03-14 — Phase 25: Security Hardening & Frontend Parity
 
 ### Added — Audit Logging

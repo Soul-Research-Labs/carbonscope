@@ -89,7 +89,7 @@ carbonscope/
 │       ├── components/      #   Reusable UI components
 │       └── lib/             #   API client, auth context
 ├── alembic/                 # Database migrations
-├── tests/                   # Backend tests (640+)
+├── tests/                   # Backend tests (647+)
 └── data/                    # Emission factor JSON datasets
 ```
 
@@ -175,7 +175,7 @@ git rebase upstream/main
 ### Backend Tests (pytest)
 
 ```bash
-# Run full suite (640 tests)
+# Run full suite (647 tests)
 pytest tests/ -v
 
 # Specific file

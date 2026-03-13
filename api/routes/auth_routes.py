@@ -9,11 +9,13 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.auth import (
     authenticate_user,
     create_access_token,
+    create_mfa_pending_token,
     create_refresh_token,
     create_reset_token,
     decode_access_token,
@@ -35,7 +37,7 @@ from api.config import (
 from api.database import get_db
 from api.deps import get_current_user
 from api.limiter import limiter
-from api.models import Company, User, _utcnow
+from api.models import Company, MFASecret, User, _utcnow
 from api.schemas import PasswordChange, Token, UserLogin, UserOut, UserProfileUpdate, UserRegister
 from api.services import audit
 
@@ -47,6 +49,7 @@ class TokenWithRefresh(BaseModel):
     refresh_token: str
     csrf_token: str | None = None
     token_type: str = "bearer"
+    mfa_required: bool = False
 
 
 def _set_auth_cookies(response: Response, access_token: str, csrf_token: str) -> None:
@@ -129,7 +132,11 @@ async def register(request: Request, body: UserRegister, db: AsyncSession = Depe
     from api.services.subscriptions import get_or_create_subscription
     await get_or_create_subscription(db, company.id)
 
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
     await db.refresh(user)
 
     await audit.record(
@@ -141,10 +148,15 @@ async def register(request: Request, body: UserRegister, db: AsyncSession = Depe
     return user
 
 
-@router.post("/login", response_model=TokenWithRefresh)
+@router.post("/login")
 @limiter.limit(RATE_LIMIT_AUTH)
 async def login(request: Request, body: UserLogin, db: AsyncSession = Depends(get_db)):
-    """Authenticate and return JWT access + refresh tokens."""
+    """Authenticate and return JWT access + refresh tokens.
+
+    If the user has MFA enabled, a short-lived ``mfa_pending`` token is returned
+    instead of full credentials.  The client must then call ``POST /auth/mfa/validate``
+    with that token and a valid TOTP code to obtain full access + refresh tokens.
+    """
     # Look up user first for brute force protection
     result = await db.execute(select(User).where(User.email == body.email))
     user_row = result.scalar_one_or_none()
@@ -177,6 +189,31 @@ async def login(request: Request, body: UserLogin, db: AsyncSession = Depends(ge
     user.failed_login_attempts = 0
     user.locked_until = None
     user.last_login = datetime.now(timezone.utc)
+
+    # Check if user has MFA enabled — require TOTP before issuing full tokens
+    mfa_result = await db.execute(
+        select(MFASecret).where(MFASecret.user_id == user.id, MFASecret.is_enabled.is_(True))
+    )
+    mfa_row = mfa_result.scalar_one_or_none()
+
+    if mfa_row is not None:
+        # MFA is enabled: issue a short-lived mfa_pending token instead
+        mfa_token = create_mfa_pending_token(user.id, user.company_id)
+        await db.commit()
+
+        await audit.record(
+            db, user_id=user.id, company_id=user.company_id,
+            action="login_mfa_pending", resource_type="user", resource_id=user.id,
+        )
+        await db.commit()
+
+        return Response(
+            content=TokenWithRefresh(
+                access_token=mfa_token, refresh_token="", csrf_token=None,
+                mfa_required=True,
+            ).model_dump_json(),
+            media_type="application/json",
+        )
 
     access = create_access_token(user.id, user.company_id)
     refresh = await create_refresh_token(db, user.id, user.company_id)

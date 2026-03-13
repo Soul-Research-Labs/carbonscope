@@ -598,10 +598,23 @@ class TestMFARoutes:
         code = _hotp(secret, current_step)
         await client.post("/api/v1/auth/mfa/verify", json={"totp_code": code})
 
-        # Now validate
+        # Login again — should return mfa_pending token
+        login_resp = await client.post("/api/v1/auth/login", json={
+            "email": "mfaval@example.com",
+            "password": "Securepass123!",
+        })
+        assert login_resp.json()["mfa_required"] is True
+        mfa_token = login_resp.json()["access_token"]
+
+        # Validate with mfa_pending token
         code2 = _hotp(secret, int(time.time()) // 30)
-        resp = await client.post("/api/v1/auth/mfa/validate", json={"totp_code": code2})
+        resp = await client.post(
+            "/api/v1/auth/mfa/validate",
+            headers={"Authorization": f"Bearer {mfa_token}"},
+            json={"totp_code": code2},
+        )
         assert resp.status_code == 200
+        assert resp.json()["refresh_token"] != ""
 
     async def test_mfa_disable(self, client: AsyncClient):
         token = await _register_and_login(client, "mfadis@example.com")

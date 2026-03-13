@@ -109,10 +109,16 @@ export default function ReviewsPage() {
                 </option>
               ))}
             </select>
-            <button onClick={handleCreate} className="rounded bg-emerald-600 px-4 py-2 text-white">
+            <button
+              onClick={handleCreate}
+              className="rounded bg-emerald-600 px-4 py-2 text-white"
+            >
               Create
             </button>
-            <button onClick={() => setShowCreate(false)} className="text-gray-400">
+            <button
+              onClick={() => setShowCreate(false)}
+              className="text-gray-400"
+            >
               Cancel
             </button>
           </div>
@@ -121,20 +127,30 @@ export default function ReviewsPage() {
 
       <div className="space-y-3">
         {reviews.map((r) => (
-          <div key={r.id} className="rounded-lg border border-gray-700 bg-gray-800 p-4">
+          <div
+            key={r.id}
+            className="rounded-lg border border-gray-700 bg-gray-800 p-4"
+          >
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium">Report: {r.report_id.slice(0, 8)}...</p>
+                <p className="font-medium">
+                  Report: {r.report_id.slice(0, 8)}...
+                </p>
                 <p className="text-sm text-gray-400">
                   Created: {new Date(r.created_at).toLocaleDateString()}
-                  {r.reviewed_at && ` · Reviewed: ${new Date(r.reviewed_at).toLocaleDateString()}`}
+                  {r.reviewed_at &&
+                    ` · Reviewed: ${new Date(r.reviewed_at).toLocaleDateString()}`}
                 </p>
                 {r.reviewer_notes && (
-                  <p className="mt-1 text-sm text-gray-300">Notes: {r.reviewer_notes}</p>
+                  <p className="mt-1 text-sm text-gray-300">
+                    Notes: {r.reviewer_notes}
+                  </p>
                 )}
               </div>
               <div className="flex items-center gap-3">
-                <span className={`rounded-full px-3 py-1 text-xs font-medium ${STATUS_STYLES[r.status] || "bg-gray-600"}`}>
+                <span
+                  className={`rounded-full px-3 py-1 text-xs font-medium ${STATUS_STYLES[r.status] || "bg-gray-600"}`}
+                >
                   {r.status}
                 </span>
                 {r.status === "draft" && (
@@ -166,7 +182,9 @@ export default function ReviewsPage() {
           </div>
         ))}
         {reviews.length === 0 && (
-          <p className="text-gray-500">No reviews yet. Create one for an emission report.</p>
+          <p className="text-gray-500">
+            No reviews yet. Create one for an emission report.
+          </p>
         )}
       </div>
     </main>

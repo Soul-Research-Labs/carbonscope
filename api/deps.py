@@ -56,6 +56,13 @@ async def get_current_user(
             detail="Invalid or expired token",
         )
 
+    # Reject MFA-pending tokens — they can only be used at /auth/mfa/validate
+    if payload.get("type") == "mfa_pending":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="MFA verification required",
+        )
+
     user_id: str | None = payload.get("sub")
     if user_id is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
@@ -72,6 +79,41 @@ async def get_current_user(
 
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is deactivated")
+
+    return user
+
+
+async def get_mfa_pending_user(
+    request: Request,
+    creds: HTTPAuthorizationCredentials | None = Depends(_bearer),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    """Extract a user from an mfa_pending token (used only at /auth/mfa/validate)."""
+    token: str | None = None
+    if creds and creds.credentials:
+        token = creds.credentials
+    else:
+        token = request.cookies.get("access_token")
+
+    if not token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+    try:
+        payload = decode_access_token(token)
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
+
+    if payload.get("type") != "mfa_pending":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Expected MFA pending token")
+
+    user_id: str | None = payload.get("sub")
+    if user_id is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
     return user
 
