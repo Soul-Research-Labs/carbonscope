@@ -34,7 +34,7 @@ from api.routes.stripe_routes import router as stripe_router
 
 logger = logging.getLogger(__name__)
 
-APP_VERSION = "0.16.0"
+APP_VERSION = "0.17.0"
 _start_time: float = 0.0
 _request_count: int = 0
 _request_errors: int = 0

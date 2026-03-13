@@ -13,7 +13,7 @@
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.10+">
   <img src="https://img.shields.io/badge/node-18%2B-339933?style=flat-square&logo=node.js&logoColor=white" alt="Node 18+">
-  <img src="https://img.shields.io/badge/version-0.16.0-orange?style=flat-square" alt="Version 0.16.0">
+  <img src="https://img.shields.io/badge/version-0.17.0-orange?style=flat-square" alt="Version 0.17.0">
   <img src="https://img.shields.io/badge/tests-491%2B%20backend%20%7C%2065%2B%20frontend-brightgreen?style=flat-square" alt="Tests">
   <img src="https://img.shields.io/badge/endpoints-75%2B-7B61FF?style=flat-square" alt="75+ API Endpoints">
   <img src="https://img.shields.io/badge/Bittensor-Subnet-000000?style=flat-square" alt="Bittensor Subnet">
