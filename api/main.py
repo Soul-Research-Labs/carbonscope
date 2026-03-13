@@ -90,10 +90,18 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 register_middleware(app)
 
 # CORS — configurable origins with restricted methods/headers
+if "*" in ALLOWED_ORIGINS:
+    logger.warning(
+        "CORS: wildcard origin ('*') is configured. Disabling allow_credentials to prevent insecure configuration."
+    )
+    _allow_credentials = False
+else:
+    _allow_credentials = True
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
-    allow_credentials=True,
+    allow_credentials=_allow_credentials,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "X-Request-ID", "X-CSRF-Token"],
     expose_headers=["X-Request-ID", "X-Total-Count"],

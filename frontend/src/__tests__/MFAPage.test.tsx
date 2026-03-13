@@ -54,8 +54,6 @@ describe("MFAPage", () => {
   it("shows error on API failure", async () => {
     mockGetMFAStatus.mockRejectedValue(new Error("Connection failed"));
     render(<MFAPage />);
-    expect(
-      await screen.findByText(/Connection failed/),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/Connection failed/)).toBeInTheDocument();
   });
 });

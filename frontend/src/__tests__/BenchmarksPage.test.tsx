@@ -41,9 +41,7 @@ describe("BenchmarksPage", () => {
       industry_avg: 5000,
     });
     render(<BenchmarksPage />);
-    expect(
-      await screen.findByText("Industry Benchmarks"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Industry Benchmarks")).toBeInTheDocument();
   });
 
   it("renders benchmark metrics", async () => {

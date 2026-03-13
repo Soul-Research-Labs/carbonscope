@@ -58,9 +58,7 @@ describe("ReviewsPage", () => {
   it("shows create form on button click", async () => {
     render(<ReviewsPage />);
     await userEvent.click(screen.getByText("New Review"));
-    expect(
-      screen.getByText("Create Review for Report"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Create Review for Report")).toBeInTheDocument();
   });
 
   it("shows error on API failure", async () => {

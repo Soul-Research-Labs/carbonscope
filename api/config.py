@@ -53,6 +53,10 @@ if ENV == "production":
         raise RuntimeError("SECRET_KEY must be at least 32 characters in production.")
     if len(set(SECRET_KEY)) < 10:
         raise RuntimeError("SECRET_KEY appears to lack sufficient randomness.")
+elif len(SECRET_KEY) < 32 and SECRET_KEY != _DEFAULT_SECRET:
+    logger.warning(
+        "SECRET_KEY is shorter than 32 characters. Use a longer key for better security."
+    )
 ALGORITHM: str = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
 
@@ -94,6 +98,16 @@ BT_WALLET_NAME: str = os.getenv("BT_WALLET_NAME", "api_client")
 BT_WALLET_HOTKEY: str = os.getenv("BT_WALLET_HOTKEY", "default")
 BT_QUERY_TIMEOUT: float = float(os.getenv("BT_QUERY_TIMEOUT", "30.0"))
 ESTIMATION_MODE: str = os.getenv("ESTIMATION_MODE", "local")  # local | subnet
+
+# ── MFA / TOTP ──────────────────────────────────────────────────────
+
+_DEFAULT_TOTP_KEY = "insecure-totp-key-for-dev-only!!"  # 32 bytes
+TOTP_ENCRYPTION_KEY: str = os.getenv("TOTP_ENCRYPTION_KEY", _DEFAULT_TOTP_KEY)
+if TOTP_ENCRYPTION_KEY == _DEFAULT_TOTP_KEY and ENV == "production":
+    raise RuntimeError(
+        "TOTP_ENCRYPTION_KEY must be set to a secure random value in production. "
+        "Generate one with: python -c \"import secrets; print(secrets.token_hex(16))\""
+    )
 
 # ── Email / SMTP ────────────────────────────────────────────────────
 # Configured in api/services/email.py via env vars:

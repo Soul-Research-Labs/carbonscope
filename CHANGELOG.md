@@ -6,6 +6,66 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [0.21.0] — 2026-03-14 — Phases 27–32: Security, Services, Coverage & Infrastructure
+
+### Added — Phase 27: Security Hardening & Data Integrity
+
+- **TOTP encryption at rest**: MFA secrets encrypted via Fernet (TOTP_ENCRYPTION_KEY) before storage; decrypted on verify/validate/disable.
+- **`updated_at` column** on User model (auto-updates on write).
+- **CASCADE deletes** on all 16 company-referencing ForeignKeys (subscription, credits, webhooks, reports, uploads, etc.).
+- **Soft delete** (`deleted_at`) on DataListing and Webhook models.
+- **Database indexes** on `data_reviews.report_id` and `webhook_deliveries.webhook_id`.
+- **CORS safety check**: disables `allow_credentials` when origin is `*`.
+- **Redis production gate**: rate limiter raises RuntimeError if REDIS_URL missing in production.
+- **SECRET_KEY warning**: logs warning when key < 32 chars in non-production envs.
+- Alembic migration `h5i6j7k8l9m0` for all schema changes.
+- 10 new backend tests (test_phase27_security_hardening.py).
+
+### Added — Phase 28: Service Layer Extraction
+
+- **`api/services/reviews.py`**: extracted create_review, list_reviews, get_review, perform_action from review routes.
+- **`api/services/benchmarks.py`**: extracted compare_to_industry, \_pct_diff, \_rank_label from benchmark routes.
+- Refactored review_routes.py and benchmark_routes.py to delegate to service layer.
+- 21 new backend tests (test_reviews_service.py: 11, test_benchmarks_service.py: 10).
+
+### Added — Phase 29: Backend Test Coverage Gaps
+
+- **test_pdf_export.py** (11 tests): direct tests for generate_report_pdf/generate_questionnaire_pdf.
+- **test_url_validator.py** (20 tests): SSRF protection — scheme blocking, hostname blocking, private IP blocking, DNS resolution, IPv6 loopback.
+- **test_templates.py** (10 tests): questionnaire template catalog — list, get, parametrized template retrieval.
+- **Questionnaire endpoint gap tests**: apply_template (3 tests), update_question (4 tests) added to test_questionnaire_routes.py.
+
+### Added — Phase 30: Frontend Test Expansion
+
+- **7 new test files** (49+ new tests):
+  - SettingsPage.test.tsx (7 tests): profile fields, company save, webhook section, password section.
+  - UploadPage.test.tsx (5 tests): form rendering, submit/error, scope labels.
+  - CompliancePage.test.tsx (5 tests): framework buttons, generate, error handling.
+  - AlertsPage.test.tsx (7 tests): alert list, severity, run check, unread filter.
+  - AuditLogsPage.test.tsx (6 tests): table rendering, empty state, error, accessibility.
+  - QuestionnairesPage.test.tsx (6 tests): tabs, list, templates, apply template.
+  - AuthContext.test.tsx (7 tests): JWT decoding, localStorage, login/logout/register flows, provider requirement.
+- Frontend tests: **142 passed** (25 files), up from 99 (18 files).
+
+### Added — Phase 31: Frontend Infrastructure
+
+- **Security headers** in next.config.js: X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy, Strict-Transport-Security, Content-Security-Policy.
+- **E2E protected routes** expanded from 4 to 16 routes (all authenticated pages).
+
+### Changed — Phase 32: Documentation Sync
+
+- ARCHITECTURE.md: service layer table updated to 21 modules (added reviews, benchmarks, mfa).
+- CHANGELOG.md: comprehensive entry for Phases 27–32.
+
+### Test Summary
+
+- Backend: **722 passed** (40+ files), up from 650.
+- Frontend (vitest): **142 passed** (25 files), up from 99.
+- E2E (playwright): 16 protected route checks + smoke tests.
+- 7 pre-existing supply_chain_routes failures (cross-test contamination, pass individually).
+
+---
+
 ## [0.20.0] — 2026-03-14 — Phase 26: MFA Enforcement, Race Conditions & Migrations
 
 ### Fixed — MFA Login Enforcement

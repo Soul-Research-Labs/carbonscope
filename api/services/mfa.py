@@ -1,17 +1,38 @@
-"""MFA (TOTP) service — setup, verification, and backup codes."""
+"""MFA (TOTP) service — setup, verification, backup codes, and secret encryption."""
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import hmac
+import os
 import secrets
 import struct
 import time
 
+from cryptography.fernet import Fernet
+
+
+def _get_fernet() -> Fernet:
+    """Build a Fernet cipher from TOTP_ENCRYPTION_KEY (32 hex chars → 16 bytes → url-safe b64)."""
+    from api.config import TOTP_ENCRYPTION_KEY
+    raw = TOTP_ENCRYPTION_KEY.encode("utf-8")[:32]
+    key = base64.urlsafe_b64encode(raw.ljust(32, b"\0"))
+    return Fernet(key)
+
+
+def encrypt_secret(plaintext: str) -> str:
+    """Encrypt a TOTP secret for database storage."""
+    return _get_fernet().encrypt(plaintext.encode("utf-8")).decode("utf-8")
+
+
+def decrypt_secret(ciphertext: str) -> str:
+    """Decrypt a TOTP secret from database storage."""
+    return _get_fernet().decrypt(ciphertext.encode("utf-8")).decode("utf-8")
+
 
 def generate_totp_secret(length: int = 20) -> str:
     """Generate a random base32-encoded TOTP secret."""
-    import base64
     raw = secrets.token_bytes(length)
     return base64.b32encode(raw).decode("ascii").rstrip("=")
 

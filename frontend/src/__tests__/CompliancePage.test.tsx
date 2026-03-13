@@ -1,0 +1,80 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+
+const mockReplace = vi.fn();
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: mockReplace }),
+  usePathname: () => "/compliance",
+  useSearchParams: () => new URLSearchParams(),
+}));
+
+const mockListReports = vi.fn();
+const mockGenerateComplianceReport = vi.fn();
+
+vi.mock("@/lib/api", () => ({
+  listReports: (...a: unknown[]) => mockListReports(...a),
+  generateComplianceReport: (...a: unknown[]) =>
+    mockGenerateComplianceReport(...a),
+}));
+
+vi.mock("@/lib/auth-context", () => ({
+  useAuth: () => ({ user: { email: "u@test.com" }, loading: false }),
+}));
+
+vi.mock("@/components/Skeleton", () => ({
+  PageSkeleton: () => <div>Loading...</div>,
+}));
+
+import CompliancePage from "@/app/compliance/page";
+
+describe("CompliancePage", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockListReports.mockResolvedValue({
+      items: [{ id: "r1", year: 2024, total: 5000 }],
+      total: 1,
+    });
+  });
+
+  it("renders heading", async () => {
+    render(<CompliancePage />);
+    expect(await screen.findByText("Compliance Reports")).toBeInTheDocument();
+  });
+
+  it("renders all framework buttons", async () => {
+    render(<CompliancePage />);
+    expect(await screen.findByText("GHG Protocol")).toBeInTheDocument();
+    expect(screen.getByText("CDP Climate Change")).toBeInTheDocument();
+    expect(screen.getByText("TCFD")).toBeInTheDocument();
+    expect(screen.getByText("SBTi Pathway")).toBeInTheDocument();
+  });
+
+  it("has generate button", async () => {
+    render(<CompliancePage />);
+    expect(await screen.findByText("Generate Report")).toBeInTheDocument();
+  });
+
+  it("generates compliance report", async () => {
+    mockGenerateComplianceReport.mockResolvedValue({
+      framework: "ghg_protocol",
+      data: {},
+    });
+    render(<CompliancePage />);
+    await screen.findByText("Generate Report");
+    fireEvent.click(screen.getByText("Generate Report"));
+
+    await waitFor(() => {
+      expect(mockGenerateComplianceReport).toHaveBeenCalled();
+    });
+  });
+
+  it("shows error on generation failure", async () => {
+    mockGenerateComplianceReport.mockRejectedValue(
+      new Error("Generation failed"),
+    );
+    render(<CompliancePage />);
+    await screen.findByText("Generate Report");
+    fireEvent.click(screen.getByText("Generate Report"));
+    expect(await screen.findByText("Generation failed")).toBeInTheDocument();
+  });
+});

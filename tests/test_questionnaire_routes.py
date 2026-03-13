@@ -158,6 +158,80 @@ class TestQuestionnaireTemplates:
 
 
 @pytest.mark.asyncio
+class TestApplyTemplate:
+    async def test_apply_known_template(self, auth_client: AsyncClient):
+        resp = await auth_client.post("/api/v1/questionnaires/templates/cdp_climate/apply")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "questionnaire" in data
+        assert data["questionnaire"]["status"] == "extracted"
+        assert len(data["questions"]) > 0
+
+    async def test_apply_nonexistent_template(self, auth_client: AsyncClient):
+        resp = await auth_client.post("/api/v1/questionnaires/templates/nonexistent/apply")
+        assert resp.status_code == 404
+
+    async def test_apply_template_generates_drafts(self, auth_client: AsyncClient):
+        resp = await auth_client.post("/api/v1/questionnaires/templates/cdp_climate/apply")
+        assert resp.status_code == 200
+        for q in resp.json()["questions"]:
+            assert q.get("ai_draft_answer") is not None
+
+
+@pytest.mark.asyncio
+class TestUpdateQuestion:
+    async def _setup(self, auth_client: AsyncClient):
+        upload = await auth_client.post("/api/v1/questionnaires/upload", files=_csv_file())
+        qid = upload.json()["id"]
+        # extract to get questions
+        await auth_client.post(f"/api/v1/questionnaires/{qid}/extract")
+        detail = await auth_client.get(f"/api/v1/questionnaires/{qid}")
+        data = detail.json()
+        questions = data.get("questions", [])
+        return qid, questions
+
+    async def test_update_human_answer(self, auth_client: AsyncClient):
+        qid, questions = await self._setup(auth_client)
+        if not questions:
+            pytest.skip("No questions extracted")
+        question_id = questions[0]["id"]
+        resp = await auth_client.patch(
+            f"/api/v1/questionnaires/{qid}/questions/{question_id}",
+            json={"human_answer": "42 metric tons"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["human_answer"] == "42 metric tons"
+
+    async def test_update_question_status(self, auth_client: AsyncClient):
+        qid, questions = await self._setup(auth_client)
+        if not questions:
+            pytest.skip("No questions extracted")
+        question_id = questions[0]["id"]
+        resp = await auth_client.patch(
+            f"/api/v1/questionnaires/{qid}/questions/{question_id}",
+            json={"status": "approved"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "approved"
+
+    async def test_update_nonexistent_question(self, auth_client: AsyncClient):
+        upload = await auth_client.post("/api/v1/questionnaires/upload", files=_csv_file())
+        qid = upload.json()["id"]
+        resp = await auth_client.patch(
+            f"/api/v1/questionnaires/{qid}/questions/nonexistent",
+            json={"human_answer": "test"},
+        )
+        assert resp.status_code == 404
+
+    async def test_update_question_wrong_questionnaire(self, auth_client: AsyncClient):
+        resp = await auth_client.patch(
+            "/api/v1/questionnaires/nonexistent/questions/nonexistent",
+            json={"human_answer": "test"},
+        )
+        assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
 class TestQuestionnaireAuth:
     async def test_unauthenticated_list(self, client: AsyncClient):
         resp = await client.get("/api/v1/questionnaires/")

@@ -25,6 +25,8 @@ from api.models import MFASecret, User
 from api.schemas import MFASetupOut, MFAStatusOut, MFAVerifyRequest
 from api.services.mfa import (
     build_provisioning_uri,
+    decrypt_secret,
+    encrypt_secret,
     generate_backup_codes,
     generate_totp_secret,
     hash_backup_code,
@@ -81,16 +83,17 @@ async def setup_mfa(
     backup_codes = generate_backup_codes()
     hashed_codes = json.dumps([hash_backup_code(c) for c in backup_codes])
     uri = build_provisioning_uri(secret, user.email)
+    encrypted = encrypt_secret(secret)
 
     if existing:
         # Overwrite pending (not-yet-enabled) setup
-        existing.totp_secret = secret
+        existing.totp_secret = encrypted
         existing.backup_codes = hashed_codes
         existing.is_enabled = False
     else:
         db.add(MFASecret(
             user_id=user.id,
-            totp_secret=secret,
+            totp_secret=encrypted,
             backup_codes=hashed_codes,
             is_enabled=False,
         ))
@@ -126,7 +129,7 @@ async def verify_and_enable_mfa(
     if not secret_row:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Call /setup first")
 
-    if not verify_totp(secret_row.totp_secret, body.totp_code):
+    if not verify_totp(decrypt_secret(secret_row.totp_secret), body.totp_code):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid TOTP code")
 
     secret_row.is_enabled = True
@@ -159,7 +162,7 @@ async def validate_totp(
     if not secret_row:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="MFA is not enabled")
 
-    if not verify_totp(secret_row.totp_secret, body.totp_code):
+    if not verify_totp(decrypt_secret(secret_row.totp_secret), body.totp_code):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid TOTP code")
 
     # TOTP verified — issue full access + refresh tokens
@@ -209,7 +212,7 @@ async def disable_mfa(
     if not secret_row:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="MFA is not enabled")
 
-    if not verify_totp(secret_row.totp_secret, body.totp_code):
+    if not verify_totp(decrypt_secret(secret_row.totp_secret), body.totp_code):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid TOTP code")
 
     await db.delete(secret_row)

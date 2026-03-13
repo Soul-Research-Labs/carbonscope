@@ -10,8 +10,9 @@ from api.config import RATE_LIMIT_DEFAULT
 from api.database import get_db
 from api.deps import get_current_user
 from api.limiter import limiter
-from api.models import Company, EmissionReport, IndustryBenchmark, User
+from api.models import IndustryBenchmark, User
 from api.schemas import BenchmarkComparison, BenchmarkOut, PaginatedResponse
+from api.services.benchmarks import BenchmarkError, compare_to_industry as svc_compare
 
 router = APIRouter(prefix="/benchmarks", tags=["benchmarks"])
 
@@ -54,77 +55,7 @@ async def compare_to_industry(
     db: AsyncSession = Depends(get_db),
 ):
     """Compare a company's emission report against the industry benchmark."""
-    # Fetch report
-    result = await db.execute(
-        select(EmissionReport).where(
-            EmissionReport.id == report_id,
-            EmissionReport.company_id == user.company_id,
-            EmissionReport.deleted_at.is_(None),
-        )
-    )
-    report = result.scalar_one_or_none()
-    if not report:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
-
-    # Fetch company for industry
-    company_result = await db.execute(select(Company).where(Company.id == user.company_id))
-    company = company_result.scalar_one()
-
-    # Find the closest benchmark
-    bench_result = await db.execute(
-        select(IndustryBenchmark).where(
-            IndustryBenchmark.industry == company.industry,
-            IndustryBenchmark.year == report.year,
-        ).order_by(
-            # Prefer company's region, fall back to GLOBAL
-            (IndustryBenchmark.region == company.region).desc(),
-        ).limit(1)
-    )
-    benchmark = bench_result.scalar_one_or_none()
-
-    company_emissions = {
-        "scope1": report.scope1,
-        "scope2": report.scope2,
-        "scope3": report.scope3,
-        "total": report.total,
-    }
-
-    if benchmark is None:
-        return {
-            "company_emissions": company_emissions,
-            "industry_average": None,
-            "percentile_rank": {"scope1": None, "scope2": None, "scope3": None, "total": None},
-            "vs_average": {"scope1": None, "scope2": None, "scope3": None, "total": None},
-        }
-
-    def _pct_diff(company_val: float, avg_val: float) -> float:
-        if avg_val == 0:
-            return 0.0
-        return round((company_val - avg_val) / avg_val * 100, 1)
-
-    def _rank_label(pct_diff: float) -> str:
-        if pct_diff <= -30:
-            return "top_10"
-        if pct_diff <= -10:
-            return "top_25"
-        if pct_diff <= 10:
-            return "median"
-        if pct_diff <= 30:
-            return "bottom_25"
-        return "bottom_10"
-
-    vs = {
-        "scope1": _pct_diff(report.scope1, benchmark.avg_scope1_tco2e),
-        "scope2": _pct_diff(report.scope2, benchmark.avg_scope2_tco2e),
-        "scope3": _pct_diff(report.scope3, benchmark.avg_scope3_tco2e),
-        "total": _pct_diff(report.total, benchmark.avg_total_tco2e),
-    }
-
-    ranks = {k: _rank_label(v) for k, v in vs.items()}
-
-    return {
-        "company_emissions": company_emissions,
-        "industry_average": benchmark,
-        "percentile_rank": ranks,
-        "vs_average": vs,
-    }
+    try:
+        return await svc_compare(db, report_id, user.company_id)
+    except BenchmarkError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail)

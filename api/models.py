@@ -172,7 +172,7 @@ class User(Base):
     email: str = Column(String(255), unique=True, nullable=False, index=True)
     hashed_password: str = Column(String(255), nullable=False)
     full_name: str = Column(String(255), nullable=False)
-    company_id: str = Column(String(32), ForeignKey("companies.id"), nullable=False, index=True)
+    company_id: str = Column(String(32), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
     role: str = Column(Enum(UserRole, native_enum=False, length=50), default=UserRole.member)
     is_active: bool = Column(Boolean, nullable=False, default=True)
     deleted_at: datetime | None = Column(DateTime(timezone=True), nullable=True, default=None)
@@ -180,6 +180,7 @@ class User(Base):
     failed_login_attempts: int = Column(Integer, nullable=False, default=0)
     locked_until: datetime | None = Column(DateTime(timezone=True), nullable=True)
     created_at: datetime = Column(DateTime(timezone=True), default=_utcnow)
+    updated_at: datetime = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
 
 # ── Data uploads (raw operational data) ─────────────────────────────
@@ -192,7 +193,7 @@ class DataUpload(Base):
     )
 
     id: str = Column(String(32), primary_key=True, default=_new_id)
-    company_id: str = Column(String(32), ForeignKey("companies.id"), nullable=False, index=True)
+    company_id: str = Column(String(32), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
     year: int = Column(Integer, nullable=False)
     provided_data: dict = Column(JSON, nullable=False, default=dict)
     notes: str | None = Column(Text, nullable=True)
@@ -216,7 +217,7 @@ class EmissionReport(Base):
     )
 
     id: str = Column(String(32), primary_key=True, default=_new_id)
-    company_id: str = Column(String(32), ForeignKey("companies.id"), nullable=False, index=True)
+    company_id: str = Column(String(32), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
     data_upload_id: str | None = Column(String(32), ForeignKey("data_uploads.id"), nullable=True)
     year: int = Column(Integer, nullable=False)
 
@@ -251,8 +252,8 @@ class SupplyChainLink(Base):
     )
 
     id: str = Column(String(32), primary_key=True, default=_new_id)
-    buyer_company_id: str = Column(String(32), ForeignKey("companies.id"), nullable=False, index=True)
-    supplier_company_id: str = Column(String(32), ForeignKey("companies.id"), nullable=False, index=True)
+    buyer_company_id: str = Column(String(32), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
+    supplier_company_id: str = Column(String(32), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
     spend_usd: float | None = Column(Float, nullable=True)
     category: str = Column(String(100), default="purchased_goods")
     status: str = Column(Enum(SupplyChainStatus, native_enum=False, length=50), default=SupplyChainStatus.pending)
@@ -271,12 +272,13 @@ class Webhook(Base):
     __tablename__ = "webhooks"
 
     id: str = Column(String(32), primary_key=True, default=_new_id)
-    company_id: str = Column(String(32), ForeignKey("companies.id"), nullable=False, index=True)
+    company_id: str = Column(String(32), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
     url: str = Column(String(2048), nullable=False)
     event_types: list = Column(JSON, nullable=False, default=list)  # ["report.created", "data.uploaded"]
     secret: str = Column(String(255), nullable=False)
     active: bool = Column(Boolean, nullable=False, default=True)
     created_at: datetime = Column(DateTime(timezone=True), default=_utcnow)
+    deleted_at: datetime | None = Column(DateTime(timezone=True), nullable=True, default=None)
 
     company = relationship("Company")
     deliveries = relationship("WebhookDelivery", back_populates="webhook", cascade="all, delete-orphan", passive_deletes=True)
@@ -290,6 +292,7 @@ class WebhookDelivery(Base):
     __table_args__ = (
         Index("ix_webhook_deliveries_created_at", "created_at"),
         Index("ix_webhook_deliveries_next_retry", "next_retry_at"),
+        Index("ix_webhook_deliveries_company", "webhook_id"),
     )
 
     id: str = Column(String(32), primary_key=True, default=_new_id)
@@ -320,7 +323,7 @@ class AuditLog(Base):
 
     id: str = Column(String(32), primary_key=True, default=_new_id)
     user_id: str = Column(String(32), ForeignKey("users.id"), nullable=False, index=True)
-    company_id: str = Column(String(32), ForeignKey("companies.id"), nullable=False, index=True)
+    company_id: str = Column(String(32), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
     action: str = Column(String(100), nullable=False)
     resource_type: str = Column(String(100), nullable=False)
     resource_id: str | None = Column(String(32), nullable=True)
@@ -336,7 +339,7 @@ class Questionnaire(Base):
     __tablename__ = "questionnaires"
 
     id: str = Column(String(32), primary_key=True, default=_new_id)
-    company_id: str = Column(String(32), ForeignKey("companies.id"), nullable=False, index=True)
+    company_id: str = Column(String(32), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
     title: str = Column(String(500), nullable=False)
     original_filename: str = Column(String(500), nullable=False)
     file_type: str = Column(String(20), nullable=False)  # pdf, xlsx, docx, csv
@@ -378,7 +381,7 @@ class Scenario(Base):
     __tablename__ = "scenarios"
 
     id: str = Column(String(32), primary_key=True, default=_new_id)
-    company_id: str = Column(String(32), ForeignKey("companies.id"), nullable=False, index=True)
+    company_id: str = Column(String(32), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
     name: str = Column(String(255), nullable=False)
     description: str | None = Column(Text, nullable=True)
     base_report_id: str | None = Column(String(32), ForeignKey("emission_reports.id"), nullable=True)
@@ -403,7 +406,7 @@ class Subscription(Base):
     )
 
     id: str = Column(String(32), primary_key=True, default=_new_id)
-    company_id: str = Column(String(32), ForeignKey("companies.id"), nullable=False, index=True)
+    company_id: str = Column(String(32), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
     plan: str = Column(Enum(SubscriptionPlan, native_enum=False, length=50), nullable=False, default=SubscriptionPlan.free)
     status: str = Column(Enum(SubscriptionStatus, native_enum=False, length=50), nullable=False, default=SubscriptionStatus.active)
     stripe_customer_id: str | None = Column(String(255), nullable=True)
@@ -422,7 +425,7 @@ class CreditLedger(Base):
     __tablename__ = "credit_ledger"
 
     id: str = Column(String(32), primary_key=True, default=_new_id)
-    company_id: str = Column(String(32), ForeignKey("companies.id"), nullable=False, index=True)
+    company_id: str = Column(String(32), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
     amount: int = Column(Integer, nullable=False)  # positive = add, negative = deduct
     reason: str = Column(Enum(CreditReason, native_enum=False, length=255), nullable=False)
     balance_after: int = Column(Integer, nullable=False)
@@ -443,7 +446,7 @@ class Alert(Base):
     __tablename__ = "alerts"
 
     id: str = Column(String(32), primary_key=True, default=_new_id)
-    company_id: str = Column(String(32), ForeignKey("companies.id"), nullable=False, index=True)
+    company_id: str = Column(String(32), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
     alert_type: str = Column(Enum(AlertType, native_enum=False, length=100), nullable=False)
     severity: str = Column(Enum(AlertSeverity, native_enum=False, length=50), nullable=False, default=AlertSeverity.info)
     title: str = Column(String(500), nullable=False)
@@ -464,7 +467,7 @@ class DataListing(Base):
     __tablename__ = "data_listings"
 
     id: str = Column(String(32), primary_key=True, default=_new_id)
-    seller_company_id: str = Column(String(32), ForeignKey("companies.id"), nullable=False, index=True)
+    seller_company_id: str = Column(String(32), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
     title: str = Column(String(500), nullable=False)
     description: str | None = Column(Text, nullable=True)
     data_type: str = Column(Enum(DataListingType, native_enum=False, length=100), nullable=False)
@@ -475,6 +478,7 @@ class DataListing(Base):
     anonymized_data: dict = Column(JSON, nullable=False, default=dict)
     status: str = Column(Enum(DataListingStatus, native_enum=False, length=50), default=DataListingStatus.active)
     created_at: datetime = Column(DateTime(timezone=True), default=_utcnow)
+    deleted_at: datetime | None = Column(DateTime(timezone=True), nullable=True, default=None)
 
     seller = relationship("Company")
 
@@ -488,7 +492,7 @@ class DataPurchase(Base):
 
     id: str = Column(String(32), primary_key=True, default=_new_id)
     listing_id: str = Column(String(32), ForeignKey("data_listings.id"), nullable=False, index=True)
-    buyer_company_id: str = Column(String(32), ForeignKey("companies.id"), nullable=False, index=True)
+    buyer_company_id: str = Column(String(32), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
     price_credits: int = Column(Integer, nullable=False)
     created_at: datetime = Column(DateTime(timezone=True), default=_utcnow)
 
@@ -540,7 +544,7 @@ class FinancedPortfolio(Base):
     __tablename__ = "financed_portfolios"
 
     id: str = Column(String(32), primary_key=True, default=_new_id)
-    company_id: str = Column(String(32), ForeignKey("companies.id"), nullable=False, index=True)
+    company_id: str = Column(String(32), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
     name: str = Column(String(255), nullable=False)
     year: int = Column(Integer, nullable=False)
     created_at: datetime = Column(DateTime(timezone=True), default=_utcnow)
@@ -593,7 +597,7 @@ class DataReview(Base):
 
     id: str = Column(String(32), primary_key=True, default=_new_id)
     report_id: str = Column(String(32), ForeignKey("emission_reports.id"), nullable=False, index=True)
-    company_id: str = Column(String(32), ForeignKey("companies.id"), nullable=False, index=True)
+    company_id: str = Column(String(32), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
     status: str = Column(Enum(ReviewStatus, native_enum=False, length=50), nullable=False, default=ReviewStatus.draft)
     submitted_by: str | None = Column(String(32), ForeignKey("users.id"), nullable=True)
     reviewed_by: str | None = Column(String(32), ForeignKey("users.id"), nullable=True)

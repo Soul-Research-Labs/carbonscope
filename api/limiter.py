@@ -7,7 +7,7 @@ import os
 from starlette.requests import Request
 from slowapi import Limiter
 
-from api.config import RATE_LIMIT_DEFAULT, TRUST_PROXY
+from api.config import ENV, RATE_LIMIT_DEFAULT, TRUST_PROXY
 
 
 def _get_real_ip(request: Request) -> str:
@@ -25,6 +25,12 @@ def _get_real_ip(request: Request) -> str:
 # Falls back to in-memory storage for local development.
 _redis_url = os.getenv("REDIS_URL")
 _storage_uri = _redis_url if _redis_url else "memory://"
+
+if ENV == "production" and not _redis_url:
+    raise RuntimeError(
+        "REDIS_URL must be set in production for shared rate limiting across replicas. "
+        "Example: redis://localhost:6379/0"
+    )
 
 limiter = Limiter(
     key_func=_get_real_ip,
