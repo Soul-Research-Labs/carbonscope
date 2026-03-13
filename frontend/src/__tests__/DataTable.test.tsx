@@ -22,29 +22,42 @@ const sampleData: TestRow[] = [
 ];
 
 describe("DataTable", () => {
-  it("renders column headers", () => {
+  it("renders column headers in desktop table", () => {
     render(<DataTable columns={columns} data={[]} />);
-    expect(screen.getByText("Name")).toBeInTheDocument();
-    expect(screen.getByText("Value")).toBeInTheDocument();
+    const ths = document.querySelectorAll("th");
+    const headers = Array.from(ths).map(th => th.textContent);
+    expect(headers).toContain("Name");
+    expect(headers).toContain("Value");
   });
 
   it("renders empty message when no data", () => {
     render(
       <DataTable columns={columns} data={[]} emptyMessage="Nothing here" />,
     );
-    expect(screen.getByText("Nothing here")).toBeInTheDocument();
+    const matches = screen.getAllByText("Nothing here");
+    expect(matches.length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders default empty message", () => {
     render(<DataTable columns={columns} data={[]} />);
-    expect(screen.getByText("No data found.")).toBeInTheDocument();
+    const matches = screen.getAllByText("No data found.");
+    expect(matches.length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders data rows", () => {
     render(<DataTable columns={columns} data={sampleData} />);
-    expect(screen.getByText("Alpha")).toBeInTheDocument();
-    expect(screen.getByText("20")).toBeInTheDocument();
-    expect(screen.getByText("Gamma")).toBeInTheDocument();
+    // Both desktop table and mobile cards render data
+    expect(screen.getAllByText("Alpha").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("20").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Gamma").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("renders mobile card layout with field labels", () => {
+    render(<DataTable columns={columns} data={sampleData} />);
+    // Mobile cards render column headers as labels per row
+    const nameLabels = screen.getAllByText("Name");
+    // 1 in <th> + 3 in cards = 4
+    expect(nameLabels.length).toBe(4);
   });
 
   it("shows loading state", () => {
@@ -63,8 +76,8 @@ describe("DataTable", () => {
       },
     ];
     render(<DataTable columns={cols} data={sampleData} />);
-    expect(screen.getByText("20")).toBeInTheDocument(); // 10 * 2
-    expect(screen.getByText("60")).toBeInTheDocument(); // 30 * 2
+    expect(screen.getAllByText("20").length).toBeGreaterThanOrEqual(1); // 10 * 2
+    expect(screen.getAllByText("60").length).toBeGreaterThanOrEqual(1); // 30 * 2
   });
 
   it("renders pagination controls", () => {
@@ -79,8 +92,10 @@ describe("DataTable", () => {
       />,
     );
     expect(screen.getByText("Page 1 of 2 (3 items)")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Previous" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Next" })).toBeEnabled();
+    const prevButtons = screen.getAllByRole("button", { name: "Previous" });
+    const nextButtons = screen.getAllByRole("button", { name: "Next" });
+    expect(prevButtons[0]).toBeDisabled();
+    expect(nextButtons[0]).toBeEnabled();
   });
 
   it("calls onPageChange when clicking Next", async () => {
@@ -96,7 +111,7 @@ describe("DataTable", () => {
         onPageChange={onPageChange}
       />,
     );
-    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getAllByRole("button", { name: "Next" })[0]);
     expect(onPageChange).toHaveBeenCalledWith(2);
   });
 
@@ -111,8 +126,8 @@ describe("DataTable", () => {
         onPageChange={() => {}}
       />,
     );
-    expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Previous" })).toBeEnabled();
+    expect(screen.getAllByRole("button", { name: "Next" })[0]).toBeDisabled();
+    expect(screen.getAllByRole("button", { name: "Previous" })[0]).toBeEnabled();
   });
 
   it("does not render pagination when total fits in one page", () => {

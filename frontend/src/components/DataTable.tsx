@@ -36,7 +36,8 @@ export function DataTable<T extends Record<string, unknown>>({
 
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-[var(--card-border)]">
+      {/* Desktop table */}
+      <table className="hidden sm:table min-w-full divide-y divide-[var(--card-border)]">
         <thead className="bg-[var(--card)]">
           <tr>
             {columns.map((col) => (
@@ -77,6 +78,38 @@ export function DataTable<T extends Record<string, unknown>>({
           )}
         </tbody>
       </table>
+
+      {/* Mobile card layout */}
+      <div className="sm:hidden space-y-3">
+        {loading ? (
+          <div className="space-y-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="rounded-lg border border-[var(--card-border)] bg-[var(--card)] p-4 animate-pulse">
+                <div className="h-4 bg-[var(--muted)]/20 rounded w-3/4 mb-2" />
+                <div className="h-3 bg-[var(--muted)]/20 rounded w-1/2" />
+              </div>
+            ))}
+          </div>
+        ) : data.length === 0 ? (
+          <p className="px-4 py-8 text-center text-[var(--muted)]">{emptyMessage}</p>
+        ) : (
+          data.map((row, i) => (
+            <div
+              key={(row.id as string) ?? i}
+              className="rounded-lg border border-[var(--card-border)] bg-[var(--card)] p-4 space-y-2"
+            >
+              {columns.map((col) => (
+                <div key={col.key} className="flex justify-between gap-2 text-sm">
+                  <span className="font-medium text-[var(--muted)] shrink-0">{col.header}</span>
+                  <span className="text-[var(--foreground)] text-right">
+                    {col.render ? col.render(row) : String(row[col.key] ?? "")}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ))
+        )}
+      </div>
 
       {hasPagination && totalPages > 1 && (
         <div className="flex items-center justify-between border-t border-[var(--card-border)] px-4 py-3">
