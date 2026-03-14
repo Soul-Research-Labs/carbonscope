@@ -49,6 +49,13 @@ class UserRegister(BaseModel):
     industry: str = Field(min_length=1, max_length=100)
     region: str = Field(default="US", max_length=10)
 
+    @field_validator("company_name")
+    @classmethod
+    def company_name_not_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("company_name must not be blank")
+        return v.strip()
+
     @field_validator("password")
     @classmethod
     def password_strength(cls, v: str) -> str:

@@ -12,7 +12,7 @@ from passlib.context import CryptContext
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.config import ACCESS_TOKEN_EXPIRE_MINUTES, ALGORITHM, SECRET_KEY
+from api.config import ACCESS_TOKEN_EXPIRE_MINUTES, ALGORITHM, MFA_PENDING_TOKEN_EXPIRE_MINUTES, SECRET_KEY
 from api.models import User, RefreshToken, RevokedToken, PasswordResetToken
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -63,7 +63,6 @@ def create_access_token(user_id: str, company_id: str) -> str:
 
 
 # Short-lived token issued when password is correct but MFA is still required.
-MFA_PENDING_TOKEN_EXPIRE_MINUTES = 5
 
 
 def create_mfa_pending_token(user_id: str, company_id: str) -> str:

@@ -19,8 +19,7 @@ logger = logging.getLogger(__name__)
 
 # ── Thresholds ──────────────────────────────────────────────────────
 
-EMISSION_INCREASE_THRESHOLD = 0.10  # 10% increase triggers alert
-CONFIDENCE_DROP_THRESHOLD = 0.15  # 15 percentage-point drop triggers alert
+from api.config import CONFIDENCE_DROP_THRESHOLD, EMISSION_INCREASE_THRESHOLD
 
 
 async def check_company_alerts(db: AsyncSession, company_id: str) -> list[Alert]:

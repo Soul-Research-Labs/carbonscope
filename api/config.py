@@ -99,6 +99,21 @@ BT_WALLET_HOTKEY: str = os.getenv("BT_WALLET_HOTKEY", "default")
 BT_QUERY_TIMEOUT: float = float(os.getenv("BT_QUERY_TIMEOUT", "30.0"))
 ESTIMATION_MODE: str = os.getenv("ESTIMATION_MODE", "local")  # local | subnet
 
+# ── MFA ─────────────────────────────────────────────────────────────
+
+MFA_PENDING_TOKEN_EXPIRE_MINUTES: int = int(
+    os.getenv("MFA_PENDING_TOKEN_EXPIRE_MINUTES", "5")
+)
+
+# ── Alert Thresholds ────────────────────────────────────────────────
+
+EMISSION_INCREASE_THRESHOLD: float = float(
+    os.getenv("EMISSION_INCREASE_THRESHOLD", "0.10")
+)
+CONFIDENCE_DROP_THRESHOLD: float = float(
+    os.getenv("CONFIDENCE_DROP_THRESHOLD", "0.15")
+)
+
 # ── MFA / TOTP ──────────────────────────────────────────────────────
 
 _DEFAULT_TOTP_KEY = "insecure-totp-key-for-dev-only!!"  # 32 bytes
