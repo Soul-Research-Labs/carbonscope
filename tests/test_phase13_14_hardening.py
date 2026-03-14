@@ -178,7 +178,7 @@ class TestConfidenceImprovedWebhook:
             "events": ["confidence.improved"],
         }, headers=headers)
 
-        with patch("api.routes.carbon_routes.dispatch_event", new_callable=MagicMock) as mock_dispatch:
+        with patch("api.services.webhooks.dispatch_event", new_callable=MagicMock) as mock_dispatch:
             from unittest.mock import AsyncMock
             mock_dispatch.side_effect = AsyncMock()
 

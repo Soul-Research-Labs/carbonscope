@@ -8,14 +8,11 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models import DataReview, EmissionReport, ReviewStatus
+from api.services import ServiceError
 
 
-class ReviewError(Exception):
+class ReviewError(ServiceError):
     """Domain error raised by review operations."""
-
-    def __init__(self, detail: str, *, status_code: int = 400):
-        self.detail = detail
-        self.status_code = status_code
 
 
 async def create_review(db: AsyncSession, report_id: str, company_id: str) -> DataReview:

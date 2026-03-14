@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.config import RATE_LIMIT_DEFAULT
 from api.database import get_db
 from api.deps import get_current_user
 from api.limiter import limiter
-from api.models import Company, EmissionReport, User
+from api.models import User
 from api.schemas import (
     AuditTrailRequest,
     ParseTextRequest,
@@ -19,9 +18,8 @@ from api.schemas import (
     PredictionResponse,
     RecommendationSummary,
 )
-from api.services.llm_parser import generate_audit_trail, parse_unstructured_text
-from api.services.prediction import predict_missing_emissions
-from api.services.recommendations import generate_recommendations, summarize_reduction_potential
+from api.services import ServiceError
+from api.services import ai as ai_svc
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
@@ -34,7 +32,7 @@ async def parse_text(
     user: User = Depends(get_current_user),
 ):
     """Parse unstructured text (invoices, bills, etc.) into structured data."""
-    extracted = await parse_unstructured_text(body.text)
+    extracted = await ai_svc.parse_text(body.text)
     return ParseTextResponse(extracted_data=extracted)
 
 
@@ -47,14 +45,10 @@ async def predict(
     db: AsyncSession = Depends(get_db),
 ):
     """Predict emissions for categories with missing data."""
-    # Use company info as defaults
-    result = await db.execute(select(Company).where(Company.id == user.company_id))
-    company = result.scalar_one()
-
-    industry = body.industry or company.industry
-    region = body.region or company.region
-
-    prediction = predict_missing_emissions(body.known_data, industry, region)
+    prediction = await ai_svc.predict(
+        db, user.company_id,
+        known_data=body.known_data, industry=body.industry, region=body.region,
+    )
     return PredictionResponse(**prediction)
 
 
@@ -67,33 +61,10 @@ async def audit_trail(
     db: AsyncSession = Depends(get_db),
 ):
     """Generate an audit trail narrative for an emission report."""
-    result = await db.execute(
-        select(EmissionReport).where(
-            EmissionReport.id == body.report_id,
-            EmissionReport.company_id == user.company_id,
-            EmissionReport.deleted_at.is_(None),
-        )
-    )
-    report = result.scalar_one_or_none()
-    if not report:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
-
-    company_result = await db.execute(select(Company).where(Company.id == user.company_id))
-    company = company_result.scalar_one()
-
-    text = await generate_audit_trail(
-        company=company.name,
-        industry=company.industry,
-        year=report.year,
-        scope1=report.scope1,
-        scope2=report.scope2,
-        scope3=report.scope3,
-        total=report.total,
-        breakdown=report.breakdown,
-        assumptions=report.assumptions,
-        sources=report.sources,
-        confidence=report.confidence,
-    )
+    try:
+        text = await ai_svc.audit_trail(db, body.report_id, user.company_id)
+    except ServiceError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
     return {"audit_trail": text}
 
 
@@ -106,32 +77,8 @@ async def get_recommendations(
     db: AsyncSession = Depends(get_db),
 ):
     """Get carbon reduction recommendations based on a specific report."""
-    result = await db.execute(
-        select(EmissionReport).where(
-            EmissionReport.id == report_id,
-            EmissionReport.company_id == user.company_id,
-            EmissionReport.deleted_at.is_(None),
-        )
-    )
-    report = result.scalar_one_or_none()
-    if not report:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
-
-    company_result = await db.execute(select(Company).where(Company.id == user.company_id))
-    company = company_result.scalar_one()
-
-    emissions = {
-        "scope1": report.scope1,
-        "scope2": report.scope2,
-        "scope3": report.scope3,
-        "total": report.total,
-    }
-
-    recs = generate_recommendations(
-        emissions=emissions,
-        breakdown=report.breakdown,
-        industry=company.industry,
-    )
-    summary = summarize_reduction_potential(recs, report.total)
-
-    return RecommendationSummary(recommendations=recs, summary=summary)
+    try:
+        data = await ai_svc.recommendations(db, report_id, user.company_id)
+    except ServiceError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
+    return RecommendationSummary(**data)

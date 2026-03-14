@@ -3,16 +3,13 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.config import RATE_LIMIT_DEFAULT
 from api.database import get_db
 from api.deps import get_current_user, require_admin
 from api.limiter import limiter
-from api.models import Company, DataUpload, User, _utcnow
-from api.services.webhooks import dispatch_event
-from api.services import audit
+from api.models import User
 from api.schemas import (
     CompanyOut,
     CompanyUpdate,
@@ -21,6 +18,8 @@ from api.schemas import (
     DataUploadUpdate,
     PaginatedResponse,
 )
+from api.services import ServiceError
+from api.services import company as company_svc
 
 router = APIRouter(tags=["company"])
 
@@ -36,11 +35,10 @@ async def get_company(
     db: AsyncSession = Depends(get_db),
 ):
     """Get the current user's company profile."""
-    result = await db.execute(select(Company).where(Company.id == user.company_id))
-    company = result.scalar_one_or_none()
-    if company is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Company not found")
-    return company
+    try:
+        return await company_svc.get_company(db, user.company_id)
+    except ServiceError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
 
 
 @router.patch("/company", response_model=CompanyOut)
@@ -52,23 +50,13 @@ async def update_company(
     db: AsyncSession = Depends(get_db),
 ):
     """Update company profile fields."""
-    result = await db.execute(select(Company).where(Company.id == user.company_id))
-    company = result.scalar_one_or_none()
-    if company is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Company not found")
-
-    updates = body.model_dump(exclude_unset=True)
-    for key, value in updates.items():
-        setattr(company, key, value)
-
-    await audit.record(
-        db, user_id=user.id, company_id=user.company_id,
-        action="update", resource_type="company", resource_id=company.id,
-        detail=f"fields: {', '.join(updates.keys())}",
-    )
-    await db.commit()
-    await db.refresh(company)
-    return company
+    try:
+        return await company_svc.update_company(
+            db, user.company_id, user.id,
+            body.model_dump(exclude_unset=True),
+        )
+    except ServiceError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
 
 
 # ── Data uploads ────────────────────────────────────────────────────
@@ -83,22 +71,10 @@ async def upload_data(
     db: AsyncSession = Depends(get_db),
 ):
     """Upload operational data for a given reporting year."""
-    upload = DataUpload(
-        company_id=user.company_id,
-        year=body.year,
-        provided_data=body.provided_data,
-        notes=body.notes,
+    return await company_svc.create_upload(
+        db, user.company_id, year=body.year,
+        provided_data=body.provided_data, notes=body.notes,
     )
-    db.add(upload)
-    await db.commit()
-    await db.refresh(upload)
-
-    await dispatch_event(db, user.company_id, "data.uploaded", {
-        "upload_id": upload.id,
-        "year": upload.year,
-    })
-
-    return upload
 
 
 @router.get("/data", response_model=PaginatedResponse[DataUploadOut])
@@ -112,19 +88,10 @@ async def list_data_uploads(
     db: AsyncSession = Depends(get_db),
 ):
     """List data uploads with pagination and optional year filter."""
-    base = select(DataUpload).where(
-        DataUpload.company_id == user.company_id,
-        DataUpload.deleted_at.is_(None),
+    items, total = await company_svc.list_uploads(
+        db, user.company_id, year=year, limit=limit, offset=offset,
     )
-    if year is not None:
-        base = base.where(DataUpload.year == year)
-
-    total = (await db.execute(select(func.count()).select_from(base.subquery()))).scalar() or 0
-
-    result = await db.execute(
-        base.order_by(DataUpload.year.desc()).limit(limit).offset(offset)
-    )
-    return PaginatedResponse(items=result.scalars().all(), total=total, limit=limit, offset=offset)
+    return PaginatedResponse(items=items, total=total, limit=limit, offset=offset)
 
 
 @router.get("/data/{upload_id}", response_model=DataUploadOut)
@@ -136,17 +103,10 @@ async def get_data_upload(
     db: AsyncSession = Depends(get_db),
 ):
     """Get a specific data upload."""
-    result = await db.execute(
-        select(DataUpload).where(
-            DataUpload.id == upload_id,
-            DataUpload.company_id == user.company_id,
-            DataUpload.deleted_at.is_(None),
-        )
-    )
-    upload = result.scalar_one_or_none()
-    if upload is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Data upload not found")
-    return upload
+    try:
+        return await company_svc.get_upload(db, upload_id, user.company_id)
+    except ServiceError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
 
 
 @router.patch("/data/{upload_id}", response_model=DataUploadOut)
@@ -159,28 +119,13 @@ async def update_data_upload(
     db: AsyncSession = Depends(get_db),
 ):
     """Update a data upload's fields."""
-    result = await db.execute(
-        select(DataUpload).where(
-            DataUpload.id == upload_id,
-            DataUpload.company_id == user.company_id,
-            DataUpload.deleted_at.is_(None),
+    try:
+        return await company_svc.update_upload(
+            db, upload_id, user.company_id, user.id,
+            body.model_dump(exclude_unset=True),
         )
-    )
-    upload = result.scalar_one_or_none()
-    if upload is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Data upload not found")
-
-    updates = body.model_dump(exclude_unset=True)
-    for key, value in updates.items():
-        setattr(upload, key, value)
-
-    await audit.record(
-        db, user_id=user.id, company_id=user.company_id,
-        action="update", resource_type="data_upload", resource_id=upload_id,
-    )
-    await db.commit()
-    await db.refresh(upload)
-    return upload
+    except ServiceError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
 
 
 @router.delete("/data/{upload_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -192,20 +137,7 @@ async def delete_data_upload(
     db: AsyncSession = Depends(get_db),
 ):
     """Soft-delete a data upload."""
-    result = await db.execute(
-        select(DataUpload).where(
-            DataUpload.id == upload_id,
-            DataUpload.company_id == user.company_id,
-            DataUpload.deleted_at.is_(None),
-        )
-    )
-    upload = result.scalar_one_or_none()
-    if upload is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Data upload not found")
-
-    upload.deleted_at = _utcnow()
-    await audit.record(
-        db, user_id=user.id, company_id=user.company_id,
-        action="delete", resource_type="data_upload", resource_id=upload_id,
-    )
-    await db.commit()
+    try:
+        await company_svc.delete_upload(db, upload_id, user.company_id, user.id)
+    except ServiceError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail)

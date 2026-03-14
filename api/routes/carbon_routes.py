@@ -2,33 +2,27 @@
 
 from __future__ import annotations
 
-import csv
 import io
-import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.config import RATE_LIMIT_DEFAULT
 from api.database import get_db
 from api.deps import get_current_user, require_credits, require_plan
 from api.limiter import limiter
-from api.models import Company, DataUpload, EmissionReport, User, _utcnow
+from api.models import User
 from api.schemas import (
-    DashboardSummary,
     CompanyOut,
+    DashboardSummary,
     EmissionReportOut,
     EstimateRequest,
     PaginatedResponse,
     ReportUpdate,
 )
-from api.services.subnet_bridge import estimate_emissions, estimate_emissions_local
-from api.services.webhooks import dispatch_event
-from api.services import audit
-
-logger = logging.getLogger(__name__)
+from api.services import ServiceError
+from api.services import carbon as carbon_svc
 
 router = APIRouter(tags=["carbon"])
 
@@ -44,121 +38,14 @@ async def create_estimate(
     user: User = Depends(require_credits("estimate")),
     db: AsyncSession = Depends(get_db),
 ):
-    """Run an emission estimation against a data upload.
-
-    Uses local estimation engine (in development) or Bittensor subnet miners
-    (in production).
-    """
-    # Fetch the data upload (scoped to user's company)
-    result = await db.execute(
-        select(DataUpload).where(
-            DataUpload.id == body.data_upload_id,
-            DataUpload.company_id == user.company_id,
-            DataUpload.deleted_at.is_(None),
+    """Run an emission estimation against a data upload."""
+    try:
+        report = await carbon_svc.create_estimate(
+            db, data_upload_id=body.data_upload_id,
+            company_id=user.company_id, user_id=user.id,
         )
-    )
-    upload = result.scalar_one_or_none()
-    if upload is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Data upload not found")
-
-    # Fetch company for industry/region context
-    result = await db.execute(select(Company).where(Company.id == user.company_id))
-    company = result.scalar_one()
-
-    questionnaire = {
-        "company": company.name,
-        "industry": company.industry,
-        "services_used": [],
-        "provided_data": upload.provided_data,
-        "region": company.region,
-        "year": upload.year,
-    }
-
-    # Enrich provided_data with company-level fields if missing
-    pd = questionnaire["provided_data"]
-    if company.employee_count and not pd.get("employee_count"):
-        pd["employee_count"] = company.employee_count
-    if company.revenue_usd and not pd.get("revenue_usd"):
-        pd["revenue_usd"] = company.revenue_usd
-
-    # Run estimation — local or subnet based on config
-    from api.config import ESTIMATION_MODE
-
-    if ESTIMATION_MODE == "subnet":
-        try:
-            est = await estimate_emissions(questionnaire)
-        except RuntimeError:
-            logger.warning("Subnet estimation failed, falling back to local estimation")
-            est = estimate_emissions_local(questionnaire)
-    else:
-        est = estimate_emissions_local(questionnaire)
-
-    emissions = est["emissions"]
-
-    report = EmissionReport(
-        company_id=user.company_id,
-        data_upload_id=upload.id,
-        year=upload.year,
-        scope1=emissions["scope1"],
-        scope2=emissions["scope2"],
-        scope3=emissions["scope3"],
-        total=emissions["total"],
-        breakdown=est["breakdown"],
-        confidence=est["confidence"],
-        sources=est["sources"],
-        assumptions=est["assumptions"],
-        methodology_version=est.get("methodology_version", "ghg_protocol_v2025"),
-        miner_scores=est.get("miner_scores"),
-    )
-    db.add(report)
-
-    # Deduct credits only after estimation succeeded
-    from api.services.subscriptions import deduct_operation_credits
-    await deduct_operation_credits(db, user.company_id, "estimate")
-
-    await db.commit()
-    await db.refresh(report)
-
-    await audit.record(
-        db, user_id=user.id, company_id=user.company_id,
-        action="create", resource_type="emission_report", resource_id=report.id,
-    )
-
-    # Dispatch webhook events (fire-and-forget; errors are logged)
-    await dispatch_event(db, user.company_id, "report.created", {
-        "report_id": report.id,
-        "year": report.year,
-        "total": report.total,
-    })
-    await dispatch_event(db, user.company_id, "estimate.completed", {
-        "report_id": report.id,
-        "year": report.year,
-        "total": report.total,
-        "confidence": report.confidence,
-    })
-
-    # Check for confidence improvement vs prior report for the same year
-    prior = (await db.execute(
-        select(EmissionReport.confidence)
-        .where(
-            EmissionReport.company_id == user.company_id,
-            EmissionReport.year == report.year,
-            EmissionReport.id != report.id,
-            EmissionReport.deleted_at.is_(None),
-        )
-        .order_by(EmissionReport.created_at.desc())
-        .limit(1)
-    )).scalar_one_or_none()
-
-    if prior is not None and report.confidence > prior:
-        await dispatch_event(db, user.company_id, "confidence.improved", {
-            "report_id": report.id,
-            "year": report.year,
-            "old_confidence": round(prior, 4),
-            "new_confidence": round(report.confidence, 4),
-            "improvement": round(report.confidence - prior, 4),
-        })
-
+    except ServiceError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
     return report
 
 
@@ -177,21 +64,12 @@ async def list_reports(
     db: AsyncSession = Depends(get_db),
 ):
     """List emission reports with pagination, filtering, and sorting."""
-    base = select(EmissionReport).where(
-        EmissionReport.company_id == user.company_id,
-        EmissionReport.deleted_at.is_(None),
+    items, total = await carbon_svc.list_reports(
+        db, user.company_id,
+        year=year, confidence_min=confidence_min,
+        sort_by=sort_by, order=order, limit=limit, offset=offset,
     )
-    if year is not None:
-        base = base.where(EmissionReport.year == year)
-    if confidence_min is not None:
-        base = base.where(EmissionReport.confidence >= confidence_min)
-
-    total = (await db.execute(select(func.count()).select_from(base.subquery()))).scalar() or 0
-
-    sort_col = getattr(EmissionReport, sort_by)
-    sort_expr = sort_col.asc() if order == "asc" else sort_col.desc()
-    result = await db.execute(base.order_by(sort_expr).limit(limit).offset(offset))
-    return PaginatedResponse(items=result.scalars().all(), total=total, limit=limit, offset=offset)
+    return PaginatedResponse(items=items, total=total, limit=limit, offset=offset)
 
 
 # ── Export (must be before /reports/{report_id} so FastAPI matches it) ──
@@ -205,54 +83,13 @@ async def export_reports(
     db: AsyncSession = Depends(get_db),
 ):
     """Export emission reports as CSV or JSON."""
-    base = select(EmissionReport).where(
-        EmissionReport.company_id == user.company_id,
-        EmissionReport.deleted_at.is_(None),
+    content, media_type, filename = await carbon_svc.export_reports(
+        db, user.company_id, fmt=format, year=year,
     )
-    if year is not None:
-        base = base.where(EmissionReport.year == year)
-
-    result = await db.execute(base.order_by(EmissionReport.year.desc()))
-    reports = result.scalars().all()
-
-    if format == "json":
-        import json
-
-        data = [
-            {
-                "id": r.id,
-                "year": r.year,
-                "scope1": r.scope1,
-                "scope2": r.scope2,
-                "scope3": r.scope3,
-                "total": r.total,
-                "confidence": r.confidence,
-                "methodology_version": r.methodology_version,
-                "created_at": r.created_at.isoformat() if r.created_at else None,
-            }
-            for r in reports
-        ]
-        return StreamingResponse(
-            io.BytesIO(json.dumps(data, indent=2).encode()),
-            media_type="application/json",
-            headers={"Content-Disposition": "attachment; filename=reports.json"},
-        )
-
-    # CSV format
-    output = io.StringIO()
-    writer = csv.writer(output)
-    writer.writerow(["id", "year", "scope1", "scope2", "scope3", "total", "confidence", "methodology_version", "created_at"])
-    for r in reports:
-        writer.writerow([
-            r.id, r.year, r.scope1, r.scope2, r.scope3, r.total,
-            r.confidence, r.methodology_version,
-            r.created_at.isoformat() if r.created_at else "",
-        ])
-
     return StreamingResponse(
-        io.BytesIO(output.getvalue().encode()),
-        media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=reports.csv"},
+        io.BytesIO(content),
+        media_type=media_type,
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
 
 
@@ -263,17 +100,10 @@ async def get_report(
     db: AsyncSession = Depends(get_db),
 ):
     """Get a specific emission report."""
-    result = await db.execute(
-        select(EmissionReport).where(
-            EmissionReport.id == report_id,
-            EmissionReport.company_id == user.company_id,
-            EmissionReport.deleted_at.is_(None),
-        )
-    )
-    report = result.scalar_one_or_none()
-    if report is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
-    return report
+    try:
+        return await carbon_svc.get_report(db, report_id, user.company_id)
+    except ServiceError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
 
 
 @router.patch("/reports/{report_id}", response_model=EmissionReportOut)
@@ -284,28 +114,13 @@ async def update_report(
     db: AsyncSession = Depends(get_db),
 ):
     """Update a report's year or notes."""
-    result = await db.execute(
-        select(EmissionReport).where(
-            EmissionReport.id == report_id,
-            EmissionReport.company_id == user.company_id,
-            EmissionReport.deleted_at.is_(None),
+    try:
+        return await carbon_svc.update_report(
+            db, report_id, user.company_id, user.id,
+            body.model_dump(exclude_unset=True),
         )
-    )
-    report = result.scalar_one_or_none()
-    if report is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
-
-    updates = body.model_dump(exclude_unset=True)
-    for key, value in updates.items():
-        setattr(report, key, value)
-
-    await audit.record(
-        db, user_id=user.id, company_id=user.company_id,
-        action="update", resource_type="emission_report", resource_id=report_id,
-    )
-    await db.commit()
-    await db.refresh(report)
-    return report
+    except ServiceError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
 
 
 @router.get("/reports/{report_id}/export/pdf")
@@ -315,43 +130,14 @@ async def export_report_pdf(
     db: AsyncSession = Depends(get_db),
 ):
     """Export an emission report as a styled PDF."""
-    from api.services.pdf_export import generate_report_pdf
-
-    result = await db.execute(
-        select(EmissionReport).where(
-            EmissionReport.id == report_id,
-            EmissionReport.company_id == user.company_id,
-            EmissionReport.deleted_at.is_(None),
-        )
-    )
-    report = result.scalar_one_or_none()
-    if report is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
-
-    company_result = await db.execute(select(Company).where(Company.id == user.company_id))
-    company = company_result.scalar_one()
-
-    # Deduct credits only after successful lookup
-    from api.services.subscriptions import deduct_operation_credits
-    await deduct_operation_credits(db, user.company_id, "pdf_export")
-    await db.commit()
-
-    pdf_bytes = generate_report_pdf(
-        company_name=company.name,
-        industry=company.industry,
-        region=company.region,
-        year=report.year,
-        scope1=report.scope1,
-        scope2=report.scope2,
-        scope3=report.scope3,
-        total=report.total,
-        methodology=report.methodology_version,
-        confidence=report.confidence,
-    )
+    try:
+        pdf_bytes, year = await carbon_svc.export_report_pdf(db, report_id, user.company_id)
+    except ServiceError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
     return StreamingResponse(
         io.BytesIO(pdf_bytes),
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=emission_report_{report.year}.pdf"},
+        headers={"Content-Disposition": f"attachment; filename=emission_report_{year}.pdf"},
     )
 
 
@@ -362,22 +148,10 @@ async def delete_report(
     db: AsyncSession = Depends(get_db),
 ):
     """Soft-delete a specific emission report."""
-    result = await db.execute(
-        select(EmissionReport).where(
-            EmissionReport.id == report_id,
-            EmissionReport.company_id == user.company_id,
-            EmissionReport.deleted_at.is_(None),
-        )
-    )
-    report = result.scalar_one_or_none()
-    if report is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
-    report.deleted_at = _utcnow()
-    await audit.record(
-        db, user_id=user.id, company_id=user.company_id,
-        action="delete", resource_type="emission_report", resource_id=report_id,
-    )
-    await db.commit()
+    try:
+        await carbon_svc.delete_report(db, report_id, user.company_id, user.id)
+    except ServiceError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
 
 
 # ── Dashboard ───────────────────────────────────────────────────────
@@ -389,85 +163,11 @@ async def dashboard(
     db: AsyncSession = Depends(get_db),
 ):
     """Get a summary dashboard for the current company."""
-    # Company
-    result = await db.execute(select(Company).where(Company.id == user.company_id))
-    company = result.scalar_one()
-
-    # Counts
-    uploads_count = (
-        await db.execute(
-            select(func.count()).select_from(DataUpload).where(
-                DataUpload.company_id == user.company_id,
-                DataUpload.deleted_at.is_(None),
-            )
-        )
-    ).scalar() or 0
-
-    reports_count = (
-        await db.execute(
-            select(func.count())
-            .select_from(EmissionReport)
-            .where(
-                EmissionReport.company_id == user.company_id,
-                EmissionReport.deleted_at.is_(None),
-            )
-        )
-    ).scalar() or 0
-
-    # Latest report
-    latest_result = await db.execute(
-        select(EmissionReport)
-        .where(
-            EmissionReport.company_id == user.company_id,
-            EmissionReport.deleted_at.is_(None),
-        )
-        .order_by(EmissionReport.created_at.desc())
-        .limit(1)
-    )
-    latest = latest_result.scalar_one_or_none()
-
-    # Year-over-year totals — use the latest report per year to avoid
-    # inflated sums when multiple estimates exist for the same year.
-    latest_per_year = (
-        select(
-            EmissionReport.year,
-            EmissionReport.scope1,
-            EmissionReport.scope2,
-            EmissionReport.scope3,
-            EmissionReport.total,
-            func.row_number()
-            .over(
-                partition_by=EmissionReport.year,
-                order_by=EmissionReport.created_at.desc(),
-            )
-            .label("rn"),
-        )
-        .where(
-            EmissionReport.company_id == user.company_id,
-            EmissionReport.deleted_at.is_(None),
-        )
-        .subquery()
-    )
-    yoy_result = await db.execute(
-        select(
-            latest_per_year.c.year,
-            latest_per_year.c.scope1,
-            latest_per_year.c.scope2,
-            latest_per_year.c.scope3,
-            latest_per_year.c.total,
-        )
-        .where(latest_per_year.c.rn == 1)
-        .order_by(latest_per_year.c.year)
-    )
-    yoy = [
-        {"year": row.year, "scope1": row.scope1, "scope2": row.scope2, "scope3": row.scope3, "total": row.total}
-        for row in yoy_result.all()
-    ]
-
+    data = await carbon_svc.get_dashboard(db, user.company_id)
     return DashboardSummary(
-        company=CompanyOut.model_validate(company),
-        latest_report=EmissionReportOut.model_validate(latest) if latest else None,
-        reports_count=reports_count,
-        data_uploads_count=uploads_count,
-        year_over_year=yoy,
+        company=CompanyOut.model_validate(data["company"]),
+        latest_report=EmissionReportOut.model_validate(data["latest"]) if data["latest"] else None,
+        reports_count=data["reports_count"],
+        data_uploads_count=data["uploads_count"],
+        year_over_year=data["yoy"],
     )
