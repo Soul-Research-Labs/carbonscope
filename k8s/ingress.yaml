@@ -33,13 +33,6 @@ spec:
                 name: backend
                 port:
                   number: 8000
-          - path: /metrics
-            pathType: Exact
-            backend:
-              service:
-                name: backend
-                port:
-                  number: 8000
           - path: /
             pathType: Prefix
             backend:

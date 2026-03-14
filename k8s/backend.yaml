@@ -18,6 +18,7 @@ spec:
       initContainers:
         - name: migrate
           image: ghcr.io/carbonscope/carbonscope:latest
+          imagePullPolicy: Always
           command: ["alembic", "upgrade", "head"]
           envFrom:
             - configMapRef:
@@ -28,16 +29,17 @@ spec:
                 secretKeyRef:
                   name: carbonscope-secrets
                   key: SECRET_KEY
-            - name: DATABASE_URL
-              value: "postgresql+asyncpg://carbonscope:$(POSTGRES_PASSWORD)@postgres:5432/carbonscope"
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: carbonscope-secrets
                   key: POSTGRES_PASSWORD
+            - name: DATABASE_URL
+              value: "postgresql+asyncpg://carbonscope:$(POSTGRES_PASSWORD)@postgres:5432/carbonscope"
       containers:
         - name: backend
           image: ghcr.io/carbonscope/carbonscope:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 8000
           envFrom:
