@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth-context";
 import { getDashboard, type DashboardSummary } from "@/lib/api";
 import { PageSkeleton, CardSkeleton } from "@/components/Skeleton";
@@ -15,22 +16,29 @@ const ScopeChart = dynamic(() => import("@/components/ScopeChart"), {
 export default function DashboardPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [data, setData] = useState<DashboardSummary | null>(null);
   const [error, setError] = useState("");
+
+  const dashboardQuery = useQuery<DashboardSummary>({
+    queryKey: ["dashboard", user?.company_id],
+    queryFn: getDashboard,
+    enabled: !!user && !loading,
+  });
 
   useEffect(() => {
     if (!loading && !user) {
       router.replace("/login");
-      return;
-    }
-    if (user) {
-      getDashboard()
-        .then(setData)
-        .catch((e) => setError(e.message));
     }
   }, [user, loading, router]);
 
-  if (loading || (!data && !error)) {
+  useEffect(() => {
+    if (dashboardQuery.error instanceof Error) {
+      setError(dashboardQuery.error.message);
+    }
+  }, [dashboardQuery.error]);
+
+  const data = dashboardQuery.data ?? null;
+
+  if (loading || (dashboardQuery.isLoading && !data && !error)) {
     return <PageSkeleton />;
   }
 

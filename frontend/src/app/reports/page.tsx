@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth-context";
 import { listReports, exportReports, type EmissionReport } from "@/lib/api";
 import { CardSkeleton } from "@/components/Skeleton";
@@ -15,8 +16,6 @@ export default function ReportsPage() {
   const searchParams = useSearchParams();
 
   // Initialise state from URL params
-  const [reports, setReports] = useState<EmissionReport[]>([]);
-  const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(() => {
     const p = searchParams.get("page");
     return p ? (Math.max(1, Number(p)) - 1) * PAGE_SIZE : 0;
@@ -37,8 +36,7 @@ export default function ReportsPage() {
   const [yearFilter, setYearFilter] = useState<string>(
     () => searchParams.get("year") ?? "",
   );
-  const [error, setError] = useState("");
-  const [fetching, setFetching] = useState(true);
+  const [actionError, setActionError] = useState("");
 
   // Sync state changes back to URL
   useEffect(() => {
@@ -52,38 +50,38 @@ export default function ReportsPage() {
     router.replace(`/reports${qs ? `?${qs}` : ""}`, { scroll: false });
   }, [offset, sortBy, order, yearFilter, router]);
 
-  const fetchReports = useCallback(async () => {
-    setFetching(true);
-    setError("");
-    try {
-      const res = await listReports({
+  const reportsQuery = useQuery({
+    queryKey: ["reports", offset, sortBy, order, yearFilter],
+    queryFn: () =>
+      listReports({
         limit: PAGE_SIZE,
         offset,
         sortBy,
         order,
         year: yearFilter ? Number(yearFilter) : undefined,
-      });
-      setReports(res.items);
-      setTotal(res.total);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to load reports");
-    } finally {
-      setFetching(false);
-    }
-  }, [offset, sortBy, order, yearFilter]);
+      }),
+    enabled: !!user && !loading,
+    placeholderData: (prev) => prev,
+  });
 
   useEffect(() => {
     if (!loading && !user) {
       router.replace("/login");
-      return;
     }
-    if (user) fetchReports();
-  }, [user, loading, router, fetchReports]);
+  }, [user, loading, router]);
+
+  const reports: EmissionReport[] = reportsQuery.data?.items ?? [];
+  const total = reportsQuery.data?.total ?? 0;
+  const error = reportsQuery.error instanceof Error
+    ? reportsQuery.error.message
+    : "";
+  const fetching = reportsQuery.isLoading || reportsQuery.isFetching;
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
   const currentPage = Math.floor(offset / PAGE_SIZE) + 1;
 
   const handleExport = async (format: "csv" | "json") => {
+    setActionError("");
     try {
       const blob = await exportReports(
         format,
@@ -96,7 +94,7 @@ export default function ReportsPage() {
       a.click();
       URL.revokeObjectURL(url);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Export failed");
+      setActionError(e instanceof Error ? e.message : "Export failed");
     }
   };
 
@@ -182,6 +180,9 @@ export default function ReportsPage() {
       </div>
 
       {error && <div className="text-[var(--danger)] mb-4">{error}</div>}
+      {actionError && (
+        <div className="text-[var(--danger)] mb-4">{actionError}</div>
+      )}
 
       {reports.length === 0 && !fetching ? (
         <div className="card text-center py-12">

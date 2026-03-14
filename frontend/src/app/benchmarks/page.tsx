@@ -7,14 +7,14 @@ import { PageSkeleton } from "@/components/Skeleton";
 import {
   getIndustryBenchmarks,
   getPeerComparison,
-  type BenchmarkData,
+  type IndustryBenchmark,
   type PeerComparison,
 } from "@/lib/api";
 
 export default function BenchmarksPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [benchmarks, setBenchmarks] = useState<BenchmarkData | null>(null);
+  const [benchmarks, setBenchmarks] = useState<IndustryBenchmark | null>(null);
   const [peers, setPeers] = useState<PeerComparison | null>(null);
   const [industry, setIndustry] = useState("technology");
   const [error, setError] = useState("");

@@ -25,7 +25,10 @@ function isRetryableStatus(status: number): boolean {
   return status === 429 || status === 502 || status === 503 || status === 504;
 }
 
-async function fetchWithRetry(input: string, init: RequestInit): Promise<Response> {
+async function fetchWithRetry(
+  input: string,
+  init: RequestInit,
+): Promise<Response> {
   for (let attempt = 1; attempt <= RETRY_MAX_ATTEMPTS; attempt++) {
     try {
       const res = await fetch(input, init);
@@ -1336,8 +1339,11 @@ export interface PeerComparison {
   best: number;
 }
 
-export async function getIndustryBenchmarks() {
-  return request<IndustryBenchmark>("/benchmarks/industry");
+export async function getIndustryBenchmarks(industry?: string) {
+  const params = new URLSearchParams();
+  if (industry) params.set("industry", industry);
+  const qs = params.toString();
+  return request<IndustryBenchmark>(`/benchmarks/industry${qs ? `?${qs}` : ""}`);
 }
 
 export async function getPeerComparison() {
