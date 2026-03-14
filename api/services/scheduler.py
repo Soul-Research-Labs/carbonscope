@@ -55,26 +55,36 @@ def _get_redis():
         return None
     try:
         import redis
+    except ImportError:
+        logger.warning("Redis package unavailable for scheduler lock; distributed lock disabled")
+        _redis_client = None
+        return None
+
+    try:
         _redis_client = redis.from_url(redis_url, decode_responses=True)
         _redis_client.ping()
         logger.info("Scheduler distributed lock: Redis connected")
         return _redis_client
-    except Exception:
-        logger.debug("Redis unavailable for scheduler lock — running without distributed lock")
+    except (redis.RedisError, OSError) as exc:
+        logger.warning("Redis unavailable for scheduler lock: %s", exc)
         _redis_client = None
         return None
 
 
 def _acquire_lock(lock_name: str, ttl: int) -> bool:
-    """Try to acquire a distributed lock. Returns True if acquired or Redis is unavailable."""
+    """Try to acquire a distributed lock.
+
+    Returns True when lock acquired. In single-instance mode (no Redis URL),
+    returns True. On Redis lock errors, returns False to avoid duplicate runs.
+    """
     r = _get_redis()
     if r is None:
         return True  # no Redis = single-instance mode, always proceed
     try:
         return bool(r.set(f"carbonscope:lock:{lock_name}", "1", nx=True, ex=ttl))
-    except Exception:
-        logger.debug("Redis lock acquire failed for %s — proceeding anyway", lock_name)
-        return True
+    except OSError as exc:
+        logger.warning("Redis lock acquire failed for %s: %s", lock_name, exc)
+        return False
 
 
 async def _get_latest_alert_report_ids(db: AsyncSession, company_id: str) -> set[str]:
@@ -134,8 +144,8 @@ async def _run_periodic_checks() -> None:
         except asyncio.CancelledError:
             logger.info("Scheduler shutting down")
             break
-        except Exception:
-            logger.exception("Scheduler error — will retry next cycle")
+        except Exception as exc:
+            logger.exception("Scheduler error (%s) — will retry next cycle", type(exc).__name__)
 
 
 async def _run_monthly_credit_reset() -> None:
@@ -178,8 +188,8 @@ async def _run_monthly_credit_reset() -> None:
         except asyncio.CancelledError:
             logger.info("Credit reset scheduler shutting down")
             break
-        except Exception:
-            logger.exception("Credit reset error — will retry next cycle")
+        except Exception as exc:
+            logger.exception("Credit reset error (%s) — will retry next cycle", type(exc).__name__)
 
 
 async def _run_webhook_retries() -> None:
@@ -198,8 +208,8 @@ async def _run_webhook_retries() -> None:
         except asyncio.CancelledError:
             logger.info("Webhook retry scheduler shutting down")
             break
-        except Exception:
-            logger.exception("Webhook retry error — will retry next cycle")
+        except Exception as exc:
+            logger.exception("Webhook retry error (%s) — will retry next cycle", type(exc).__name__)
 
 
 async def _run_token_cleanup() -> None:
@@ -230,8 +240,8 @@ async def _run_token_cleanup() -> None:
         except asyncio.CancelledError:
             logger.info("Token cleanup scheduler shutting down")
             break
-        except Exception:
-            logger.exception("Token cleanup error — will retry next cycle")
+        except Exception as exc:
+            logger.exception("Token cleanup error (%s) — will retry next cycle", type(exc).__name__)
 
 
 def start_scheduler() -> None:
