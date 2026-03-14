@@ -8,22 +8,19 @@ async function seedAuth(page: Page) {
   );
   const fakeToken = `${header}.${payload}.fakesig`;
 
-  await page.addInitScript(
-    (token: string) => {
-      localStorage.setItem("token", token);
-      localStorage.setItem(
-        "user",
-        JSON.stringify({
-          id: 1,
-          email: "alice@example.com",
-          full_name: "Alice",
-          company_id: 1,
-          role: "admin",
-        }),
-      );
-    },
-    fakeToken,
-  );
+  await page.addInitScript((token: string) => {
+    localStorage.setItem("token", token);
+    localStorage.setItem(
+      "user",
+      JSON.stringify({
+        id: 1,
+        email: "alice@example.com",
+        full_name: "Alice",
+        company_id: 1,
+        role: "admin",
+      }),
+    );
+  }, fakeToken);
 }
 
 /** Intercept all /api/v1 calls with sensible defaults per route. */

@@ -467,17 +467,17 @@ npm run test:watch        # Watch mode for development
 | `DashboardPage.test.tsx`       | KPI cards, API data rendering, empty states           |
 | `RecommendationsPage.test.tsx` | Strategy listing, navigation, data display            |
 | `SellerDashboardPage.test.tsx` | Revenue summary, sales table, pagination              |
-| `PCAFPage.test.tsx`            | Portfolio list, asset table, data rendering            |
+| `PCAFPage.test.tsx`            | Portfolio list, asset table, data rendering           |
 | `ReviewsPage.test.tsx`         | Review list, create form, status display              |
 | `MFAPage.test.tsx`             | MFA status, setup, QR code, disable flow              |
 | `BenchmarksPage.test.tsx`      | Benchmark metrics, industry comparison                |
 | `SettingsPage.test.tsx`        | Profile, company, webhooks, password sections         |
 | `UploadPage.test.tsx`          | Form rendering, submit/error, scope labels            |
-| `CompliancePage.test.tsx`      | Framework buttons, generate, error handling            |
+| `CompliancePage.test.tsx`      | Framework buttons, generate, error handling           |
 | `AlertsPage.test.tsx`          | Alert list, severity, run check, unread filter        |
 | `AuditLogsPage.test.tsx`       | Table rendering, empty state, error, accessibility    |
 | `QuestionnairesPage.test.tsx`  | Tabs, list, templates, apply template                 |
-| `AuthContext.test.tsx`          | JWT decoding, localStorage, login/logout/register     |
+| `AuthContext.test.tsx`         | JWT decoding, localStorage, login/logout/register     |
 
 </details>
 

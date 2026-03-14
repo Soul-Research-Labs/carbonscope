@@ -8,22 +8,19 @@ async function seedAuth(page: Page) {
   );
   const fakeToken = `${header}.${payload}.fakesig`;
 
-  await page.addInitScript(
-    (token: string) => {
-      localStorage.setItem("token", token);
-      localStorage.setItem(
-        "user",
-        JSON.stringify({
-          id: 1,
-          email: "alice@example.com",
-          full_name: "Alice",
-          company_id: 1,
-          role: "admin",
-        }),
-      );
-    },
-    fakeToken,
-  );
+  await page.addInitScript((token: string) => {
+    localStorage.setItem("token", token);
+    localStorage.setItem(
+      "user",
+      JSON.stringify({
+        id: 1,
+        email: "alice@example.com",
+        full_name: "Alice",
+        company_id: 1,
+        role: "admin",
+      }),
+    );
+  }, fakeToken);
 }
 
 /** Intercept all /api/v1 calls with empty success responses. */
@@ -66,7 +63,9 @@ test.describe("Authenticated navigation", () => {
         await expect(page).toHaveURL(section.url, { timeout: 5000 });
       } else {
         // Navigate directly if sidebar link not found (may be behind a menu)
-        await page.goto(`/${section.label.source.replace(/[/\\^$.*+?()[\]{}|]/g, "").toLowerCase()}`);
+        await page.goto(
+          `/${section.label.source.replace(/[/\\^$.*+?()[\]{}|]/g, "").toLowerCase()}`,
+        );
         // Should stay authenticated — not redirected to login
         await page.waitForTimeout(1000);
         const url = page.url();

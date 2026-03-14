@@ -30,22 +30,19 @@ async function seedAuth(page: Page) {
   );
   const fakeToken = `${header}.${payload}.fakesig`;
 
-  await page.addInitScript(
-    (token: string) => {
-      localStorage.setItem("token", token);
-      localStorage.setItem(
-        "user",
-        JSON.stringify({
-          id: 1,
-          email: "alice@example.com",
-          full_name: "Alice",
-          company_id: 1,
-          role: "admin",
-        }),
-      );
-    },
-    fakeToken,
-  );
+  await page.addInitScript((token: string) => {
+    localStorage.setItem("token", token);
+    localStorage.setItem(
+      "user",
+      JSON.stringify({
+        id: 1,
+        email: "alice@example.com",
+        full_name: "Alice",
+        company_id: 1,
+        role: "admin",
+      }),
+    );
+  }, fakeToken);
 }
 
 test.describe("Login → Dashboard flow", () => {
@@ -78,8 +75,13 @@ test.describe("Login → Dashboard flow", () => {
     const fakeToken = await mockLoginApi(page);
 
     await page.route("**/api/v1/**", (route) => {
-      if (route.request().url().includes("/auth/login")) return route.fallback();
-      return route.fulfill({ status: 200, contentType: "application/json", body: "[]" });
+      if (route.request().url().includes("/auth/login"))
+        return route.fallback();
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: "[]",
+      });
     });
 
     await page.goto("/login");
@@ -103,7 +105,9 @@ test.describe("Register flow", () => {
     await expect(page.locator('input[name="company_name"]')).toBeVisible();
   });
 
-  test("register form validates required fields on submit", async ({ page }) => {
+  test("register form validates required fields on submit", async ({
+    page,
+  }) => {
     await page.goto("/register");
     // Submit the empty form
     await page.click('button[type="submit"]');
@@ -118,7 +122,11 @@ test.describe("Logout", () => {
 
     // Mock all API calls to succeed
     await page.route("**/api/v1/**", (route) =>
-      route.fulfill({ status: 200, contentType: "application/json", body: "[]" }),
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: "[]",
+      }),
     );
 
     await page.goto("/dashboard");
@@ -128,7 +136,9 @@ test.describe("Logout", () => {
 
     // If the app kept us on dashboard, look for logout button
     if (url.includes("dashboard")) {
-      const logoutBtn = page.locator('button:has-text("Logout"), button:has-text("Sign Out"), a:has-text("Logout")');
+      const logoutBtn = page.locator(
+        'button:has-text("Logout"), button:has-text("Sign Out"), a:has-text("Logout")',
+      );
       if (await logoutBtn.count()) {
         await logoutBtn.first().click();
         await expect(page).toHaveURL(/login/, { timeout: 5000 });
