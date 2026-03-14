@@ -8,6 +8,7 @@ from typing import AsyncGenerator
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 
 from api.database import Base, get_db
@@ -31,12 +32,17 @@ def event_loop():
 async def setup_db():
     """Create tables before each test, drop after, and reset rate limiter."""
     async with test_engine.begin() as conn:
+        # Ensure foreign key enforcement is OFF so tests that set it ON
+        # (e.g. test_cascade_delete_company_removes_users) don't leak
+        # to subsequent tests and cause IntegrityError on loose FK refs.
+        await conn.execute(text("PRAGMA foreign_keys=OFF"))
         await conn.run_sync(Base.metadata.create_all)
     # Disable rate limits for tests so they don't interfere
     limiter.enabled = False
     yield
     limiter.enabled = True
     async with test_engine.begin() as conn:
+        await conn.execute(text("PRAGMA foreign_keys=OFF"))
         await conn.run_sync(Base.metadata.drop_all)
 
 
