@@ -192,9 +192,9 @@ class TestMetricsEndpoint:
     """Verify the /metrics endpoint returns operational data."""
 
     async def test_metrics_public_access(self, client: AsyncClient):
-        """Unauthenticated access to /metrics is allowed (Prometheus scraping)."""
+        """Unauthenticated access to /metrics is rejected."""
         resp = await client.get("/metrics")
-        assert resp.status_code == 200
+        assert resp.status_code == 401
 
     async def test_metrics_returns_data(self, auth_client: AsyncClient):
         resp = await auth_client.get("/metrics")

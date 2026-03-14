@@ -179,8 +179,11 @@ async def _count_requests(request: Request, call_next):
 
 
 @app.get("/metrics")
-async def metrics(request: Request):
-    """Operational metrics (unauthenticated for Prometheus scraping).
+async def metrics(
+    request: Request,
+    _user=Depends(get_current_user),
+):
+    """Operational metrics (authenticated endpoint).
     Returns Prometheus text format when Accept header contains 'text/plain'
     or PROMETHEUS_ENABLED is set, otherwise JSON."""
     uptime = time.monotonic() - _start_time if _start_time else 0
