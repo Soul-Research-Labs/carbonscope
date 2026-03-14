@@ -64,7 +64,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Decode JWT payload — handle base64url encoding (RFC 7519)
       const raw = resp.access_token.split(".")[1];
       const base64 = raw.replace(/-/g, "+").replace(/_/g, "/");
-      const payload = JSON.parse(atob(base64));
+      const jsonStr = Buffer.from(base64, "base64").toString("utf-8");
+      const payload = JSON.parse(jsonStr);
       const u: User = {
         id: payload.sub,
         email,
