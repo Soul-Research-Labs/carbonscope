@@ -75,7 +75,8 @@ def _acquire_lock(lock_name: str, ttl: int) -> bool:
     """Try to acquire a distributed lock.
 
     Returns True when lock acquired. In single-instance mode (no Redis URL),
-    returns True. On Redis lock errors, returns False to avoid duplicate runs.
+    returns True. On Redis lock errors, returns True to fail open so
+    background maintenance tasks are not skipped during transient outages.
     """
     r = _get_redis()
     if r is None:
@@ -84,7 +85,7 @@ def _acquire_lock(lock_name: str, ttl: int) -> bool:
         return bool(r.set(f"carbonscope:lock:{lock_name}", "1", nx=True, ex=ttl))
     except OSError as exc:
         logger.warning("Redis lock acquire failed for %s: %s", lock_name, exc)
-        return False
+        return True
 
 
 async def _get_latest_alert_report_ids(db: AsyncSession, company_id: str) -> set[str]:
