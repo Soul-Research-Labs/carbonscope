@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [0.23.1] — 2026-03-16 — Maintenance: Frontend Test Formatting, Docs & Git Hygiene
+
+### Changed
+
+- Reformatted frontend Playwright and unit test files for consistent style and readability.
+- Reformatted frontend auth/validation utility signatures to improve line-wrapping consistency.
+- Refreshed README environment variable table formatting for clearer presentation.
+
+### Added
+
+- Repository ignore rules for generated frontend artifacts (`playwright-report/`, `test-results/`, `tsconfig.tsbuildinfo`) to keep commits clean.
+
+### Validation
+
+- Frontend lint: passed.
+- Frontend unit tests: 147/147 passed.
+- Frontend E2E tests: 132/132 passed.
+
 ## [0.23.0] — 2026-03-15 — Phases 50–59: Audit Hardening & Frontend Security
 
 ### Fixed — Phase 50: Bittensor Critical Fixes
