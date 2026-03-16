@@ -213,6 +213,84 @@ class TestAdminOnlyRoutes:
         assert resp.status_code == 200
         assert resp.json()["name"] == "Updated Corp"
 
+    async def test_review_approve_requires_admin(self, client: AsyncClient):
+        token = await _register_and_login(client)
+        await _make_member(REGISTER_PAYLOAD["email"])
+        headers = {"Authorization": f"Bearer {token}"}
+
+        upload = await client.post(
+            "/api/v1/data",
+            json={"year": 2024, "provided_data": {"electricity_kwh": 100000}},
+            headers=headers,
+        )
+        assert upload.status_code == 201
+        report = await client.post(
+            "/api/v1/estimate",
+            json={"data_upload_id": upload.json()["id"]},
+            headers=headers,
+        )
+        assert report.status_code == 201
+
+        review = await client.post(
+            "/api/v1/reviews",
+            json={"report_id": report.json()["id"]},
+            headers=headers,
+        )
+        assert review.status_code == 201
+
+        submit = await client.post(
+            f"/api/v1/reviews/{review.json()['id']}/action",
+            json={"action": "submit"},
+            headers=headers,
+        )
+        assert submit.status_code == 200
+
+        approve = await client.post(
+            f"/api/v1/reviews/{review.json()['id']}/action",
+            json={"action": "approve", "notes": "looks good"},
+            headers=headers,
+        )
+        assert approve.status_code == 403
+
+    async def test_review_reject_requires_admin(self, client: AsyncClient):
+        token = await _register_and_login(client)
+        await _make_member(REGISTER_PAYLOAD["email"])
+        headers = {"Authorization": f"Bearer {token}"}
+
+        upload = await client.post(
+            "/api/v1/data",
+            json={"year": 2024, "provided_data": {"electricity_kwh": 100000}},
+            headers=headers,
+        )
+        assert upload.status_code == 201
+        report = await client.post(
+            "/api/v1/estimate",
+            json={"data_upload_id": upload.json()["id"]},
+            headers=headers,
+        )
+        assert report.status_code == 201
+
+        review = await client.post(
+            "/api/v1/reviews",
+            json={"report_id": report.json()["id"]},
+            headers=headers,
+        )
+        assert review.status_code == 201
+
+        submit = await client.post(
+            f"/api/v1/reviews/{review.json()['id']}/action",
+            json={"action": "submit"},
+            headers=headers,
+        )
+        assert submit.status_code == 200
+
+        reject = await client.post(
+            f"/api/v1/reviews/{review.json()['id']}/action",
+            json={"action": "reject", "notes": "needs revision"},
+            headers=headers,
+        )
+        assert reject.status_code == 403
+
 
 # ── D1-D2: deleted_at filters on AI & compliance routes ─────────
 
