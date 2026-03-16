@@ -26,13 +26,11 @@ export default defineConfig({
       use: { ...devices["Desktop Safari"] },
     },
   ],
-  /* Start the Next.js dev server before running tests (local dev only) */
-  webServer: process.env.CI
-    ? undefined
-    : {
-        command: "npm run dev",
-        url: "http://localhost:3000",
-        reuseExistingServer: true,
-        timeout: 30_000,
-      },
+  // Start a server for E2E in all environments.
+  webServer: {
+    command: process.env.CI ? "npm run start" : "npm run dev",
+    url: "http://localhost:3000",
+    reuseExistingServer: !process.env.CI,
+    timeout: 60_000,
+  },
 });
