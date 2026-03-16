@@ -36,7 +36,10 @@ const AuthContext = createContext<AuthState | null>(null);
 
 function decodeBase64UrlPayload(raw: string): Record<string, unknown> {
   const base64 = raw.replace(/-/g, "+").replace(/_/g, "/");
-  const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "=");
+  const padded = base64.padEnd(
+    base64.length + ((4 - (base64.length % 4)) % 4),
+    "=",
+  );
   const decoded = atob(padded);
   return JSON.parse(decoded) as Record<string, unknown>;
 }

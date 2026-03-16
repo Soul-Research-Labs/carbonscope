@@ -205,43 +205,43 @@ alembic current                                     # Show current revision
 
 ## Environment Variables
 
-| Variable                      | Default                              | Description                                                  |
-| :---------------------------- | :----------------------------------- | :----------------------------------------------------------- |
-| `ENV`                         | `development`                        | Environment mode (`development` / `production` / `test`)     |
-| `DATABASE_URL`                | `sqlite+aiosqlite:///carbonscope.db` | Async database URL (SQLite or PostgreSQL)                    |
+| Variable                      | Default                              | Description                                                       |
+| :---------------------------- | :----------------------------------- | :---------------------------------------------------------------- |
+| `ENV`                         | `development`                        | Environment mode (`development` / `production` / `test`)          |
+| `DATABASE_URL`                | `sqlite+aiosqlite:///carbonscope.db` | Async database URL (SQLite or PostgreSQL)                         |
 | `DB_SLOW_QUERY_MS`            | `500`                                | Log warning when a DB query duration meets/exceeds this threshold |
-| `SECRET_KEY`                  | `change-me-in-production`            | JWT signing key (**enforced ≥ 32 chars** in production)      |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | `60`                                 | JWT access token lifetime                                    |
-| `ALLOWED_ORIGINS`             | `http://localhost:3000`              | Comma-separated CORS origins                                 |
-| `RATE_LIMIT_AUTH`             | `10/minute`                          | Auth endpoint rate limit                                     |
-| `RATE_LIMIT_DEFAULT`          | `60/minute`                          | General endpoint rate limit                                  |
-| `TRUST_PROXY`                 | `false`                              | Honor `X-Forwarded-For` (set `true` behind reverse proxy)    |
-| `LOG_LEVEL`                   | `INFO`                               | Logging level (`DEBUG` / `INFO` / `WARNING` / `ERROR`)       |
-| `LOG_JSON`                    | `false`                              | Structured JSON logging (auto-enabled in production)         |
-| `ESTIMATION_MODE`             | `local`                              | `local` (built-in engine) or `subnet` (Bittensor network)    |
-| `BT_NETWORK`                  | `test`                               | Bittensor network (`test`, `finney`)                         |
-| `BT_NETUID`                   | `1`                                  | Bittensor subnet UID                                         |
-| `BT_WALLET_NAME`              | `api_client`                         | Bittensor wallet name                                        |
-| `BT_WALLET_HOTKEY`            | `default`                            | Bittensor wallet hotkey                                      |
-| `BT_QUERY_TIMEOUT`            | `30.0`                               | Bittensor query timeout (seconds)                            |
-| `SMTP_HOST`                   | —                                    | SMTP server hostname (enables email notifications)           |
-| `SMTP_PORT`                   | `587`                                | SMTP port                                                    |
-| `SMTP_USER` / `SMTP_PASSWORD` | —                                    | SMTP credentials                                             |
-| `EMAIL_FROM`                  | `noreply@carbonscope.io`             | Sender email address                                         |
-| `REQUIRE_SMTP_IN_PRODUCTION`  | `false`                              | Fail startup in production when SMTP credentials are missing |
-| `OPENAI_API_KEY`              | —                                    | OpenAI API key (optional — enables LLM text parsing)         |
-| `ANTHROPIC_API_KEY`           | —                                    | Anthropic API key (optional — enables LLM text parsing)      |
-| `COOKIE_DOMAIN`               | —                                    | Cookie domain for cross-subdomain auth                       |
-| `COOKIE_SECURE`               | `true` (production)                  | HTTPS-only cookies                                           |
-| `COOKIE_SAMESITE`             | `lax`                                | Cookie SameSite policy                                       |
-| `APP_VERSION`                 | —                                    | App version string (Sentry releases, OTEL)                   |
-| `SENTRY_DSN`                  | —                                    | Sentry DSN for error tracking & APM                          |
-| `SENTRY_TRACES_SAMPLE_RATE`   | `0.1`                                | Fraction of requests traced (0.0–1.0)                        |
-| `REDIS_URL`                   | —                                    | Redis URL (distributed rate limiting & caching)              |
-| `PROMETHEUS_ENABLED`          | `false`                              | Expose `/metrics` in Prometheus text format                  |
-| `STRIPE_SECRET_KEY`           | —                                    | Stripe API key (subscription billing)                        |
-| `STRIPE_WEBHOOK_SECRET`       | —                                    | Stripe webhook signature secret                              |
-| `POSTGRES_PASSWORD`           | —                                    | PostgreSQL password (used by `docker-compose.prod.yml`)      |
+| `SECRET_KEY`                  | `change-me-in-production`            | JWT signing key (**enforced ≥ 32 chars** in production)           |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | `60`                                 | JWT access token lifetime                                         |
+| `ALLOWED_ORIGINS`             | `http://localhost:3000`              | Comma-separated CORS origins                                      |
+| `RATE_LIMIT_AUTH`             | `10/minute`                          | Auth endpoint rate limit                                          |
+| `RATE_LIMIT_DEFAULT`          | `60/minute`                          | General endpoint rate limit                                       |
+| `TRUST_PROXY`                 | `false`                              | Honor `X-Forwarded-For` (set `true` behind reverse proxy)         |
+| `LOG_LEVEL`                   | `INFO`                               | Logging level (`DEBUG` / `INFO` / `WARNING` / `ERROR`)            |
+| `LOG_JSON`                    | `false`                              | Structured JSON logging (auto-enabled in production)              |
+| `ESTIMATION_MODE`             | `local`                              | `local` (built-in engine) or `subnet` (Bittensor network)         |
+| `BT_NETWORK`                  | `test`                               | Bittensor network (`test`, `finney`)                              |
+| `BT_NETUID`                   | `1`                                  | Bittensor subnet UID                                              |
+| `BT_WALLET_NAME`              | `api_client`                         | Bittensor wallet name                                             |
+| `BT_WALLET_HOTKEY`            | `default`                            | Bittensor wallet hotkey                                           |
+| `BT_QUERY_TIMEOUT`            | `30.0`                               | Bittensor query timeout (seconds)                                 |
+| `SMTP_HOST`                   | —                                    | SMTP server hostname (enables email notifications)                |
+| `SMTP_PORT`                   | `587`                                | SMTP port                                                         |
+| `SMTP_USER` / `SMTP_PASSWORD` | —                                    | SMTP credentials                                                  |
+| `EMAIL_FROM`                  | `noreply@carbonscope.io`             | Sender email address                                              |
+| `REQUIRE_SMTP_IN_PRODUCTION`  | `false`                              | Fail startup in production when SMTP credentials are missing      |
+| `OPENAI_API_KEY`              | —                                    | OpenAI API key (optional — enables LLM text parsing)              |
+| `ANTHROPIC_API_KEY`           | —                                    | Anthropic API key (optional — enables LLM text parsing)           |
+| `COOKIE_DOMAIN`               | —                                    | Cookie domain for cross-subdomain auth                            |
+| `COOKIE_SECURE`               | `true` (production)                  | HTTPS-only cookies                                                |
+| `COOKIE_SAMESITE`             | `lax`                                | Cookie SameSite policy                                            |
+| `APP_VERSION`                 | —                                    | App version string (Sentry releases, OTEL)                        |
+| `SENTRY_DSN`                  | —                                    | Sentry DSN for error tracking & APM                               |
+| `SENTRY_TRACES_SAMPLE_RATE`   | `0.1`                                | Fraction of requests traced (0.0–1.0)                             |
+| `REDIS_URL`                   | —                                    | Redis URL (distributed rate limiting & caching)                   |
+| `PROMETHEUS_ENABLED`          | `false`                              | Expose `/metrics` in Prometheus text format                       |
+| `STRIPE_SECRET_KEY`           | —                                    | Stripe API key (subscription billing)                             |
+| `STRIPE_WEBHOOK_SECRET`       | —                                    | Stripe webhook signature secret                                   |
+| `POSTGRES_PASSWORD`           | —                                    | PostgreSQL password (used by `docker-compose.prod.yml`)           |
 
 > A complete template is available in [`.env.example`](.env.example).
 

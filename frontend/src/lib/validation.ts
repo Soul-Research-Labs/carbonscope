@@ -45,7 +45,9 @@ export function validateRegisterField(
   }
 }
 
-export function validateRegisterForm(values: RegisterFormValues): Record<string, string> {
+export function validateRegisterForm(
+  values: RegisterFormValues,
+): Record<string, string> {
   const fields: Array<keyof RegisterFormValues> = [
     "fullName",
     "companyName",

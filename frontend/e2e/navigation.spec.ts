@@ -2,7 +2,9 @@ import { test, expect, Page } from "@playwright/test";
 
 /** Seed localStorage with a fake authenticated session. */
 async function seedAuth(page: Page) {
-  const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
+  const header = Buffer.from(
+    JSON.stringify({ alg: "HS256", typ: "JWT" }),
+  ).toString("base64url");
   const payload = Buffer.from(
     JSON.stringify({ sub: 1, email: "alice@example.com", company_id: 1 }),
   ).toString("base64url");
@@ -41,16 +43,15 @@ async function seedAuth(page: Page) {
 async function mockAllApis(page: Page) {
   await page.route("**/api/v1/**", (route) => {
     const url = route.request().url();
-    const body =
-      url.includes("/auth/me")
-        ? {
-            id: 1,
-            email: "alice@example.com",
-            full_name: "Alice",
-            company_id: 1,
-            role: "admin",
-          }
-        : {};
+    const body = url.includes("/auth/me")
+      ? {
+          id: 1,
+          email: "alice@example.com",
+          full_name: "Alice",
+          company_id: 1,
+          role: "admin",
+        }
+      : {};
     return route.fulfill({
       status: 200,
       contentType: "application/json",

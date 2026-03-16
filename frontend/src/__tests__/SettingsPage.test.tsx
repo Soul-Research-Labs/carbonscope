@@ -47,7 +47,14 @@ type ConfirmDialogProps = {
 };
 
 vi.mock("@/components/FormField", () => ({
-  FormField: ({ label, value, onChange, type, children, ...rest }: FormFieldMockProps) => (
+  FormField: ({
+    label,
+    value,
+    onChange,
+    type,
+    children,
+    ...rest
+  }: FormFieldMockProps) => (
     <label>
       {label}
       {children || (

@@ -39,6 +39,8 @@ describe("register validation", () => {
   it("rejects mismatched confirm password", () => {
     const values = makeValid();
     values.confirmPassword = "Mismatch123";
-    expect(validateRegisterField("confirmPassword", values)).toContain("do not match");
+    expect(validateRegisterField("confirmPassword", values)).toContain(
+      "do not match",
+    );
   });
 });
