@@ -19,6 +19,8 @@ We aim to acknowledge reports within 48 hours and provide a resolution timeline 
 
 | Version | Supported |
 | :------ | :-------: |
+| 0.24.x  |    ✅     |
+| 0.23.x  |    ✅     |
 | 0.22.x  |    ✅     |
 | 0.21.x  |    ✅     |
 | 0.20.x  |    ✅     |
@@ -70,6 +72,7 @@ We aim to acknowledge reports within 48 hours and provide a resolution timeline 
 | **XSS**            | Content-Security-Policy header; React auto-escapes output by default           |
 | **SSRF**           | Webhook URLs validated against private/internal IP ranges (`url_validator.py`) |
 | **File Upload**    | 10 MB limit, file type whitelist (PDF, DOCX, XLSX, CSV), content validation    |
+| **Request Body**   | 1 MB global limit via `RequestBodyLimitMiddleware`                             |
 | **Path Traversal** | File names sanitized before processing                                         |
 
 ### Rate Limiting
@@ -87,6 +90,14 @@ We aim to acknowledge reports within 48 hours and provide a resolution timeline 
 | `/stripe/webhooks`          | 60/minute | Stripe event ingestion                  |
 
 Rate limiting is IP-based (supports `X-Forwarded-For` when `TRUST_PROXY=true`).
+
+### Health & Diagnostics
+
+| Endpoint           | Access        | Detail                                                  |
+| :----------------- | :------------ | :------------------------------------------------------ |
+| `GET /health`      | Public        | Returns `{"status": "healthy"}` only (no internals)     |
+| `GET /health/detail` | Admin-only  | Full system info (DB, Redis, versions) behind auth gate |
+| `GET /metrics`     | Admin-only    | Prometheus-compatible application metrics                |
 
 ### Audit & Monitoring
 
