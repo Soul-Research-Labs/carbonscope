@@ -10,7 +10,10 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("Application error:", error);
+    // Log digest only — avoid leaking stack traces in production console
+    if (process.env.NODE_ENV === "development") {
+      console.error("Application error:", error);
+    }
   }, [error]);
 
   return (
