@@ -23,10 +23,19 @@ EMAIL_FROM: str = os.getenv("EMAIL_FROM", "noreply@carbonscope.io")
 _smtp_configured = bool(SMTP_HOST and SMTP_USER and SMTP_PASSWORD)
 
 
+def _mask_email(email: str) -> str:
+    """Mask an email address for safe logging: u***@domain.com."""
+    parts = email.split("@", 1)
+    if len(parts) != 2:
+        return "***"
+    local = parts[0]
+    return f"{local[0]}***@{parts[1]}" if local else f"***@{parts[1]}"
+
+
 async def send_email(to: str, subject: str, html_body: str) -> bool:
     """Send an email asynchronously. Returns True on success, False on failure."""
     if not _smtp_configured:
-        logger.info("Email (dev mode — SMTP not configured): to=%s subject=%s", to, subject)
+        logger.info("Email (dev mode — SMTP not configured): to=%s subject=%s", _mask_email(to), subject)
         logger.debug("Email body: %s", html_body[:200])
         return True
 
@@ -50,10 +59,10 @@ async def send_email(to: str, subject: str, html_body: str) -> bool:
             start_tls=True,
         )
 
-        logger.info("Email sent: to=%s subject=%s", to, subject)
+        logger.info("Email sent: to=%s subject=%s", _mask_email(to), subject)
         return True
     except Exception:
-        logger.exception("Failed to send email to %s", to)
+        logger.exception("Failed to send email to %s", _mask_email(to))
         return False
 
 
