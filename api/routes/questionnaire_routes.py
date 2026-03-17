@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import re
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, File, status
 from fastapi.responses import StreamingResponse
@@ -80,10 +81,12 @@ async def upload_questionnaire(
 
     extracted_text = extract_text(content, file_type)
 
+    safe_name = re.sub(r'[^\w\s.\-]', '_', file.filename or 'unknown')[:255]
+
     questionnaire = Questionnaire(
         company_id=user.company_id,
-        title=file.filename or "Untitled",
-        original_filename=file.filename or "unknown",
+        title=safe_name,
+        original_filename=safe_name,
         file_type=file_type,
         file_size=total_size,
         status="uploaded",
