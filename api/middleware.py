@@ -16,6 +16,22 @@ from api.logging_config import request_id_var
 logger = logging.getLogger(__name__)
 access_logger = logging.getLogger("api.access")
 
+# Maximum request body size (1 MB default; file upload routes override per-endpoint)
+_MAX_BODY_BYTES = int(os.getenv("MAX_REQUEST_BODY_BYTES", str(1 * 1024 * 1024)))
+
+
+class RequestBodyLimitMiddleware(BaseHTTPMiddleware):
+    """Reject requests whose Content-Length exceeds the configured maximum."""
+
+    async def dispatch(self, request: Request, call_next):
+        content_length = request.headers.get("content-length")
+        if content_length and int(content_length) > _MAX_BODY_BYTES:
+            return JSONResponse(
+                status_code=413,
+                content={"detail": "Request body too large"},
+            )
+        return await call_next(request)
+
 
 class RequestIDMiddleware(BaseHTTPMiddleware):
     """Attach a unique request ID to each request/response."""
@@ -93,6 +109,7 @@ def register_middleware(app: FastAPI) -> None:
     app.add_middleware(RequestIDMiddleware)
     app.add_middleware(RequestLoggingMiddleware)
     app.add_middleware(SecurityHeadersMiddleware)
+    app.add_middleware(RequestBodyLimitMiddleware)
     app.add_exception_handler(Exception, global_exception_handler)
 
     # Optional Sentry integration — only active when SENTRY_DSN is set
