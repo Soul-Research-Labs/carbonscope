@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [0.24.1] — 2026-03-18 — Security Hardening Round 2
+
+### Fixed
+
+- **Marketplace race condition**: Added `FOR UPDATE` row lock on listing SELECT during purchase to prevent double-buy
+- **Schema validation**: Added `max_length` to `CompanyUpdate`, `QuestionUpdate.human_answer`, upper bounds on `employee_count`, `revenue_usd`, `price_credits`, depth validator on `DataUploadUpdate.provided_data`
+- **Admin credit grant cap**: Limited manual credit grants to 1,000,000 per request
+- **Filename sanitization**: Uploaded questionnaire filenames are now stripped of non-word characters
+- **LLM prompt injection**: Replaced `.format()` with safe concatenation using `<user_input>` delimiters
+- **Session expiry sync**: API client now dispatches `auth:session-expired` event so AuthProvider can clear React state
+- **Logout cache leak**: React Query cache is now cleared on logout to prevent stale data across sessions
+- **rawRequest 401 refresh**: `rawRequest()` now has the same auto-refresh-on-401 logic as `request()`
+- **SSE timer leak**: `useEventSource` reconnect timeout is now tracked and cleared on unmount
+
+---
+
 ## [0.24.0] — 2026-03-17 — Phase 3 & 4: Real-Time Events, Accessibility, DevOps Hardening
 
 ### Added
