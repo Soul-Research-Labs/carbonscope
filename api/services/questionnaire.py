@@ -323,6 +323,7 @@ async def process_questionnaire(
         select(Questionnaire).where(
             Questionnaire.id == questionnaire_id,
             Questionnaire.company_id == company_id,
+            Questionnaire.deleted_at.is_(None),
         )
     )
     questionnaire = result.scalar_one_or_none()
@@ -349,7 +350,7 @@ async def process_questionnaire(
 
     # Get company info for draft answers
     company_result = await db.execute(
-        select(Company).where(Company.id == company_id)
+        select(Company).where(Company.id == company_id, Company.deleted_at.is_(None))
     )
     company = company_result.scalar_one()
 

@@ -82,6 +82,7 @@ async def _handle_subscription_updated(data: dict) -> None:
         result = await db.execute(
             select(Subscription).where(
                 Subscription.stripe_subscription_id == stripe_sub_id,
+                Subscription.deleted_at.is_(None),
             )
         )
         sub = result.scalar_one_or_none()
@@ -109,6 +110,7 @@ async def _handle_invoice_payment_failed(data: dict) -> None:
         result = await db.execute(
             select(Subscription).where(
                 Subscription.stripe_customer_id == customer_id,
+                Subscription.deleted_at.is_(None),
             )
         )
         sub = result.scalar_one_or_none()
@@ -141,6 +143,7 @@ async def _handle_invoice_payment_failed(data: dict) -> None:
             select(User).where(
                 User.company_id == sub.company_id,
                 User.is_active.is_(True),
+                User.deleted_at.is_(None),
             ).limit(1)
         )
         user = user_result.scalar_one_or_none()
@@ -170,6 +173,7 @@ async def _handle_checkout_session_completed(data: dict) -> None:
         result = await db.execute(
             select(Subscription).where(
                 Subscription.company_id == company_id,
+                Subscription.deleted_at.is_(None),
             )
         )
         sub = result.scalar_one_or_none()

@@ -52,9 +52,9 @@ async def _register_second_user(client: AsyncClient) -> dict:
 class TestAuthGates:
     """Endpoints that now require auth should reject unauthenticated requests."""
 
-    async def test_metrics_public_access(self, client: AsyncClient):
+    async def test_metrics_requires_auth(self, client: AsyncClient):
         resp = await client.get("/metrics")
-        assert resp.status_code == 200
+        assert resp.status_code == 401
 
     async def test_billing_plans_requires_auth(self, client: AsyncClient):
         resp = await client.get("/api/v1/billing/plans")

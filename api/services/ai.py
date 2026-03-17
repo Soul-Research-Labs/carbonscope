@@ -15,7 +15,7 @@ from api.services.recommendations import generate_recommendations, summarize_red
 
 
 async def _get_company(db: AsyncSession, company_id: str) -> Company:
-    result = await db.execute(select(Company).where(Company.id == company_id))
+    result = await db.execute(select(Company).where(Company.id == company_id, Company.deleted_at.is_(None)))
     return result.scalar_one()
 
 

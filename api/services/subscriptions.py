@@ -69,6 +69,7 @@ async def get_or_create_subscription(db: AsyncSession, company_id: str) -> Subsc
     result = await db.execute(
         select(Subscription).where(
             Subscription.company_id == company_id,
+            Subscription.deleted_at.is_(None),
         )
     )
     sub = result.scalar_one_or_none()
@@ -82,6 +83,7 @@ async def get_or_create_subscription(db: AsyncSession, company_id: str) -> Subsc
             result = await db.execute(
                 select(Subscription).where(
                     Subscription.company_id == company_id,
+                    Subscription.deleted_at.is_(None),
                 )
             )
             sub = result.scalar_one_or_none()

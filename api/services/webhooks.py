@@ -80,7 +80,7 @@ async def list_webhooks(
     """
     from sqlalchemy import func
 
-    base = select(Webhook).where(Webhook.company_id == company_id)
+    base = select(Webhook).where(Webhook.company_id == company_id, Webhook.deleted_at.is_(None))
     total = (await db.execute(select(func.count()).select_from(base.subquery()))).scalar() or 0
 
     query = base.order_by(Webhook.created_at.desc())
@@ -103,6 +103,7 @@ async def delete_webhook(
         select(Webhook).where(
             Webhook.id == webhook_id,
             Webhook.company_id == company_id,
+            Webhook.deleted_at.is_(None),
         )
     )
     webhook = result.scalar_one_or_none()
@@ -124,6 +125,7 @@ async def toggle_webhook(
         select(Webhook).where(
             Webhook.id == webhook_id,
             Webhook.company_id == company_id,
+            Webhook.deleted_at.is_(None),
         )
     )
     webhook = result.scalar_one_or_none()
@@ -245,6 +247,7 @@ async def list_deliveries(
         select(Webhook).where(
             Webhook.id == webhook_id,
             Webhook.company_id == company_id,
+            Webhook.deleted_at.is_(None),
         )
     )
     if wh_result.scalar_one_or_none() is None:
@@ -292,7 +295,7 @@ async def process_pending_retries(db: AsyncSession) -> int:
     for delivery in pending:
         # Look up the webhook to get URL and secret
         wh_result = await db.execute(
-            select(Webhook).where(Webhook.id == delivery.webhook_id)
+            select(Webhook).where(Webhook.id == delivery.webhook_id, Webhook.deleted_at.is_(None))
         )
         wh = wh_result.scalar_one_or_none()
         if not wh or not wh.active:

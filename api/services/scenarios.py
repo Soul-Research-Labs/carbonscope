@@ -112,6 +112,7 @@ async def run_scenario(
         select(Scenario).where(
             Scenario.id == scenario_id,
             Scenario.company_id == company_id,
+            Scenario.deleted_at.is_(None),
         )
     )
     scenario = result.scalar_one_or_none()

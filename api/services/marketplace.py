@@ -54,7 +54,7 @@ async def create_listing(
         raise ValueError("Report not found or not owned by company")
 
     # Get company for anonymization
-    result = await db.execute(select(Company).where(Company.id == company_id))
+    result = await db.execute(select(Company).where(Company.id == company_id, Company.deleted_at.is_(None)))
     company = result.scalar_one()
 
     listing = DataListing(
@@ -83,8 +83,8 @@ async def browse_listings(
     offset: int = 0,
 ) -> tuple[list[DataListing], int]:
     """Browse available marketplace listings with optional filters."""
-    query = select(DataListing).where(DataListing.status == "active")
-    count_query = select(func.count()).select_from(DataListing).where(DataListing.status == "active")
+    query = select(DataListing).where(DataListing.status == "active", DataListing.deleted_at.is_(None))
+    count_query = select(func.count()).select_from(DataListing).where(DataListing.status == "active", DataListing.deleted_at.is_(None))
 
     if industry:
         query = query.where(DataListing.industry == industry)
@@ -109,6 +109,7 @@ async def get_listing_by_id(db: AsyncSession, listing_id: str) -> DataListing | 
         select(DataListing).where(
             DataListing.id == listing_id,
             DataListing.status == "active",
+            DataListing.deleted_at.is_(None),
         )
     )
     return result.scalar_one_or_none()
@@ -125,6 +126,7 @@ async def purchase_listing(
         select(DataListing).where(
             DataListing.id == listing_id,
             DataListing.status == "active",
+            DataListing.deleted_at.is_(None),
         )
     )
     listing = result.scalar_one_or_none()
@@ -170,9 +172,9 @@ async def list_my_listings(
     offset: int = 0,
 ) -> tuple[list[DataListing], int]:
     """List marketplace listings owned by a company."""
-    query = select(DataListing).where(DataListing.seller_company_id == company_id)
+    query = select(DataListing).where(DataListing.seller_company_id == company_id, DataListing.deleted_at.is_(None))
     count_query = select(func.count()).select_from(DataListing).where(
-        DataListing.seller_company_id == company_id
+        DataListing.seller_company_id == company_id, DataListing.deleted_at.is_(None)
     )
     total = (await db.execute(count_query)).scalar() or 0
     result = await db.execute(
@@ -192,6 +194,7 @@ async def withdraw_listing(
             DataListing.id == listing_id,
             DataListing.seller_company_id == company_id,
             DataListing.status == "active",
+            DataListing.deleted_at.is_(None),
         )
     )
     listing = result.scalar_one_or_none()

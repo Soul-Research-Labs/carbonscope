@@ -47,7 +47,7 @@ async def create_compliance_report(
     if not report:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
 
-    company_result = await db.execute(select(Company).where(Company.id == user.company_id))
+    company_result = await db.execute(select(Company).where(Company.id == user.company_id, Company.deleted_at.is_(None)))
     company = company_result.scalar_one()
 
     # Deduct credits only after successful validation

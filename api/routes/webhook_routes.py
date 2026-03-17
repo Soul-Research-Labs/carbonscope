@@ -107,7 +107,7 @@ async def get_deliveries(
         from api.models import Webhook
 
         result = await db.execute(
-            select(Webhook).where(Webhook.id == webhook_id, Webhook.company_id == user.company_id)
+            select(Webhook).where(Webhook.id == webhook_id, Webhook.company_id == user.company_id, Webhook.deleted_at.is_(None))
         )
         if result.scalar_one_or_none() is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Webhook not found")

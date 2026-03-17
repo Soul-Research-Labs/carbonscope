@@ -116,47 +116,21 @@ class TestHealthCheck:
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "ok"
-        assert data["database"] == "connected"
-
-    async def test_health_has_email_field(self, client: AsyncClient):
-        resp = await client.get("/health")
-        data = resp.json()
-        assert "email" in data
-
-    async def test_health_has_bittensor_field(self, client: AsyncClient):
-        resp = await client.get("/health")
-        data = resp.json()
-        assert "bittensor" in data
-        assert "local" in data["bittensor"] or "subnet" in data["bittensor"]
+        assert "version" in data
+        # Sensitive fields should NOT be in the public health response
+        assert "database" not in data
+        assert "email" not in data
+        assert "bittensor" not in data
 
     async def test_health_has_version(self, client: AsyncClient):
         resp = await client.get("/health")
         data = resp.json()
         assert data["version"] == APP_VERSION
 
-    async def test_health_has_db_pool_field(self, client: AsyncClient):
-        resp = await client.get("/health")
-        data = resp.json()
-        assert "db_pool" in data
-        assert isinstance(data["db_pool"], str)
-
-    async def test_health_has_redis_field(self, client: AsyncClient):
-        resp = await client.get("/health")
-        data = resp.json()
-        assert "redis" in data
-        assert data["redis"] in ("not_configured", "connected", "unavailable")
-
-    async def test_health_degraded_when_redis_unavailable(self, client: AsyncClient, monkeypatch):
-        import api.main as main_mod
-
-        async def _unavailable() -> str:
-            return "unavailable"
-
-        monkeypatch.setattr(main_mod, "_check_redis_health", _unavailable)
-        resp = await client.get("/health")
-        data = resp.json()
-        assert data["redis"] == "unavailable"
-        assert data["status"] == "degraded"
+    async def test_health_detail_requires_admin(self, client: AsyncClient):
+        """Detailed health info is behind /health/detail (admin-only)."""
+        resp = await client.get("/health/detail")
+        assert resp.status_code == 401
 
 
 # ── Metrics endpoint ───────────────────────────────────────────────
@@ -164,9 +138,9 @@ class TestHealthCheck:
 
 @pytest.mark.asyncio
 class TestMetrics:
-    async def test_metrics_public_access(self, client: AsyncClient):
+    async def test_metrics_requires_auth(self, client: AsyncClient):
         resp = await client.get("/metrics")
-        assert resp.status_code == 200
+        assert resp.status_code == 401
 
     async def test_metrics_endpoint(self, auth_client: AsyncClient):
         resp = await auth_client.get("/metrics")

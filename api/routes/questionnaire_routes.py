@@ -193,7 +193,7 @@ async def apply_template(
     from api.services.questionnaire import generate_draft_answer
 
     company_result = await db.execute(
-        select(Company).where(Company.id == user.company_id)
+        select(Company).where(Company.id == user.company_id, Company.deleted_at.is_(None))
     )
     company = company_result.scalar_one()
 
@@ -439,7 +439,7 @@ async def export_questionnaire_pdf(
     if not q:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Questionnaire not found")
 
-    company_result = await db.execute(select(Company).where(Company.id == user.company_id))
+    company_result = await db.execute(select(Company).where(Company.id == user.company_id, Company.deleted_at.is_(None)))
     company = company_result.scalar_one()
 
     questions_data = sorted(

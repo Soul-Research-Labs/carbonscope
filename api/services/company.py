@@ -12,7 +12,7 @@ from api.services import ServiceError
 
 
 async def get_company(db: AsyncSession, company_id: str) -> Company:
-    result = await db.execute(select(Company).where(Company.id == company_id))
+    result = await db.execute(select(Company).where(Company.id == company_id, Company.deleted_at.is_(None)))
     company = result.scalar_one_or_none()
     if company is None:
         raise ServiceError("Company not found", status_code=404)

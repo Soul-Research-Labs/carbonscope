@@ -31,7 +31,7 @@ class TestQuestionnaireUpload:
         big = b"x" * (10 * 1024 * 1024 + 1)
         files = {"file": ("big.csv", io.BytesIO(big), "text/csv")}
         resp = await auth_client.post("/api/v1/questionnaires/upload", files=files)
-        assert resp.status_code == 400
+        assert resp.status_code in (400, 413)  # 413 from body-limit middleware or 400 from app
 
 
 @pytest.mark.asyncio

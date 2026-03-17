@@ -406,7 +406,7 @@ async def reset_password(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or expired reset token",
         )
-    result = await db.execute(select(User).where(User.id == data["user_id"]))
+    result = await db.execute(select(User).where(User.id == data["user_id"], User.deleted_at.is_(None)))
     user = result.scalar_one_or_none()
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")

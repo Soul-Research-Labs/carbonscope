@@ -81,7 +81,7 @@ async def compare_to_industry(
     if not report:
         raise BenchmarkError("Report not found", status_code=404)
 
-    company_result = await db.execute(select(Company).where(Company.id == company_id))
+    company_result = await db.execute(select(Company).where(Company.id == company_id, Company.deleted_at.is_(None)))
     company = company_result.scalar_one()
 
     bench_result = await db.execute(
