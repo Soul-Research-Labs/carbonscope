@@ -11,6 +11,7 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 T = TypeVar("T")
 
 _MAX_JSON_DEPTH = 5
+_MAX_DICT_KEYS = 200
 
 
 def _check_json_depth(obj: Any, depth: int = 0) -> None:
@@ -131,6 +132,8 @@ class DataUploadCreate(BaseModel):
     @field_validator("provided_data")
     @classmethod
     def validate_depth(cls, v: dict) -> dict:
+        if len(v) > _MAX_DICT_KEYS:
+            raise ValueError(f"provided_data must not exceed {_MAX_DICT_KEYS} keys")
         _check_json_depth(v)
         return v
 
@@ -308,7 +311,7 @@ class ComplianceReportRequest(BaseModel):
 
 class WebhookCreate(BaseModel):
     url: str = Field(min_length=1, max_length=2048)
-    event_types: list[str] = Field(min_length=1)
+    event_types: list[str] = Field(min_length=1, max_length=50)
 
     @field_validator("url")
     @classmethod
@@ -435,6 +438,8 @@ class ScenarioCreate(BaseModel):
     @field_validator("parameters")
     @classmethod
     def validate_depth(cls, v: dict) -> dict:
+        if len(v) > _MAX_DICT_KEYS:
+            raise ValueError(f"parameters must not exceed {_MAX_DICT_KEYS} keys")
         _check_json_depth(v)
         return v
 
