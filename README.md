@@ -13,8 +13,8 @@
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.10+">
   <img src="https://img.shields.io/badge/node-18%2B-339933?style=flat-square&logo=node.js&logoColor=white" alt="Node 18+">
-  <img src="https://img.shields.io/badge/version-0.24.3-orange?style=flat-square" alt="Version 0.24.3">
-  <img src="https://img.shields.io/badge/tests-745%20backend%20%7C%20142%20frontend-brightgreen?style=flat-square" alt="Tests">
+  <img src="https://img.shields.io/badge/version-0.24.4-orange?style=flat-square" alt="Version 0.24.4">
+  <img src="https://img.shields.io/badge/tests-745%20backend%20%7C%20170%20frontend-brightgreen?style=flat-square" alt="Tests">
   <img src="https://img.shields.io/badge/endpoints-100%2B-7B61FF?style=flat-square" alt="100+ API Endpoints">
   <img src="https://img.shields.io/badge/Bittensor-Subnet-000000?style=flat-square" alt="Bittensor Subnet">
 </p>
@@ -393,7 +393,7 @@ pytest tests/ --cov=api --cov-report=term-missing     # With coverage
 pytest tests/ -k "test_auth" -v                       # Pattern matching
 ```
 
-### Frontend Tests (142)
+### Frontend Tests (170)
 
 ```bash
 cd frontend
@@ -455,7 +455,7 @@ npm run test:watch        # Watch mode for development
 </details>
 
 <details>
-<summary><strong>Frontend Test Coverage (26 test files, 142 tests)</strong></summary>
+<summary><strong>Frontend Test Coverage (30 test files, 170 tests)</strong></summary>
 
 | File                           | Coverage                                              |
 | :----------------------------- | :---------------------------------------------------- |
@@ -470,6 +470,8 @@ npm run test:watch        # Watch mode for development
 | `api-new-methods.test.ts`      | Credit ledger, delete account, supply chain, webhooks |
 | `auto-refresh.test.ts`         | Token refresh on 401, retry logic                     |
 | `LoginPage.test.tsx`           | Form submission, validation, error handling           |
+| `ForgotPasswordPage.test.tsx`  | Form render, submit, loading state, error handling    |
+| `RegisterPage.test.tsx`        | Form render, submit, 409/429 errors, generic error    |
 | `DashboardPage.test.tsx`       | KPI cards, API data rendering, empty states           |
 | `RecommendationsPage.test.tsx` | Strategy listing, navigation, data display            |
 | `SellerDashboardPage.test.tsx` | Revenue summary, sales table, pagination              |
@@ -480,6 +482,8 @@ npm run test:watch        # Watch mode for development
 | `SettingsPage.test.tsx`        | Profile, company, webhooks, password sections         |
 | `UploadPage.test.tsx`          | Form rendering, submit/error, scope labels            |
 | `CompliancePage.test.tsx`      | Framework buttons, generate, error handling           |
+| `BillingPage.test.tsx`         | Plan display, credits, plan change, error handling    |
+| `ReportsPage.test.tsx`         | Sort controls, export CSV/JSON, year filter           |
 | `AlertsPage.test.tsx`          | Alert list, severity, run check, unread filter        |
 | `AuditLogsPage.test.tsx`       | Table rendering, empty state, error, accessibility    |
 | `QuestionnairesPage.test.tsx`  | Tabs, list, templates, apply template                 |
@@ -835,7 +839,7 @@ Set `SENTRY_DSN` to enable error tracking and performance monitoring. Adjust `SE
 
 See [CHANGELOG.md](docs/CHANGELOG.md) for the full version history.
 
-**Latest — v0.24.3** (Security Hardening Round 4): Rate-limit auth/billing endpoints, schema input bounds, error boundaries, useQuery migration, K8s security contexts, Docker read-only filesystems. See [CHANGELOG.md](docs/CHANGELOG.md) for the full history.
+**Latest — v0.24.4** (Security Hardening Round 5): Atomic DB transactions (audit + credits committed together), rate-limit SSE endpoint, 4 new frontend test pages, K8s egress network policies. See [CHANGELOG.md](docs/CHANGELOG.md) for the full history.
 
 ---
 

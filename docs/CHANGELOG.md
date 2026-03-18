@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [0.24.4] — 2026-03-18 — Security Hardening Round 5
+
+### Fixed
+
+- **Embedded transaction commit**: `deduct_operation_credits()` in `subscriptions.py` called `await db.commit()` internally, preventing parent-transaction rollback. Replaced with `await db.flush()` — the caller now owns the transaction boundary
+- **Non-atomic audit logging**: `create_estimate` in `carbon.py` called `audit.record()` **after** `db.commit()`, so credit deduction and audit entry lived in separate transactions. Moved `audit.record()` **before** `db.commit()` — report creation, credits, and audit log are now committed atomically
+- **Unthrottled SSE endpoint**: `GET /events/subscribe` had authentication but no rate limit, allowing a single user to hold an unbounded number of long-lived SSE connections. Added `@limiter.limit("10/minute")` decorator
+
+### Added
+
+- **Frontend tests — ForgotPasswordPage**: 5 tests covering form render, submit success, loading state, ApiError display, and generic error fallback
+- **Frontend tests — RegisterPage**: 5 tests covering form render, valid submit, duplicate-email 409, rate-limit 429, and generic error
+- **Frontend tests — BillingPage**: 5 tests covering heading render, plan display, credit balance, plan change flow, and changePlan error handling
+- **Frontend tests — ReportsPage**: 5 tests covering heading render, sort controls, export button, exportReports call, and year filter input
+- **K8s egress policies**: Added `default-deny-egress` (all pods), `allow-backend-egress` (postgres:5432, redis:6379, DNS:53, HTTPS:443), and `allow-frontend-egress` (backend:8000, DNS:53) to `k8s/network-policy.yaml` — closes the egress gap in the zero-trust network model
+
+---
+
 ## [0.24.3] — 2026-03-18 — Security Hardening Round 4
 
 ### Fixed

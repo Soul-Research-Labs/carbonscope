@@ -222,15 +222,15 @@ Request ──► RequestIDMiddleware ──► RequestBodyLimitMiddleware ─�
         ──► Route Handler ──► Global Exception Handler ──► Response
 ```
 
-| Middleware                      | Purpose                                                          |
-| :------------------------------ | :--------------------------------------------------------------- |
-| **RequestIDMiddleware**         | Generates/propagates `X-Request-ID` header for tracing           |
-| **RequestBodyLimitMiddleware**  | Rejects payloads > 10 MB before route processing                 |
-| **RequestLoggingMiddleware**    | Logs `METHOD PATH STATUS DURATION [request_id]`                  |
-| **SecurityHeadersMiddleware**   | Injects CSP, X-Frame-Options, HSTS, X-Content-Type-Options, etc. |
-| **CORSMiddleware**              | `ALLOWED_ORIGINS` enforcement with credentials support           |
-| **SlowAPI Rate Limiter**        | IP-based rate limiting (auth: 10/min, default: 60/min)           |
-| **Global Exception Handler**    | Catches unhandled exceptions → 500 JSON with request ID          |
+| Middleware                     | Purpose                                                          |
+| :----------------------------- | :--------------------------------------------------------------- |
+| **RequestIDMiddleware**        | Generates/propagates `X-Request-ID` header for tracing           |
+| **RequestBodyLimitMiddleware** | Rejects payloads > 10 MB before route processing                 |
+| **RequestLoggingMiddleware**   | Logs `METHOD PATH STATUS DURATION [request_id]`                  |
+| **SecurityHeadersMiddleware**  | Injects CSP, X-Frame-Options, HSTS, X-Content-Type-Options, etc. |
+| **CORSMiddleware**             | `ALLOWED_ORIGINS` enforcement with credentials support           |
+| **SlowAPI Rate Limiter**       | IP-based rate limiting (auth: 10/min, default: 60/min)           |
+| **Global Exception Handler**   | Catches unhandled exceptions → 500 JSON with request ID          |
 
 ### Route Modules (19)
 
@@ -604,24 +604,24 @@ See [SECURITY.md](SECURITY.md) for the complete security policy and vulnerabilit
 
 Production Kubernetes manifests in `k8s/` include:
 
-| Resource             | Purpose                                                             |
-| :------------------- | :------------------------------------------------------------------ |
-| **backend.yaml**     | Deployment (2 replicas) + Service; startup/readiness/liveness probes |
-| **frontend.yaml**    | Deployment (2 replicas) + Service; readOnly root filesystem          |
-| **postgres.yaml**    | StatefulSet with persistent volume                                  |
-| **redis.yaml**       | Deployment for optional caching layer                               |
-| **hpa.yaml**         | HPA for backend (2-8 pods, CPU/memory) + frontend (2-4 pods)        |
-| **pdb.yaml**         | PodDisruptionBudgets for zero-downtime rollouts                     |
-| **ingress.yaml**     | Ingress with TLS termination                                        |
-| **monitoring.yaml**  | Prometheus ServiceMonitor + PrometheusRule alerts                    |
-| **network-policy.yaml** | Namespace-scoped network isolation                                |
-| **cronjob-backup.yaml** | Scheduled PostgreSQL backups to S3                                |
-| **external-secrets.yaml** | AWS Secrets Manager integration via ExternalSecrets operator    |
+| Resource                  | Purpose                                                              |
+| :------------------------ | :------------------------------------------------------------------- |
+| **backend.yaml**          | Deployment (2 replicas) + Service; startup/readiness/liveness probes |
+| **frontend.yaml**         | Deployment (2 replicas) + Service; readOnly root filesystem          |
+| **postgres.yaml**         | StatefulSet with persistent volume                                   |
+| **redis.yaml**            | Deployment for optional caching layer                                |
+| **hpa.yaml**              | HPA for backend (2-8 pods, CPU/memory) + frontend (2-4 pods)         |
+| **pdb.yaml**              | PodDisruptionBudgets for zero-downtime rollouts                      |
+| **ingress.yaml**          | Ingress with TLS termination                                         |
+| **monitoring.yaml**       | Prometheus ServiceMonitor + PrometheusRule alerts                    |
+| **network-policy.yaml**   | Namespace-scoped network isolation                                   |
+| **cronjob-backup.yaml**   | Scheduled PostgreSQL backups to S3                                   |
+| **external-secrets.yaml** | AWS Secrets Manager integration via ExternalSecrets operator         |
 
 #### Health Probes
 
-| Probe         | Path            | Purpose                               |
-| :------------ | :-------------- | :------------------------------------ |
-| **Liveness**  | `/health/live`  | Process alive (no dependency checks)  |
-| **Readiness** | `/health`       | DB connected, ready to serve traffic  |
-| **Startup**   | `/health/live`  | Allows 60s for cold start before liveness kicks in |
+| Probe         | Path           | Purpose                                            |
+| :------------ | :------------- | :------------------------------------------------- |
+| **Liveness**  | `/health/live` | Process alive (no dependency checks)               |
+| **Readiness** | `/health`      | DB connected, ready to serve traffic               |
+| **Startup**   | `/health/live` | Allows 60s for cold start before liveness kicks in |
