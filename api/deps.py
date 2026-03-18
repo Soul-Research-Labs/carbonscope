@@ -159,10 +159,10 @@ def require_credits(operation: str) -> Callable:
 
         try:
             await check_credit_balance(db, user.company_id, operation)
-        except ValueError as e:
+        except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_402_PAYMENT_REQUIRED,
-                detail=str(e),
+                detail="Insufficient credits for this operation",
             )
         return user
 

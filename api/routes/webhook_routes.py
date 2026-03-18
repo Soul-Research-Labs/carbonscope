@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,6 +15,8 @@ from api.models import User
 from api.schemas import PaginatedResponse, WebhookCreate, WebhookDeliveryOut, WebhookOut, WebhookOutPublic, WebhookToggle
 from api.services.webhooks import create_webhook, delete_webhook, list_deliveries, list_webhooks, toggle_webhook
 from api.services import audit
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
@@ -34,7 +38,8 @@ async def add_webhook(
         )
         return wh
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        logger.warning("Webhook creation failed: %s", e)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid webhook configuration")
 
 
 @router.get("/", response_model=PaginatedResponse[WebhookOutPublic])

@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 import re
 import secrets
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+
+logger = logging.getLogger(__name__)
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -365,7 +368,7 @@ async def logout(
                 expires_at = datetime.fromtimestamp(exp_ts, tz=timezone.utc)
                 await revoke_access_token(db, jti, user.id, expires_at)
         except Exception:
-            pass  # Token already invalid, still revoke refresh tokens
+            logger.debug("Token revocation skipped (token already invalid)", exc_info=True)
 
     await revoke_refresh_tokens(db, user.id)
     await db.commit()

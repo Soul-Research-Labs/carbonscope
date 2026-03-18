@@ -49,7 +49,8 @@ async def create_data_listing(
         await db.refresh(listing)
         return listing
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        logger.warning("Create listing failed: %s", e)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Listing creation failed. Report not found or invalid parameters.")
 
 
 @router.get("/listings", response_model=PaginatedResponse[DataListingOut])
@@ -142,7 +143,8 @@ async def purchase_data(
 
         return purchase
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        logger.warning("Marketplace purchase failed: %s", e)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Purchase failed. Cannot buy own listing or listing not found.")
 
 
 @router.get("/my-listings", response_model=PaginatedResponse[DataListingOut])

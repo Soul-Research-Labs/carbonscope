@@ -196,7 +196,11 @@ async def authenticate_user(db: AsyncSession, email: str, password: str) -> User
     """
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
-    if user is None or not verify_password(password, user.hashed_password):
+    if user is None:
+        # Constant-time: always run bcrypt to prevent timing-based enumeration
+        verify_password(password, "$2b$12$LJ3m4ys3Lg2HMOyGMKYxaeGMjPkBO0bJQMNOB8GkBm1oT/3CMhVBi")
+        return None
+    if not verify_password(password, user.hashed_password):
         return None
     if not user.is_active or user.deleted_at is not None:
         return None

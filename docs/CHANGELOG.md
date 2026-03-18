@@ -6,6 +6,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [0.24.5] — 2026-03-19 — Security Hardening Round 6
+
+### Fixed
+
+- **CSV formula injection** (`carbon.py`): Added `_sanitize_csv()` helper that prefixes cell values starting with `=`, `+`, `-`, `@`, `\t`, `\r` with a single quote — prevents spreadsheet formula injection in exported CSV files
+- **Login timing attack** (`auth.py`): `authenticate_user()` now performs a dummy bcrypt verification against a static hash when the user is not found, ensuring constant-time response regardless of email existence — prevents timing-based account enumeration
+- **Email header injection** (`email.py`): Added `_sanitize_header()` that strips `\r`, `\n`, `\x00` from `to` and `subject` fields before MIME construction — prevents header injection in transactional emails
+- **Scheduler unbounded queries** (`scheduler.py`): Refactored alert-check, credit-reset, and token-cleanup to use `LIMIT`/`OFFSET` batching (100 companies per batch, 1000 tokens per flush) — prevents OOM on large datasets
+- **Error detail leakage**: Replaced `detail=str(e)` with generic error messages across 12 endpoints (marketplace_routes×2, stripe_routes×1, billing_routes×1, webhook_routes×1, supply_chain_routes×1, scenario_routes×5, deps×1) — internal error details no longer exposed to clients
+- **Silent exception swallowing**: Replaced bare `except: pass` with `logger.debug(..., exc_info=True)` in `auth_routes.py` (token revocation) and `main.py` (health check DB probe)
+- **Filename path traversal** (`questionnaire_routes.py`): Added explicit path-component stripping (`split('/')[-1].split('\\')[-1]`) before regex sanitization — defense in depth against directory traversal
+- **CSP unsafe-inline** (`next.config.js`): Removed `'unsafe-inline'` from `script-src` directive — tightens Content Security Policy to prevent inline script execution
+- **K8s ingress rate limit** (`ingress.yaml`): Reduced from 60 to 20 requests per minute — aligns with application-layer SlowAPI limits
+- **CompliancePage test failures**: Added `@tanstack/react-query` `useQuery` mock with static report data — fixed 5 pre-existing test failures
+- **MFAPage test failures**: Rewrote with `resolveQuery()` helper pattern enabling per-test `useQuery` data control — fixed 4 pre-existing test failures
+
+### Added
+
+- **Frontend tests — ScenariosPage**: 5 tests covering heading, create form, scenario creation, fetch error, and status filter
+- **Frontend tests — SupplyChainPage**: 4 tests covering heading, scope3 summary, add supplier, and fetch error
+- **Frontend tests — MarketplacePage**: 5 tests covering heading, listing count, filter apply, create modal, and fetch error
+- **Frontend tests — ResetPasswordPage**: 5 tests covering form render, password mismatch, weak password, successful reset, and API error
+
+---
+
 ## [0.24.4] — 2026-03-18 — Security Hardening Round 5
 
 ### Fixed

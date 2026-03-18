@@ -190,7 +190,7 @@ async def health():
             db_ok = True
             break
     except Exception:
-        pass
+        logger.debug("Health check DB probe failed", exc_info=True)
 
     return {
         "status": "ok" if db_ok else "degraded",

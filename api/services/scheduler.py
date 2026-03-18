@@ -116,38 +116,43 @@ async def _run_periodic_checks() -> None:
             logger.info("Running periodic alert checks...")
 
             async with async_session() as db:
-                result = await db.execute(select(Company.id))
-                company_ids = [row[0] for row in result.all()]
-
                 total_alerts = 0
-                for company_id in company_ids:
-                    try:
-                        # Get existing alert report IDs for dedup
-                        existing_ids = await _get_latest_alert_report_ids(db, company_id)
-                        new_alerts = await check_company_alerts(db, company_id)
+                offset = 0
+                _BATCH = 100
+                while True:
+                    result = await db.execute(
+                        select(Company.id).order_by(Company.id).limit(_BATCH).offset(offset)
+                    )
+                    company_ids = [row[0] for row in result.all()]
+                    if not company_ids:
+                        break
 
-                        # Filter out duplicates
-                        kept = 0
-                        for alert in new_alerts:
-                            meta = alert.metadata_json or {}
-                            if meta.get("latest_report_id") in existing_ids:
-                                await db.delete(alert)
-                            else:
-                                total_alerts += 1
-                                kept += 1
+                    for company_id in company_ids:
+                        try:
+                            existing_ids = await _get_latest_alert_report_ids(db, company_id)
+                            new_alerts = await check_company_alerts(db, company_id)
 
-                        # Notify connected SSE clients
-                        if kept > 0:
-                            publish_event(company_id, "alert.created", {"count": kept})
-                    except Exception:
-                        logger.exception("Alert check failed for company %s", company_id)
+                            kept = 0
+                            for alert in new_alerts:
+                                meta = alert.metadata_json or {}
+                                if meta.get("latest_report_id") in existing_ids:
+                                    await db.delete(alert)
+                                else:
+                                    total_alerts += 1
+                                    kept += 1
 
+                            if kept > 0:
+                                publish_event(company_id, "alert.created", {"count": kept})
+                        except Exception:
+                            logger.exception("Alert check failed for company %s", company_id)
+
+                    offset += _BATCH
+
+                await db.commit()
                 if total_alerts > 0:
-                    await db.commit()
-                    logger.info("Created %d new alerts across %d companies", total_alerts, len(company_ids))
+                    logger.info("Created %d new alerts", total_alerts)
                 else:
-                    await db.commit()
-                    logger.debug("No new alerts for %d companies", len(company_ids))
+                    logger.debug("No new alerts")
 
         except asyncio.CancelledError:
             logger.info("Scheduler shutting down")
@@ -178,20 +183,31 @@ async def _run_monthly_credit_reset() -> None:
                 )
 
                 async with async_session() as db:
-                    result = await db.execute(select(Company.id))
-                    company_ids = [row[0] for row in result.all()]
+                    offset = 0
+                    _BATCH = 100
+                    total_reset = 0
+                    while True:
+                        result = await db.execute(
+                            select(Company.id).order_by(Company.id).limit(_BATCH).offset(offset)
+                        )
+                        company_ids = [row[0] for row in result.all()]
+                        if not company_ids:
+                            break
 
-                    for company_id in company_ids:
-                        try:
-                            sub = await get_or_create_subscription(db, company_id)
-                            monthly = PLAN_LIMITS.get(sub.plan, PLAN_LIMITS["free"])["monthly_credits"]
-                            await grant_credits(db, company_id, monthly, "monthly_reset")
-                        except Exception:
-                            logger.exception("Credit reset failed for company %s", company_id)
+                        for company_id in company_ids:
+                            try:
+                                sub = await get_or_create_subscription(db, company_id)
+                                monthly = PLAN_LIMITS.get(sub.plan, PLAN_LIMITS["free"])["monthly_credits"]
+                                await grant_credits(db, company_id, monthly, "monthly_reset")
+                                total_reset += 1
+                            except Exception:
+                                logger.exception("Credit reset failed for company %s", company_id)
+
+                        offset += _BATCH
 
                     await db.commit()
                     last_reset_month = now.month
-                    logger.info("Monthly credit reset complete for %d companies", len(company_ids))
+                    logger.info("Monthly credit reset complete for %d companies", total_reset)
 
         except asyncio.CancelledError:
             logger.info("Credit reset scheduler shutting down")
@@ -233,13 +249,18 @@ async def _run_token_cleanup() -> None:
             async with async_session() as db:
                 total = 0
                 for model in (RevokedToken, RefreshToken, PasswordResetToken):
-                    result = await db.execute(
-                        select(model).where(model.expires_at < now)
-                    )
-                    rows = result.scalars().all()
-                    for row in rows:
-                        await db.delete(row)
-                    total += len(rows)
+                    _BATCH = 1000
+                    while True:
+                        result = await db.execute(
+                            select(model).where(model.expires_at < now).limit(_BATCH)
+                        )
+                        rows = result.scalars().all()
+                        if not rows:
+                            break
+                        for row in rows:
+                            await db.delete(row)
+                        total += len(rows)
+                        await db.flush()
                 await db.commit()
                 if total > 0:
                     logger.info("Cleaned up %d expired tokens", total)

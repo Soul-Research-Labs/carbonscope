@@ -18,11 +18,44 @@ vi.mock("@/lib/api", () => ({
 }));
 
 vi.mock("@/lib/auth-context", () => ({
-  useAuth: () => ({ user: { email: "u@test.com" }, loading: false }),
+  useAuth: () => ({
+    user: { email: "u@test.com", company_id: "c1" },
+    loading: false,
+  }),
 }));
 
 vi.mock("@/components/Skeleton", () => ({
   PageSkeleton: () => <div>Loading...</div>,
+}));
+
+vi.mock("@tanstack/react-query", () => ({
+  useQuery: () => ({
+    data: {
+      items: [
+        {
+          id: "r1",
+          year: 2024,
+          total: 5000,
+          company_id: "c1",
+          scope1: 1000,
+          scope2: 2000,
+          scope3: 2000,
+          breakdown: null,
+          confidence: 0.85,
+          sources: [],
+          assumptions: null,
+          methodology_version: "ghg_protocol_v2025",
+          miner_scores: null,
+          created_at: "2024-01-01T00:00:00Z",
+        },
+      ],
+      total: 1,
+    },
+    isLoading: false,
+    isFetching: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
 }));
 
 import CompliancePage from "@/app/compliance/page";

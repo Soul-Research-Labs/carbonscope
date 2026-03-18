@@ -81,7 +81,9 @@ async def upload_questionnaire(
 
     extracted_text = extract_text(content, file_type)
 
-    safe_name = re.sub(r'[^\w\s.\-]', '_', file.filename or 'unknown')[:255]
+    raw_name = file.filename or 'unknown'
+    raw_name = raw_name.split('/')[-1].split('\\')[-1]  # strip path components
+    safe_name = re.sub(r'[^\w\s.\-]', '_', raw_name)[:255]
 
     questionnaire = Questionnaire(
         company_id=user.company_id,

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,6 +23,8 @@ from api.services.scenarios import (
 )
 from api.limiter import limiter
 from api.config import RATE_LIMIT_DEFAULT
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/scenarios", tags=["scenarios"])
 
@@ -44,7 +48,8 @@ async def create_scenario(
             parameters=body.parameters,
         )
     except ScenarioError as e:
-        raise HTTPException(status_code=e.status_code, detail=str(e))
+        logger.warning("Scenario creation failed: %s", e)
+        raise HTTPException(status_code=e.status_code, detail="Scenario operation failed")
 
 
 @router.get("/", response_model=PaginatedResponse[ScenarioOut])
@@ -89,7 +94,8 @@ async def get_scenario(
     try:
         return await svc_get(db, scenario_id, user.company_id)
     except ScenarioError as e:
-        raise HTTPException(status_code=e.status_code, detail=str(e))
+        logger.warning("Get scenario failed: %s", e)
+        raise HTTPException(status_code=e.status_code, detail="Scenario not found")
 
 
 @router.patch("/{scenario_id}", response_model=ScenarioOut)
@@ -105,7 +111,8 @@ async def update_scenario(
     try:
         scenario = await svc_update(db, scenario_id, user.company_id, body.model_dump(exclude_unset=True))
     except ScenarioError as e:
-        raise HTTPException(status_code=e.status_code, detail=str(e))
+        logger.warning("Scenario update failed: %s", e)
+        raise HTTPException(status_code=e.status_code, detail="Scenario operation failed")
     await audit.record(
         db, user_id=user.id, company_id=user.company_id,
         action="update", resource_type="scenario", resource_id=scenario_id,
@@ -125,7 +132,8 @@ async def compute_scenario(
     try:
         scenario = await run_scenario(db, scenario_id, user.company_id)
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        logger.warning("Scenario compute failed: %s", e)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Scenario not found")
 
     # Deduct credits only after computation succeeded
     from api.services.subscriptions import deduct_operation_credits
@@ -147,7 +155,8 @@ async def delete_scenario(
     try:
         await svc_delete(db, scenario_id, user.company_id)
     except ScenarioError as e:
-        raise HTTPException(status_code=e.status_code, detail=str(e))
+        logger.warning("Scenario deletion failed: %s", e)
+        raise HTTPException(status_code=e.status_code, detail="Scenario operation failed")
     await audit.record(
         db, user_id=user.id, company_id=user.company_id,
         action="delete", resource_type="scenario", resource_id=scenario_id,

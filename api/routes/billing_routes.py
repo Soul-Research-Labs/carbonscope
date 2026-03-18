@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.config import RATE_LIMIT_AUTH, RATE_LIMIT_DEFAULT
 from api.database import get_db
+
+logger = logging.getLogger(__name__)
 from api.deps import get_current_user, require_admin
 from api.limiter import limiter
 from api.models import User
@@ -72,7 +76,8 @@ async def update_subscription(
 
         return sub
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        logger.warning("Plan change failed: %s", e)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Plan change failed. Please verify your selection.")
 
 
 @router.get("/credits", response_model=CreditBalanceOut)

@@ -85,12 +85,18 @@ describe("ReportsPage", () => {
   it("shows export buttons", async () => {
     render(<ReportsPage />);
     await screen.findByText(/emission reports/i);
-    expect(screen.getByRole("button", { name: /export csv/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /export json/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /export csv/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /export json/i }),
+    ).toBeInTheDocument();
   });
 
   it("calls exportReports on export CSV click", async () => {
-    mockExportReports.mockResolvedValueOnce(new Blob(["year,total\n2024,6000\n"]));
+    mockExportReports.mockResolvedValueOnce(
+      new Blob(["year,total\n2024,6000\n"]),
+    );
     render(<ReportsPage />);
     await screen.findByText(/emission reports/i);
     fireEvent.click(screen.getByRole("button", { name: /export csv/i }));

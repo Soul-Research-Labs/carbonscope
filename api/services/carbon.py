@@ -231,6 +231,16 @@ async def delete_report(
 # ── Export ────────────────────────────────────────────────────────────
 
 
+def _sanitize_csv(val: object) -> object:
+    """Neutralise formula-injection prefixes for CSV export."""
+    if isinstance(val, (int, float)) or val is None:
+        return val
+    s = str(val)
+    if s and s[0] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + s
+    return s
+
+
 async def export_reports(
     db: AsyncSession,
     company_id: str,
@@ -271,8 +281,8 @@ async def export_reports(
     writer.writerow(["id", "year", "scope1", "scope2", "scope3", "total", "confidence", "methodology_version", "created_at"])
     for r in reports:
         writer.writerow([
-            r.id, r.year, r.scope1, r.scope2, r.scope3, r.total,
-            r.confidence, r.methodology_version,
+            _sanitize_csv(r.id), r.year, r.scope1, r.scope2, r.scope3, r.total,
+            r.confidence, _sanitize_csv(r.methodology_version),
             r.created_at.isoformat() if r.created_at else "",
         ])
     return output.getvalue().encode(), "text/csv", "reports.csv"

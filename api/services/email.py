@@ -32,8 +32,15 @@ def _mask_email(email: str) -> str:
     return f"{local[0]}***@{parts[1]}" if local else f"***@{parts[1]}"
 
 
+def _sanitize_header(value: str) -> str:
+    """Strip characters that could allow email header injection."""
+    return value.replace("\r", "").replace("\n", "").replace("\x00", "")
+
+
 async def send_email(to: str, subject: str, html_body: str) -> bool:
     """Send an email asynchronously. Returns True on success, False on failure."""
+    to = _sanitize_header(to)
+    subject = _sanitize_header(subject)
     if not _smtp_configured:
         logger.info("Email (dev mode — SMTP not configured): to=%s subject=%s", _mask_email(to), subject)
         logger.debug("Email body: %s", html_body[:200])

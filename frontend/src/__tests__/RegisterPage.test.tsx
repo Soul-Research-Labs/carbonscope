@@ -33,11 +33,17 @@ vi.mock("@/components/FormField", () => ({
     children?: React.ReactNode;
   }) => (
     <div>
-      <label htmlFor={label}>
-        {label}
-      </label>
-      {children ? children : (
-        <input id={label} type={type} value={value} onChange={onChange} aria-label={label} />
+      <label htmlFor={label}>{label}</label>
+      {children ? (
+        children
+      ) : (
+        <input
+          id={label}
+          type={type}
+          value={value}
+          onChange={onChange}
+          aria-label={label}
+        />
       )}
       {error && <span>{error}</span>}
     </div>

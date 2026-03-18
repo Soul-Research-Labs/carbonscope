@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,6 +12,8 @@ from api.database import get_db
 from api.deps import get_current_user, require_admin
 from api.limiter import limiter
 from api.models import User
+
+logger = logging.getLogger(__name__)
 from api.schemas import PaginatedResponse, SupplyChainLinkCreate, SupplyChainLinkOut, SupplyChainLinkUpdate
 from api.services.supply_chain import (
     calc_supplier_scope3,
@@ -51,7 +55,8 @@ async def add_supplier(
         })
         return link
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        logger.warning("Supply chain link creation failed: %s", e)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid supplier link parameters")
 
 
 @router.get("/suppliers")
