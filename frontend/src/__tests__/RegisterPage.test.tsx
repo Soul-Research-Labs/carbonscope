@@ -22,6 +22,7 @@ vi.mock("@/components/FormField", () => ({
     type,
     value,
     onChange,
+    onBlur,
     error,
     children,
   }: {
@@ -29,6 +30,7 @@ vi.mock("@/components/FormField", () => ({
     type?: string;
     value?: string;
     onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
     error?: string;
     children?: React.ReactNode;
   }) => (
@@ -42,6 +44,7 @@ vi.mock("@/components/FormField", () => ({
           type={type}
           value={value}
           onChange={onChange}
+          onBlur={onBlur}
           aria-label={label}
         />
       )}
@@ -55,6 +58,7 @@ vi.mock("@/lib/validation", () => ({
   validateRegisterForm: vi.fn().mockReturnValue({}),
 }));
 
+import { validateRegisterForm, validateRegisterField } from "@/lib/validation";
 import RegisterPage from "@/app/register/page";
 
 describe("RegisterPage", () => {
@@ -132,5 +136,94 @@ describe("RegisterPage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /create account/i }));
     expect(await screen.findByText("Network error")).toBeInTheDocument();
+  });
+
+  it("blocks submit when validation fails", async () => {
+    vi.mocked(validateRegisterForm).mockReturnValueOnce({
+      email: "Email is required",
+    });
+    render(<RegisterPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: /create account/i }));
+
+    const errors = await screen.findAllByText("Email is required");
+    expect(errors.length).toBeGreaterThanOrEqual(1);
+    expect(mockRegister).not.toHaveBeenCalled();
+  });
+
+  it("shows inline error on blur with invalid email", async () => {
+    vi.mocked(validateRegisterField).mockReturnValueOnce(
+      "Enter a valid email address",
+    );
+    render(<RegisterPage />);
+
+    const emailInput = screen.getByLabelText("Email");
+    fireEvent.change(emailInput, { target: { value: "bad" } });
+    fireEvent.blur(emailInput);
+
+    expect(
+      await screen.findByText("Enter a valid email address"),
+    ).toBeInTheDocument();
+  });
+
+  it("disables submit and shows 'Creating account...' while submitting", async () => {
+    let resolveRegister!: () => void;
+    mockRegister.mockReturnValueOnce(
+      new Promise<void>((r) => {
+        resolveRegister = r;
+      }),
+    );
+    render(<RegisterPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: /create account/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Creating account...")).toBeInTheDocument();
+    });
+    expect(screen.getByText("Creating account...")).toBeDisabled();
+
+    resolveRegister();
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: /create account/i }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("shows 'Registration failed' for non-Error rejection", async () => {
+    mockRegister.mockRejectedValueOnce("unknown");
+    render(<RegisterPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: /create account/i }));
+    expect(
+      await screen.findByText("Registration failed"),
+    ).toBeInTheDocument();
+  });
+
+  it("shows err.message for non-409/429 status errors", async () => {
+    const err = Object.assign(new Error("Internal error"), { status: 500 });
+    mockRegister.mockRejectedValueOnce(err);
+    render(<RegisterPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: /create account/i }));
+    expect(await screen.findByText("Internal error")).toBeInTheDocument();
+  });
+
+  it("renders industry select options", () => {
+    render(<RegisterPage />);
+    const options = screen.getAllByRole("option");
+    const labels = options.map((o) => o.textContent);
+    expect(labels).toContain("Energy");
+    expect(labels).toContain("Manufacturing");
+    expect(labels).toContain("Technology");
+  });
+
+  it("renders region select options", () => {
+    render(<RegisterPage />);
+    const options = screen.getAllByRole("option");
+    const labels = options.map((o) => o.textContent);
+    expect(labels).toContain("United States");
+    expect(labels).toContain("European Union");
+    expect(labels).toContain("Other");
   });
 });

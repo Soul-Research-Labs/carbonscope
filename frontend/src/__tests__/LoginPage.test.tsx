@@ -107,5 +107,96 @@ describe("LoginPage", () => {
     render(<LoginPage />);
     const forgotLink = screen.getByText("Forgot password?");
     expect(forgotLink.closest("a")).toHaveAttribute("href", "/forgot-password");
+    expect(screen.getByText("Register").closest("a")).toHaveAttribute(
+      "href",
+      "/register",
+    );
+  });
+
+  it("disables submit and shows 'Signing in...' while submitting", async () => {
+    let resolveLogin!: () => void;
+    mockLogin.mockReturnValueOnce(
+      new Promise<void>((r) => {
+        resolveLogin = r;
+      }),
+    );
+    render(<LoginPage />);
+
+    fireEvent.change(screen.getByLabelText("Email"), {
+      target: { value: "u@t.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Password"), {
+      target: { value: "pw" },
+    });
+    fireEvent.click(screen.getByText("Sign In"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Signing in...")).toBeInTheDocument();
+    });
+    expect(screen.getByText("Signing in...")).toBeDisabled();
+
+    resolveLogin();
+    await waitFor(() => {
+      expect(screen.getByText("Sign In")).toBeInTheDocument();
+    });
+  });
+
+  it("shows error message for non-401/429 status errors", async () => {
+    const err = Object.assign(new Error("Server Error"), { status: 500 });
+    mockLogin.mockRejectedValueOnce(err);
+    render(<LoginPage />);
+
+    fireEvent.change(screen.getByLabelText("Email"), {
+      target: { value: "u@t.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Password"), {
+      target: { value: "pw" },
+    });
+    fireEvent.click(screen.getByText("Sign In"));
+
+    expect(await screen.findByText("Server Error")).toBeInTheDocument();
+  });
+
+  it("shows error message for errors without status property", async () => {
+    mockLogin.mockRejectedValueOnce(new Error("Network down"));
+    render(<LoginPage />);
+
+    fireEvent.change(screen.getByLabelText("Email"), {
+      target: { value: "u@t.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Password"), {
+      target: { value: "pw" },
+    });
+    fireEvent.click(screen.getByText("Sign In"));
+
+    expect(await screen.findByText("Network down")).toBeInTheDocument();
+  });
+
+  it("clears previous error on new submit attempt", async () => {
+    const err = Object.assign(new Error("Unauthorized"), { status: 401 });
+    mockLogin.mockRejectedValueOnce(err);
+    render(<LoginPage />);
+
+    fireEvent.change(screen.getByLabelText("Email"), {
+      target: { value: "u@t.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Password"), {
+      target: { value: "pw" },
+    });
+    fireEvent.click(screen.getByText("Sign In"));
+
+    expect(
+      await screen.findByText("Invalid email or password."),
+    ).toBeInTheDocument();
+
+    // Second submit should clear the error while in flight
+    mockLogin.mockResolvedValueOnce(undefined);
+    fireEvent.click(screen.getByText("Sign In"));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText("Invalid email or password."),
+      ).not.toBeInTheDocument();
+    });
   });
 });
