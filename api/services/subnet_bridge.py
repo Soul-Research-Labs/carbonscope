@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import threading
+import time
 from typing import Any
 
 from carbonscope.protocol import CarbonSynapse
@@ -24,6 +25,45 @@ _subtensor = None
 _metagraph = None
 _wallet = None
 _bt_lock = threading.Lock()
+
+# ── Circuit breaker ──────────────────────────────────────────────────
+_CB_FAILURE_THRESHOLD = 3   # consecutive failures before opening
+_CB_RECOVERY_TIMEOUT = 60   # seconds to wait before half-open attempt
+
+_cb_failures: int = 0
+_cb_opened_at: float = 0.0
+_cb_lock = threading.Lock()
+
+
+def _cb_record_success() -> None:
+    global _cb_failures, _cb_opened_at
+    with _cb_lock:
+        _cb_failures = 0
+        _cb_opened_at = 0.0
+
+
+def _cb_record_failure() -> None:
+    global _cb_failures, _cb_opened_at
+    with _cb_lock:
+        _cb_failures += 1
+        if _cb_failures >= _CB_FAILURE_THRESHOLD:
+            _cb_opened_at = time.monotonic()
+            logger.warning(
+                "Circuit breaker OPEN after %d consecutive failures; "
+                "will retry in %ds",
+                _cb_failures, _CB_RECOVERY_TIMEOUT,
+            )
+
+
+def _cb_is_open() -> bool:
+    with _cb_lock:
+        if _cb_failures < _CB_FAILURE_THRESHOLD:
+            return False
+        elapsed = time.monotonic() - _cb_opened_at
+        if elapsed >= _CB_RECOVERY_TIMEOUT:
+            # Allow a half-open attempt
+            return False
+        return True
 
 
 def _init_bt() -> None:
@@ -70,7 +110,28 @@ async def estimate_emissions(
 
     Returns a dict with keys: emissions, breakdown, confidence, sources,
     assumptions, methodology_version, miner_scores.
+
+    Raises RuntimeError if the circuit breaker is open or no valid responses
+    are received.
     """
+    if _cb_is_open():
+        raise RuntimeError("Circuit breaker open — subnet temporarily unavailable")
+
+    try:
+        result = await _do_subnet_query(questionnaire, context, timeout)
+        _cb_record_success()
+        return result
+    except RuntimeError:
+        _cb_record_failure()
+        raise
+
+
+async def _do_subnet_query(
+    questionnaire: dict[str, Any],
+    context: dict[str, Any] | None = None,
+    timeout: float = 30.0,
+) -> dict[str, Any]:
+    """Internal: perform the actual subnet query without circuit breaker logic."""
     _init_bt()
 
     synapse = CarbonSynapse(
