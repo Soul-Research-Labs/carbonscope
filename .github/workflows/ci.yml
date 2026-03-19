@@ -120,6 +120,27 @@ jobs:
           SECRET_KEY: ci-test-secret-key-12345
           DATABASE_URL: "sqlite+aiosqlite:///:memory:"
 
+      - name: Export OpenAPI spec
+        run: |
+          python -c "
+          import json
+          from api.main import app
+          spec = app.openapi()
+          with open('openapi.json', 'w') as f:
+              json.dump(spec, f, indent=2)
+          print(f\"OpenAPI {spec['info']['version']}: {len(spec['paths'])} paths exported\")
+          "
+        env:
+          SECRET_KEY: ci-test-secret-key-12345
+          DATABASE_URL: "sqlite+aiosqlite:///:memory:"
+
+      - name: Upload OpenAPI spec artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: openapi-spec-py${{ matrix.python-version }}
+          path: openapi.json
+          retention-days: 90
+
   lint:
     runs-on: ubuntu-latest
     steps:
