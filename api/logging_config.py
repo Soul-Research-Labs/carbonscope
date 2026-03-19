@@ -12,6 +12,7 @@ from __future__ import annotations
 import contextvars
 import json
 import logging
+import os
 import re
 from datetime import datetime, timezone
 
@@ -65,16 +66,22 @@ class RequestIDFilter(logging.Filter):
 class JSONFormatter(logging.Formatter):
     """Emit one JSON object per log line."""
 
+    def __init__(self) -> None:
+        super().__init__()
+        self._service = os.getenv("OTEL_SERVICE_NAME", "carbonscope-api")
+        self._env = os.getenv("ENV", "development")
+
     def format(self, record: logging.LogRecord) -> str:
         log_entry = {
             "timestamp": datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat(),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
+            "service": self._service,
+            "environment": self._env,
         }
         if record.exc_info and record.exc_info[1]:
             log_entry["exception"] = self.formatException(record.exc_info)
-        # Include request_id if threaded through
         if hasattr(record, "request_id"):
             log_entry["request_id"] = record.request_id
         return json.dumps(log_entry, default=str)
