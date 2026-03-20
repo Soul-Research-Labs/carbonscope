@@ -13,8 +13,8 @@
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.10+">
   <img src="https://img.shields.io/badge/node-18%2B-339933?style=flat-square&logo=node.js&logoColor=white" alt="Node 18+">
-  <img src="https://img.shields.io/badge/version-0.24.5-orange?style=flat-square" alt="Version 0.24.5">
-  <img src="https://img.shields.io/badge/tests-745%20backend%20%7C%20170%20frontend-brightgreen?style=flat-square" alt="Tests">
+  <img src="https://img.shields.io/badge/version-0.25.0-orange?style=flat-square" alt="Version 0.25.0">
+  <img src="https://img.shields.io/badge/tests-768%20backend%20%7C%20214%20frontend-brightgreen?style=flat-square" alt="Tests">
   <img src="https://img.shields.io/badge/endpoints-100%2B-7B61FF?style=flat-square" alt="100+ API Endpoints">
   <img src="https://img.shields.io/badge/Bittensor-Subnet-000000?style=flat-square" alt="Bittensor Subnet">
 </p>
@@ -384,7 +384,7 @@ cd subtensor && docker compose down -v
 
 ## Running Tests
 
-### Backend Tests (745)
+### Backend Tests (768)
 
 ```bash
 pytest tests/ -v                                      # Full suite
@@ -393,7 +393,7 @@ pytest tests/ --cov=api --cov-report=term-missing     # With coverage
 pytest tests/ -k "test_auth" -v                       # Pattern matching
 ```
 
-### Frontend Tests (170)
+### Frontend Tests (214)
 
 ```bash
 cd frontend
@@ -402,7 +402,7 @@ npm run test:watch        # Watch mode for development
 ```
 
 <details>
-<summary><strong>Backend Test Coverage (43 test files)</strong></summary>
+<summary><strong>Backend Test Coverage (46 test files)</strong></summary>
 
 | File                                 | Coverage                                                    |
 | :----------------------------------- | :---------------------------------------------------------- |
@@ -439,8 +439,6 @@ npm run test:watch        # Watch mode for development
 | `test_validator.py`                  | Validator scoring, EMA persistence, weight setting          |
 | `test_phase13_14_hardening.py`       | Redis limiter, scheduler locks, token cleanup, indexes      |
 | `test_stripe_routes.py`              | Stripe webhook signature verification, event handling       |
-| `test_seller.py`                     | Marketplace seller dashboard, revenue, sales pagination     |
-| `test_phase11_12.py`                 | Sentry integration, Docker healthchecks, OTEL tracing       |
 | `test_phase24_features.py`           | PCAF, reviews, MFA service, CSRD/ISSB/SECR compliance       |
 | `test_phase25_hardening.py`          | Audit logging, rate limiting on all routes                  |
 | `test_phase26_mfa_races.py`          | MFA login enforcement, registration race conditions         |
@@ -451,11 +449,14 @@ npm run test:watch        # Watch mode for development
 | `test_url_validator.py`              | SSRF protection: scheme, hostname, private IP, DNS          |
 | `test_templates.py`                  | Questionnaire template catalog: list, get, parametrized     |
 | `test_startup_policy.py`             | Production startup enforcement, config validation           |
+| `test_events_routes.py`              | SSE event bus, subscription, publish, streaming             |
+| `test_gdpr_hard_delete.py`           | GDPR hard delete cascade, data purge verification           |
+| `test_team_routes.py`                | Multi-tenant team management, invitations, roles            |
 
 </details>
 
 <details>
-<summary><strong>Frontend Test Coverage (30 test files, 170 tests)</strong></summary>
+<summary><strong>Frontend Test Coverage (35 test files, 214 tests)</strong></summary>
 
 | File                           | Coverage                                              |
 | :----------------------------- | :---------------------------------------------------- |
@@ -488,6 +489,12 @@ npm run test:watch        # Watch mode for development
 | `AuditLogsPage.test.tsx`       | Table rendering, empty state, error, accessibility    |
 | `QuestionnairesPage.test.tsx`  | Tabs, list, templates, apply template                 |
 | `AuthContext.test.tsx`         | JWT decoding, localStorage, login/logout/register     |
+| `MarketplacePage.test.tsx`     | Listing count, filter, create modal, fetch error      |
+| `ScenariosPage.test.tsx`       | Create form, scenario creation, status filter         |
+| `SupplyChainPage.test.tsx`     | Scope 3 summary, add supplier, fetch error            |
+| `ResetPasswordPage.test.tsx`   | Password mismatch, weak password, successful reset    |
+| `useEventSource.test.ts`       | SSE hook lifecycle, reconnect, event handling         |
+| `validation.test.ts`           | Input validation helpers, edge cases                  |
 
 </details>
 
@@ -721,7 +728,7 @@ carbonscope/
 ├── alembic/                        # Database migrations
 ├── data/emission_factors/          # EPA, eGRID, IEA, DEFRA JSON datasets
 ├── scripts/                        # Shell scripts (register, run miner/validator)
-├── tests/                          # 745 backend tests (pytest, 43 files)
+├── tests/                          # 768 backend tests (pytest, 46 files)
 ├── docker-compose.yml              # Development stack
 ├── docker-compose.prod.yml         # Production stack (PostgreSQL)
 ├── Dockerfile                      # Multi-stage (backend + frontend)
@@ -839,7 +846,7 @@ Set `SENTRY_DSN` to enable error tracking and performance monitoring. Adjust `SE
 
 See [CHANGELOG.md](docs/CHANGELOG.md) for the full version history.
 
-**Latest — v0.24.5** (Security Hardening Round 6): CSV formula injection prevention, login-timing constant-time defence, email header injection sanitisation, scheduler batch queries, generic error messages (12 endpoints), CSP tightened, K8s ingress rate limit reduced, 4 new frontend test pages, 9 pre-existing test failures fixed. See [CHANGELOG.md](docs/CHANGELOG.md) for the full history.
+**Latest — v0.25.0** (Round 3 Gap Analysis): Open redirect fix, specific exception handling, Pydantic request body for admin endpoints, magic-byte file upload validation, session expiry toast, webhook exponential backoff with jitter, health check 503 on degraded, K8s RBAC + image pinning, toast feedback on 5 pages, centralized constants, supply chain schema fix, nginx static asset caching. 768 backend tests, 214 frontend tests across 81 files. See [CHANGELOG.md](docs/CHANGELOG.md) for the full history.
 
 ---
 

@@ -65,7 +65,10 @@ export default function Navbar() {
                       : "text-[var(--muted)] hover:text-[var(--foreground)]"
                   }`}
                 >
-                  <span role="img" aria-hidden="true">{item.icon}</span> {item.label}
+                  <span role="img" aria-hidden="true">
+                    {item.icon}
+                  </span>{" "}
+                  {item.label}
                 </Link>
               );
             })}
@@ -143,7 +146,10 @@ export default function Navbar() {
                     : "text-[var(--muted)] hover:text-[var(--foreground)]"
                 }`}
               >
-                <span role="img" aria-hidden="true">{item.icon}</span> {item.label}
+                <span role="img" aria-hidden="true">
+                  {item.icon}
+                </span>{" "}
+                {item.label}
               </Link>
             );
           })}

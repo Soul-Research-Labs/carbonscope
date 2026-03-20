@@ -6,6 +6,42 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [0.25.0] — 2026-03-20 — Round 3 Gap Analysis
+
+### Security
+
+- **Open redirect fix** (`auth-context.tsx`): Replaced `startsWith("/")` redirect check with `/^\/[^/\\]/` regex to reject `//evil.com` double-slash payloads
+- **Bare except clauses** (`auth_routes.py`): Replaced two `except Exception:` with `except (OSError, ConnectionError, TimeoutError, ValueError)` for targeted error handling
+- **Admin grant credits** (`billing_routes.py`): Moved `amount` from query parameter to Pydantic request body (`CreditGrantRequest`) with `Field(gt=0, le=1_000_000)` validation
+- **File upload validation** (`questionnaire_routes.py`): Added magic-byte verification for PDF/DOCX/XLSX after file read; added client-side file size/type validation on questionnaires page
+
+### Fixed
+
+- **Supply chain schema mismatch** (`supply_chain_routes.py`, `schemas.py`): Created `SupplierListItem` and `BuyerListItem` schemas matching actual service return shapes — resolves response serialization errors on list endpoints
+- **Health check status code** (`main.py`): `/health` now returns HTTP 503 when database or Redis is degraded (was always 200)
+- **Webhook retry backoff** (`webhooks.py`): Replaced fixed retry delays with exponential backoff + random jitter to prevent thundering herd
+- **Stripe webhook rate limit** (`stripe_routes.py`): Increased from 60 to 300 requests/minute to prevent dropped events during Stripe burst delivery
+- **EmissionReportOut typing** (`schemas.py`): `breakdown` typed as `dict[str, Any]`, `confidence` gets `Field(ge=0.0, le=1.0)`, `sources`/`assumptions` typed as `list[str]`
+
+### Added
+
+- **Session expiry toast** (`auth-context.tsx`, `layout.tsx`): Toast notification on session expiry before redirect to login; swapped `ToastProvider`/`AuthProvider` nesting order
+- **Toast feedback**: Added success toast notifications on alerts, billing, scenarios, supply-chain, and marketplace pages
+- **Compliance empty state** (`compliance/page.tsx`): Added empty `<option>` when no reports are available
+- **Centralized constants** (`constants.ts`): Extracted shared `INDUSTRIES` and `REGIONS` arrays with `industryLabel()` helper; deduplicated register and settings pages
+- **Webhook URL uniqueness** (`models.py`): Added `UniqueConstraint("company_id", "url")` on Webhook model
+- **K8s RBAC** (`backend.yaml`): Added `ServiceAccount`, `Role` (configmap read), and `RoleBinding` for backend pods
+- **Navbar accessibility** (`Navbar.tsx`): Wrapped emoji icons in `<span role="img" aria-hidden="true">` for screen readers
+- **Nginx static caching** (`nginx.conf`): Added `/_next/static/` location with `expires 1y` and `Cache-Control: public, immutable`
+
+### Infrastructure
+
+- **K8s image pinning** (`backend.yaml`, `frontend.yaml`): Pinned images to `v0.6.0` with `imagePullPolicy: IfNotPresent`
+- **CI hardening** (`ci.yml`): Disabled semgrep telemetry with `SEMGREP_SEND_METRICS: "off"`
+- **CSP documentation** (`next.config.js`): Added TODO comment documenting `unsafe-inline` in style-src
+
+---
+
 ## [0.24.5] — 2026-03-19 — Security Hardening Round 6
 
 ### Fixed
