@@ -47,9 +47,10 @@ export default function BenchmarksPage() {
       <div className="mb-8 flex items-center justify-between">
         <h1 className="text-3xl font-bold">Industry Benchmarks</h1>
         <select
-          className="rounded bg-gray-700 px-3 py-2 text-white"
+          className="input w-auto"
           value={industry}
           onChange={(e) => setIndustry(e.target.value)}
+          aria-label="Select industry"
         >
           {[
             "technology",
@@ -78,11 +79,8 @@ export default function BenchmarksPage() {
           </h2>
           <div className="grid gap-4 sm:grid-cols-3">
             {Object.entries(benchmarks).map(([key, val]) => (
-              <div
-                key={key}
-                className="rounded-lg border border-gray-700 bg-gray-800 p-4"
-              >
-                <p className="text-sm text-gray-400">
+              <div key={key} className="card">
+                <p className="text-sm text-[var(--muted)]">
                   {key.replace(/_/g, " ")}
                 </p>
                 <p className="mt-1 text-2xl font-bold">
@@ -98,9 +96,9 @@ export default function BenchmarksPage() {
       {peers && (
         <section>
           <h2 className="mb-4 text-xl font-semibold">Peer Comparison</h2>
-          <div className="overflow-x-auto rounded-lg border border-gray-700">
+          <div className="overflow-x-auto rounded-lg border border-[var(--card-border)]">
             <table className="w-full text-left text-sm">
-              <thead className="bg-gray-800 text-gray-400">
+              <thead className="bg-[var(--card)] text-[var(--muted)]">
                 <tr>
                   {Object.keys(peers).map((key) => (
                     <th key={key} className="px-4 py-3">
@@ -109,7 +107,7 @@ export default function BenchmarksPage() {
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-700">
+              <tbody className="divide-y divide-[var(--card-border)]">
                 <tr>
                   {Object.values(peers).map((val, i) => (
                     <td key={i} className="px-4 py-3">

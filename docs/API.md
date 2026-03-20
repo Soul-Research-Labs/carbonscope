@@ -1736,10 +1736,11 @@ Authorization: Bearer <token>  (Admin only)
 ```
 
 **Request Body** (`InviteCreate`):
+
 ```json
 {
   "email": "newmember@example.com",
-  "role": "member"          // "admin" | "member"
+  "role": "member" // "admin" | "member"
 }
 ```
 
@@ -1756,6 +1757,7 @@ POST /team/invite/accept
 No auth required — uses the invite token from the email link.
 
 **Request Body** (`InviteAccept`):
+
 ```json
 {
   "token": "<invite-token>",

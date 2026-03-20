@@ -108,7 +108,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem("user", JSON.stringify(u));
       setUser(u);
       const redirect = searchParams.get("redirect");
-      router.push(redirect && redirect.startsWith("/") ? redirect : "/dashboard");
+      router.push(
+        redirect && redirect.startsWith("/") ? redirect : "/dashboard",
+      );
     },
     [router, searchParams],
   );

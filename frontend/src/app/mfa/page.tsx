@@ -117,22 +117,25 @@ export default function MFAPage() {
           <h2 className="mb-4 text-xl font-semibold">Setup TOTP</h2>
 
           <div className="mb-4">
-            <p className="mb-1 text-sm text-gray-400">
+            <p className="mb-1 text-sm text-[var(--muted)]">
               Scan this QR code with your authenticator app, or enter the secret
               manually:
             </p>
-            <code className="block rounded bg-gray-900 p-3 text-sm text-emerald-400 break-all">
+            <code className="block rounded bg-[var(--background)] p-3 text-sm text-emerald-400 break-all">
               {setup.secret}
             </code>
           </div>
 
           <div className="mb-4">
-            <p className="mb-1 text-sm text-gray-400">
+            <p className="mb-1 text-sm text-[var(--muted)]">
               Backup codes (save securely):
             </p>
             <div className="grid grid-cols-2 gap-1">
               {setup.backup_codes.map((code, i) => (
-                <code key={i} className="rounded bg-gray-900 px-2 py-1 text-sm">
+                <code
+                  key={i}
+                  className="rounded bg-[var(--background)] px-2 py-1 text-sm"
+                >
                   {code}
                 </code>
               ))}
@@ -141,7 +144,7 @@ export default function MFAPage() {
 
           <div className="flex gap-3">
             <input
-              className="rounded bg-gray-700 px-3 py-2 text-white"
+              className="input"
               placeholder="Enter TOTP code"
               value={totpCode}
               onChange={(e) => setTotpCode(e.target.value)}
@@ -164,12 +167,12 @@ export default function MFAPage() {
           <h2 className="mb-2 text-lg font-semibold text-red-400">
             Disable MFA
           </h2>
-          <p className="mb-4 text-sm text-gray-400">
+          <p className="mb-4 text-sm text-[var(--muted)]">
             Enter your current TOTP code to disable multi-factor authentication.
           </p>
           <div className="flex gap-3">
             <input
-              className="rounded bg-gray-700 px-3 py-2 text-white"
+              className="input"
               placeholder="TOTP code"
               value={disableCode}
               onChange={(e) => setDisableCode(e.target.value)}

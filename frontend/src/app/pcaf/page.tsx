@@ -127,16 +127,18 @@ export default function PCAFPage() {
           <h3 className="mb-2 font-semibold">Create Portfolio</h3>
           <div className="flex gap-4">
             <input
-              className="rounded bg-gray-700 px-3 py-2 text-white"
+              className="input"
               placeholder="Portfolio name"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
+              aria-label="Portfolio name"
             />
             <input
               type="number"
-              className="w-24 rounded bg-gray-700 px-3 py-2 text-white"
+              className="w-24 input"
               value={newYear}
               onChange={(e) => setNewYear(Number(e.target.value))}
+              aria-label="Portfolio year"
             />
             <button
               onClick={handleCreate}
@@ -146,7 +148,7 @@ export default function PCAFPage() {
             </button>
             <button
               onClick={() => setShowCreate(false)}
-              className="text-gray-400"
+              className="text-[var(--muted)]"
             >
               Cancel
             </button>
@@ -157,7 +159,7 @@ export default function PCAFPage() {
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Portfolio list */}
         <div className="space-y-2">
-          <h2 className="mb-2 text-lg font-semibold text-gray-300">
+          <h2 className="mb-2 text-lg font-semibold text-[var(--foreground)]">
             Portfolios
           </h2>
           {portfolios.map((p) => (
@@ -167,15 +169,15 @@ export default function PCAFPage() {
               className={`w-full rounded-lg border p-3 text-left ${
                 selectedId === p.id
                   ? "border-emerald-500 bg-emerald-900/20"
-                  : "border-gray-700 bg-gray-800 hover:border-gray-600"
+                  : "border-[var(--card-border)] bg-[var(--card)] hover:border-[var(--muted)]"
               }`}
             >
               <p className="font-medium">{p.name}</p>
-              <p className="text-sm text-gray-400">Year: {p.year}</p>
+              <p className="text-sm text-[var(--muted)]">Year: {p.year}</p>
             </button>
           ))}
           {portfolios.length === 0 && (
-            <p className="text-gray-500">
+            <p className="text-[var(--muted)]">
               No portfolios yet. Create one to get started.
             </p>
           )}
@@ -186,22 +188,24 @@ export default function PCAFPage() {
           {summary ? (
             <div>
               <div className="mb-4 grid grid-cols-3 gap-4">
-                <div className="rounded-lg bg-gray-800 p-4">
-                  <p className="text-sm text-gray-400">
+                <div className="rounded-lg bg-[var(--card)] p-4">
+                  <p className="text-sm text-[var(--muted)]">
                     Total Financed Emissions
                   </p>
                   <p className="text-2xl font-bold text-emerald-400">
                     {summary.total_financed_emissions.toLocaleString()} tCO₂e
                   </p>
                 </div>
-                <div className="rounded-lg bg-gray-800 p-4">
-                  <p className="text-sm text-gray-400">Weighted Data Quality</p>
+                <div className="rounded-lg bg-[var(--card)] p-4">
+                  <p className="text-sm text-[var(--muted)]">
+                    Weighted Data Quality
+                  </p>
                   <p className="text-2xl font-bold">
                     {summary.weighted_data_quality.toFixed(1)}/5
                   </p>
                 </div>
-                <div className="rounded-lg bg-gray-800 p-4">
-                  <p className="text-sm text-gray-400">Assets</p>
+                <div className="rounded-lg bg-[var(--card)] p-4">
+                  <p className="text-sm text-[var(--muted)]">Assets</p>
                   <p className="text-2xl font-bold">{summary.asset_count}</p>
                 </div>
               </div>
@@ -217,10 +221,10 @@ export default function PCAFPage() {
               </div>
 
               {showAssetForm && (
-                <div className="mb-4 rounded-lg border border-gray-700 bg-gray-800 p-4">
+                <div className="mb-4 rounded-lg border border-[var(--card-border)] bg-[var(--card)] p-4">
                   <div className="grid grid-cols-2 gap-3">
                     <input
-                      className="rounded bg-gray-700 px-3 py-2"
+                      className="input"
                       placeholder="Asset name"
                       onChange={(e) =>
                         setAssetForm({
@@ -228,15 +232,17 @@ export default function PCAFPage() {
                           asset_name: e.target.value,
                         })
                       }
+                      aria-label="Asset name"
                     />
                     <select
-                      className="rounded bg-gray-700 px-3 py-2"
+                      className="input"
                       onChange={(e) =>
                         setAssetForm({
                           ...assetForm,
                           asset_class: e.target.value,
                         })
                       }
+                      aria-label="Asset class"
                     >
                       <option value="corporate_bonds">Corporate Bonds</option>
                       <option value="listed_equity">Listed Equity</option>
@@ -246,7 +252,7 @@ export default function PCAFPage() {
                     </select>
                     <input
                       type="number"
-                      className="rounded bg-gray-700 px-3 py-2"
+                      className="input"
                       placeholder="Outstanding amount"
                       onChange={(e) =>
                         setAssetForm({
@@ -254,10 +260,11 @@ export default function PCAFPage() {
                           outstanding_amount: Number(e.target.value),
                         })
                       }
+                      aria-label="Outstanding amount"
                     />
                     <input
                       type="number"
-                      className="rounded bg-gray-700 px-3 py-2"
+                      className="input"
                       placeholder="Total equity/debt"
                       onChange={(e) =>
                         setAssetForm({
@@ -265,10 +272,11 @@ export default function PCAFPage() {
                           total_equity_debt: Number(e.target.value),
                         })
                       }
+                      aria-label="Total equity or debt"
                     />
                     <input
                       type="number"
-                      className="rounded bg-gray-700 px-3 py-2"
+                      className="input"
                       placeholder="Investee emissions (tCO₂e)"
                       onChange={(e) =>
                         setAssetForm({
@@ -276,15 +284,17 @@ export default function PCAFPage() {
                           investee_emissions_tco2e: Number(e.target.value),
                         })
                       }
+                      aria-label="Investee emissions in tCO2e"
                     />
                     <select
-                      className="rounded bg-gray-700 px-3 py-2"
+                      className="input"
                       onChange={(e) =>
                         setAssetForm({
                           ...assetForm,
                           data_quality_score: Number(e.target.value),
                         })
                       }
+                      aria-label="Data quality score"
                     >
                       {[1, 2, 3, 4, 5].map((s) => (
                         <option key={s} value={s}>
@@ -302,7 +312,7 @@ export default function PCAFPage() {
                     </button>
                     <button
                       onClick={() => setShowAssetForm(false)}
-                      className="text-gray-400"
+                      className="text-[var(--muted)]"
                     >
                       Cancel
                     </button>
@@ -314,11 +324,11 @@ export default function PCAFPage() {
                 {assets.map((a) => (
                   <div
                     key={a.id}
-                    className="flex items-center justify-between rounded-lg border border-gray-700 bg-gray-800 p-3"
+                    className="flex items-center justify-between rounded-lg border border-[var(--card-border)] bg-[var(--card)] p-3"
                   >
                     <div>
                       <p className="font-medium">{a.asset_name}</p>
-                      <p className="text-sm text-gray-400">
+                      <p className="text-sm text-[var(--muted)]">
                         {a.asset_class} · $
                         {a.outstanding_amount.toLocaleString()} ·{" "}
                         {a.financed_emissions_tco2e.toFixed(1)} tCO₂e
@@ -335,7 +345,9 @@ export default function PCAFPage() {
               </div>
             </div>
           ) : (
-            <p className="text-gray-500">Select a portfolio to view details.</p>
+            <p className="text-[var(--muted)]">
+              Select a portfolio to view details.
+            </p>
           )}
         </div>
       </div>

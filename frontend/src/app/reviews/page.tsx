@@ -14,7 +14,7 @@ import {
 } from "@/lib/api";
 
 const STATUS_STYLES: Record<string, string> = {
-  draft: "bg-gray-500/20 text-gray-400",
+  draft: "bg-gray-500/20 text-[var(--muted)]",
   submitted: "bg-blue-500/20 text-blue-400",
   approved: "bg-emerald-500/20 text-emerald-400",
   rejected: "bg-red-500/20 text-red-400",
@@ -118,7 +118,7 @@ export default function ReviewsPage() {
             </button>
             <button
               onClick={() => setShowCreate(false)}
-              className="text-gray-400"
+              className="text-[var(--muted)]"
             >
               Cancel
             </button>
@@ -137,13 +137,13 @@ export default function ReviewsPage() {
                 <p className="font-medium">
                   Report: {r.report_id.slice(0, 8)}...
                 </p>
-                <p className="text-sm text-gray-400">
+                <p className="text-sm text-[var(--muted)]">
                   Created: {new Date(r.created_at).toLocaleDateString()}
                   {r.reviewed_at &&
                     ` · Reviewed: ${new Date(r.reviewed_at).toLocaleDateString()}`}
                 </p>
                 {r.reviewer_notes && (
-                  <p className="mt-1 text-sm text-gray-300">
+                  <p className="mt-1 text-sm text-[var(--foreground)]">
                     Notes: {r.reviewer_notes}
                   </p>
                 )}
@@ -183,7 +183,7 @@ export default function ReviewsPage() {
           </div>
         ))}
         {reviews.length === 0 && (
-          <p className="text-gray-500">
+          <p className="text-[var(--muted)]">
             No reviews yet. Create one for an emission report.
           </p>
         )}

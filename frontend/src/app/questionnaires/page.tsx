@@ -95,11 +95,11 @@ export default function QuestionnairesPage() {
       extracting: "bg-blue-900/30 text-blue-400",
       extracted: "bg-green-900/30 text-green-400",
       reviewed: "bg-purple-900/30 text-purple-400",
-      exported: "bg-gray-900/30 text-gray-400",
+      exported: "bg-[var(--background)]/30 text-[var(--muted)]",
     };
     return (
       <span
-        className={`px-2 py-0.5 rounded text-xs font-medium ${colors[status] || "bg-gray-800 text-gray-400"}`}
+        className={`px-2 py-0.5 rounded text-xs font-medium ${colors[status] || "bg-[var(--card)] text-[var(--muted)]"}`}
       >
         {status}
       </span>

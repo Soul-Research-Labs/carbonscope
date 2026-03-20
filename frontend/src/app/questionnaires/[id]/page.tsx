@@ -104,7 +104,7 @@ export default function QuestionnaireDetailPage() {
       reviewed: "text-blue-400",
       approved: "text-green-400",
     };
-    return m[s] || "text-gray-400";
+    return m[s] || "text-[var(--muted)]";
   };
 
   if (loading || !detail) {
@@ -142,7 +142,7 @@ export default function QuestionnaireDetailPage() {
       </div>
 
       {/* Progress bar */}
-      <div className="w-full h-2 bg-gray-800 rounded mb-6">
+      <div className="w-full h-2 bg-[var(--card-border)] rounded mb-6">
         <div
           className="h-2 bg-[var(--primary)] rounded transition-all"
           style={{
@@ -179,7 +179,7 @@ export default function QuestionnaireDetailPage() {
             </div>
 
             {q.category && (
-              <span className="inline-block text-xs bg-gray-800 text-[var(--muted)] px-2 py-0.5 rounded mb-3">
+              <span className="inline-block text-xs bg-[var(--card)] text-[var(--muted)] px-2 py-0.5 rounded mb-3">
                 {q.category}
               </span>
             )}
@@ -193,7 +193,7 @@ export default function QuestionnaireDetailPage() {
                     ? `(${Math.round(q.confidence * 100)}% confidence)`
                     : ""}
                 </p>
-                <p className="text-sm text-[var(--foreground)] bg-gray-900/50 rounded p-3">
+                <p className="text-sm text-[var(--foreground)] bg-[var(--background)]/50 rounded p-3">
                   {q.ai_draft_answer}
                 </p>
               </div>
@@ -216,7 +216,7 @@ export default function QuestionnaireDetailPage() {
                   value={editAnswer}
                   onChange={(e) => setEditAnswer(e.target.value)}
                   rows={4}
-                  className="w-full rounded border border-[var(--card-border)] bg-gray-900 p-3 text-sm focus:outline-none focus:border-[var(--primary)]"
+                  className="w-full rounded border border-[var(--card-border)] bg-[var(--background)] p-3 text-sm focus:outline-none focus:border-[var(--primary)]"
                   placeholder="Write your answer…"
                 />
                 <div className="flex gap-2 mt-2">

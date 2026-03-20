@@ -239,7 +239,7 @@ export default function ScenariosPage() {
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full rounded border border-[var(--card-border)] bg-gray-900 px-3 py-2 text-sm focus:outline-none focus:border-[var(--primary)]"
+                className="w-full rounded border border-[var(--card-border)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:border-[var(--primary)]"
                 placeholder="e.g., 100% Renewable by 2030"
                 required
               />
@@ -251,7 +251,7 @@ export default function ScenariosPage() {
               <select
                 value={baseReportId}
                 onChange={(e) => setBaseReportId(e.target.value)}
-                className="w-full rounded border border-[var(--card-border)] bg-gray-900 px-3 py-2 text-sm focus:outline-none focus:border-[var(--primary)]"
+                className="w-full rounded border border-[var(--card-border)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:border-[var(--primary)]"
               >
                 {reports.map((r) => (
                   <option key={r.id} value={r.id}>
@@ -269,7 +269,7 @@ export default function ScenariosPage() {
             <input
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full rounded border border-[var(--card-border)] bg-gray-900 px-3 py-2 text-sm focus:outline-none focus:border-[var(--primary)]"
+              className="w-full rounded border border-[var(--card-border)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:border-[var(--primary)]"
             />
           </div>
 
@@ -283,7 +283,7 @@ export default function ScenariosPage() {
                   className={`rounded border p-4 cursor-pointer transition-colors ${
                     active
                       ? "border-[var(--primary)] bg-green-900/10"
-                      : "border-[var(--card-border)] bg-gray-900/50"
+                      : "border-[var(--card-border)] bg-[var(--background)]/50"
                   }`}
                   onClick={() =>
                     toggleAdjustment(adj.key, adj.param, adj.default)
@@ -292,7 +292,7 @@ export default function ScenariosPage() {
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-medium text-sm">{adj.label}</span>
                     <span
-                      className={`w-4 h-4 rounded border ${active ? "bg-[var(--primary)] border-[var(--primary)]" : "border-gray-600"}`}
+                      className={`w-4 h-4 rounded border ${active ? "bg-[var(--primary)] border-[var(--primary)]" : "border-[var(--card-border)]"}`}
                     />
                   </div>
                   <p className="text-xs text-[var(--muted)]">
