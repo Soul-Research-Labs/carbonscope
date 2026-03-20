@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const mockReplace = vi.fn();
 
@@ -22,7 +23,7 @@ vi.mock("@/lib/api", () => ({
 
 vi.mock("@/lib/auth-context", () => ({
   useAuth: () => ({
-    user: { email: "test@example.com" },
+    user: { email: "test@example.com", company_id: "co1" },
     loading: false,
   }),
 }));
@@ -33,6 +34,15 @@ vi.mock("@/components/Breadcrumbs", () => ({
 
 import RecommendationsIndexPage from "@/app/recommendations/page";
 
+function renderWithQuery(ui: React.ReactElement) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
+  );
+}
+
 describe("RecommendationsIndexPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -40,7 +50,7 @@ describe("RecommendationsIndexPage", () => {
 
   it("shows empty state when no reports", async () => {
     mockListReports.mockResolvedValue({ items: [], total: 0 });
-    render(<RecommendationsIndexPage />);
+    renderWithQuery(<RecommendationsIndexPage />);
 
     expect(await screen.findByText("No reports yet")).toBeInTheDocument();
     expect(screen.getByText("Upload Data")).toBeInTheDocument();
@@ -61,7 +71,7 @@ describe("RecommendationsIndexPage", () => {
       ],
       total: 1,
     });
-    render(<RecommendationsIndexPage />);
+    renderWithQuery(<RecommendationsIndexPage />);
 
     expect(await screen.findByText("2024 Emission Report")).toBeInTheDocument();
     expect(screen.getByText(/5,000 tCO₂e/)).toBeInTheDocument();
@@ -83,7 +93,7 @@ describe("RecommendationsIndexPage", () => {
       ],
       total: 1,
     });
-    render(<RecommendationsIndexPage />);
+    renderWithQuery(<RecommendationsIndexPage />);
 
     const card = await screen.findByText("2023 Emission Report");
     expect(card.closest("a")).toHaveAttribute("href", "/recommendations/abc123");
@@ -91,7 +101,7 @@ describe("RecommendationsIndexPage", () => {
 
   it("shows error message on API failure", async () => {
     mockListReports.mockRejectedValue(new Error("Server error"));
-    render(<RecommendationsIndexPage />);
+    renderWithQuery(<RecommendationsIndexPage />);
 
     expect(await screen.findByText(/Server error/)).toBeInTheDocument();
   });

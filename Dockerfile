@@ -15,6 +15,7 @@ COPY api/ api/
 COPY alembic/ alembic/
 COPY alembic.ini .
 COPY carbonscope/ carbonscope/
+COPY data/ data/
 
 # Create data directory and non-root user
 RUN useradd -r -s /usr/sbin/nologin -u 1000 appuser && \

@@ -1,3 +1,6 @@
+# NOTE: This single-replica Redis is suitable for development and low-traffic staging.
+# For production HA, migrate to Redis Sentinel or a managed Redis service (e.g., ElastiCache)
+# and update REDIS_URL accordingly.
 apiVersion: apps/v1
 kind: Deployment
 metadata:

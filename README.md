@@ -846,7 +846,7 @@ Set `SENTRY_DSN` to enable error tracking and performance monitoring. Adjust `SE
 
 See [CHANGELOG.md](docs/CHANGELOG.md) for the full version history.
 
-**Latest — v0.26.0** (Round 4 Hardening): AuditLog immutability (CASCADE→SET NULL), TOTP HKDF key derivation, GDPR delete safety (check other company users), JWT removed from login response body, CSP unsafe-inline removed, JWT expiry validation in middleware, confirmation dialogs (PCAF/billing/reviews), K8s zero-downtime rolling updates, validator score HMAC integrity, coverage threshold enforcement, backend hardening (body-limit chunked fix, admin-gated routes, webhook HTTPS enforcement). See [CHANGELOG.md](docs/CHANGELOG.md) for the full history.
+**Latest — v0.27.0**: Comprehensive security hardening, accessibility improvements, data-integrity fixes, PCAF SQL aggregation, useQuery migrations, expanded test coverage (790+ backend, 220+ frontend), infrastructure topology-spread constraints, and CI Docker smoke builds. See [CHANGELOG.md](docs/CHANGELOG.md) for the full history.
 
 ---
 

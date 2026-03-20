@@ -81,10 +81,12 @@ export default function MFAPage() {
       <h1 className="mb-8 text-3xl font-bold">Multi-Factor Authentication</h1>
 
       {error && (
-        <p className="mb-4 rounded bg-red-900/30 p-3 text-red-400">{error}</p>
+        <p className="mb-4 rounded bg-[var(--error-bg,rgba(127,29,29,0.3))] p-3 text-[var(--error-fg,#f87171)]">
+          {error}
+        </p>
       )}
       {success && (
-        <p className="mb-4 rounded bg-emerald-900/30 p-3 text-emerald-400">
+        <p className="mb-4 rounded bg-[var(--success-bg,rgba(6,78,59,0.3))] p-3 text-[var(--success-fg,#34d399)]">
           {success}
         </p>
       )}

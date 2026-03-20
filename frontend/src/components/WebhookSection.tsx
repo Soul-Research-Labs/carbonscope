@@ -170,7 +170,9 @@ export default function WebhookSection() {
         <div className="card mb-4 border-yellow-500/50 bg-yellow-900/10 p-4">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <p className="font-semibold text-sm text-yellow-300">Webhook Signing Secret</p>
+              <p className="font-semibold text-sm text-yellow-300">
+                Webhook Signing Secret
+              </p>
               <p className="text-xs text-[var(--muted)] mt-1">
                 Copy this secret now — it won&apos;t be shown again.
               </p>
@@ -182,7 +184,9 @@ export default function WebhookSection() {
               <button
                 type="button"
                 className="text-xs px-3 py-1 rounded bg-[var(--card-border)] hover:bg-[var(--primary)] hover:text-black transition-colors"
-                onClick={() => { navigator.clipboard.writeText(newSecret).catch(() => {}); }}
+                onClick={() => {
+                  navigator.clipboard.writeText(newSecret).catch(() => {});
+                }}
               >
                 Copy
               </button>

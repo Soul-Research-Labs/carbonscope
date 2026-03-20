@@ -16,11 +16,16 @@ import {
 } from "@/lib/api";
 
 const STATUS_STYLES: Record<string, string> = {
-  draft: "bg-gray-500/20 text-[var(--muted)]",
-  submitted: "bg-blue-500/20 text-blue-400",
-  approved: "bg-emerald-500/20 text-emerald-400",
-  rejected: "bg-red-500/20 text-red-400",
-  revision_requested: "bg-yellow-500/20 text-yellow-400",
+  draft:
+    "bg-[var(--status-draft-bg,rgba(107,114,128,0.2))] text-[var(--muted)]",
+  submitted:
+    "bg-[var(--status-submitted-bg,rgba(59,130,246,0.2))] text-[var(--status-submitted-fg,#60a5fa)]",
+  approved:
+    "bg-[var(--status-approved-bg,rgba(16,185,129,0.2))] text-[var(--status-approved-fg,#34d399)]",
+  rejected:
+    "bg-[var(--status-rejected-bg,rgba(239,68,68,0.2))] text-[var(--status-rejected-fg,#f87171)]",
+  revision_requested:
+    "bg-[var(--status-revision-bg,rgba(234,179,8,0.2))] text-[var(--status-revision-fg,#facc15)]",
 };
 
 export default function ReviewsPage() {

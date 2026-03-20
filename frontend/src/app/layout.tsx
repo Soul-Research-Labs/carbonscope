@@ -36,21 +36,21 @@ export default function RootLayout({
             <ToastProvider>
               <Suspense>
                 <AuthProvider>
-                <a
-                  href="#main-content"
-                  className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:bg-[var(--primary)] focus:text-black focus:px-4 focus:py-2 focus:rounded-lg"
-                >
-                  Skip to main content
-                </a>
-                <Navbar />
-                <main
-                  id="main-content"
-                  className="min-h-[calc(100vh-49px)]"
-                  role="main"
-                >
-                  {children}
-                </main>
-              </AuthProvider>
+                  <a
+                    href="#main-content"
+                    className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:bg-[var(--primary)] focus:text-black focus:px-4 focus:py-2 focus:rounded-lg"
+                  >
+                    Skip to main content
+                  </a>
+                  <Navbar />
+                  <main
+                    id="main-content"
+                    className="min-h-[calc(100vh-49px)]"
+                    role="main"
+                  >
+                    {children}
+                  </main>
+                </AuthProvider>
               </Suspense>
             </ToastProvider>
           </QueryProvider>

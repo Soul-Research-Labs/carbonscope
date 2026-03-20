@@ -49,7 +49,7 @@ ALLOWED_ORIGINS=https://app.example.com
 
 ### Optional
 
-````bash
+```bash
 # ── CORS / Cookies ──────────────────────────────────────
 COOKIE_DOMAIN=.example.com
 COOKIE_SECURE=true
@@ -111,7 +111,7 @@ The application **refuses to start** in production if:
 
 ```bash
 createdb carbonscope
-````
+```
 
 ### Run Alembic Migrations
 

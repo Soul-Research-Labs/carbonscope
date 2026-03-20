@@ -2,6 +2,12 @@
 
 Maintains a set of asyncio.Queue per company_id so that SSE connections
 scoped to a company receive only their own events.
+
+Thread-safety note: This module is designed for use within a single asyncio
+event loop. All access to ``_subscribers`` occurs on the event loop thread,
+so no explicit lock is required. Do NOT call ``publish()`` or use
+``Subscription`` from a non-asyncio thread — use ``loop.call_soon_threadsafe``
+instead.
 """
 
 from __future__ import annotations

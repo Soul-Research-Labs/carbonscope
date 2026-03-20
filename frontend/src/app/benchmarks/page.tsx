@@ -82,8 +82,7 @@ export default function BenchmarksPage() {
           <div className="grid gap-4 sm:grid-cols-3">
             {Object.entries(benchmarks)
               .filter(
-                ([, val]) =>
-                  typeof val === "number" || typeof val === "string",
+                ([, val]) => typeof val === "number" || typeof val === "string",
               )
               .map(([key, val]) => (
                 <div key={key} className="card">

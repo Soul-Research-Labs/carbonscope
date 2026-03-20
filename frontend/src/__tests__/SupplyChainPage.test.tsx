@@ -107,14 +107,14 @@ describe("SupplyChainPage", () => {
     // Label is not linked via htmlFor, find parent div and get input
     const label = screen.getByText("Supplier Company ID");
     const idInput = label.parentElement!.querySelector("input")!;
-    fireEvent.change(idInput, { target: { value: "new-co" } });
+    fireEvent.change(idInput, { target: { value: "550e8400-e29b-41d4-a716-446655440000" } });
 
     const addBtn = screen.getByRole("button", { name: /add supplier/i });
     fireEvent.click(addBtn);
 
     await waitFor(() => {
       expect(mockAddSupplier).toHaveBeenCalledWith(
-        expect.objectContaining({ supplier_company_id: "new-co" }),
+        expect.objectContaining({ supplier_company_id: "550e8400-e29b-41d4-a716-446655440000" }),
       );
     });
   });

@@ -85,7 +85,8 @@ function MarketplacePageInner() {
         searchParams.get("industry") ?? "",
         searchParams.get("region") ?? "",
       );
-  }, [user, loading, router, fetchListings, searchParams]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, loading, router, fetchListings]);
 
   async function handlePurchase(id: string) {
     setPurchaseTarget(null);
@@ -181,7 +182,9 @@ function MarketplacePageInner() {
       {/* Filters */}
       <div className="flex gap-3 flex-wrap">
         <div>
-          <label htmlFor="filter-industry" className="sr-only">Filter by industry</label>
+          <label htmlFor="filter-industry" className="sr-only">
+            Filter by industry
+          </label>
           <input
             id="filter-industry"
             type="text"
@@ -192,7 +195,9 @@ function MarketplacePageInner() {
           />
         </div>
         <div>
-          <label htmlFor="filter-region" className="sr-only">Filter by region</label>
+          <label htmlFor="filter-region" className="sr-only">
+            Filter by region
+          </label>
           <input
             id="filter-region"
             type="text"

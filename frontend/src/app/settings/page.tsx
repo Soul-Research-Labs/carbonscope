@@ -111,10 +111,22 @@ export default function SettingsPage() {
     }
   }
 
+  function validatePassword(pw: string): string | null {
+    if (pw.length < 8) return "Password must be at least 8 characters.";
+    if (!/[A-Z]/.test(pw)) return "Password must include an uppercase letter.";
+    if (!/\d/.test(pw)) return "Password must include a digit.";
+    return null;
+  }
+
   async function handlePasswordChange(e: React.FormEvent) {
     e.preventDefault();
     setPwErr("");
     setPwMsg("");
+    const validationErr = validatePassword(newPw);
+    if (validationErr) {
+      setPwErr(validationErr);
+      return;
+    }
     setPwSaving(true);
     try {
       await changePassword(currentPw, newPw);

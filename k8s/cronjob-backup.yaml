@@ -67,7 +67,10 @@ spec:
                   SIZE=$(du -h "${DEST}" | cut -f1)
                   echo "Backup complete (${SIZE})"
                   # Optional: replicate to S3 for offsite durability
+                  # Requires aws-cli: apk add --no-cache aws-cli
                   if [ -n "${S3_BUCKET:-}" ]; then
+                    echo "Installing aws-cli for S3 upload..."
+                    apk add --no-cache aws-cli >/dev/null 2>&1
                     echo "Uploading to s3://${S3_BUCKET}/backups/"
                     aws s3 cp "${DEST}" "s3://${S3_BUCKET}/backups/carbonscope_${STAMP}.dump.gz" \
                       --storage-class STANDARD_IA

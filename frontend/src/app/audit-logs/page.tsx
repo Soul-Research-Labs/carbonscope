@@ -11,7 +11,13 @@ const PAGE_SIZE = 25;
 
 export default function AuditLogsPage() {
   return (
-    <Suspense fallback={<div className="p-6 max-w-6xl mx-auto"><SkeletonRows /></div>}>
+    <Suspense
+      fallback={
+        <div className="p-6 max-w-6xl mx-auto">
+          <SkeletonRows />
+        </div>
+      }
+    >
       <AuditLogsPageInner />
     </Suspense>
   );

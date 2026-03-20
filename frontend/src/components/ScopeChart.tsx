@@ -32,7 +32,10 @@ export default memo(function ScopeChart({ data }: { data: Datum[] }) {
             border: "1px solid var(--card-border)",
             borderRadius: 8,
           }}
-          formatter={(v: number) => [`${v.toLocaleString()} tCO₂e`, ""]}
+          formatter={(v: number) => [
+            `${v.toLocaleString()} tCO₂e`,
+            "Emissions",
+          ]}
         />
         <Bar dataKey="value" radius={[4, 4, 0, 0]}>
           {data.map((d, i) => (

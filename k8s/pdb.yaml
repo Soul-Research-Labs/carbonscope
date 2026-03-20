@@ -19,3 +19,14 @@ spec:
   selector:
     matchLabels:
       app: frontend
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: postgres-pdb
+  namespace: carbonscope
+spec:
+  maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: postgres

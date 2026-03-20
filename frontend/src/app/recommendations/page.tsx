@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth-context";
 import { listReports, type EmissionReport } from "@/lib/api";
 import Breadcrumbs from "@/components/Breadcrumbs";
@@ -13,27 +14,28 @@ export default function RecommendationsIndexPage() {
   useDocumentTitle("Recommendations");
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [reports, setReports] = useState<EmissionReport[]>([]);
-  const [error, setError] = useState("");
-  const [fetching, setFetching] = useState(true);
+
+  const reportsQuery = useQuery({
+    queryKey: ["recommendations-reports", user?.company_id],
+    queryFn: () =>
+      listReports({ limit: 50, sortBy: "created_at", order: "desc" }),
+    enabled: !!user && !loading,
+  });
+
+  const reports: EmissionReport[] = reportsQuery.data?.items ?? [];
+  const error = reportsQuery.error
+    ? reportsQuery.error instanceof Error
+      ? reportsQuery.error.message
+      : "Failed to load reports"
+    : "";
 
   useEffect(() => {
     if (!loading && !user) {
       router.replace("/login");
-      return;
-    }
-    if (user) {
-      setFetching(true);
-      listReports({ limit: 50, sortBy: "created_at", order: "desc" })
-        .then((res) => setReports(res.items))
-        .catch((e) =>
-          setError(e instanceof Error ? e.message : "Failed to load reports"),
-        )
-        .finally(() => setFetching(false));
     }
   }, [user, loading, router]);
 
-  if (loading || fetching) {
+  if (loading || reportsQuery.isLoading) {
     return <PageSkeleton />;
   }
 

@@ -186,6 +186,9 @@ export default function SupplyChainPage() {
               value={supplierId}
               onChange={(e) => setSupplierId(e.target.value)}
               required
+              placeholder="e.g. 550e8400-e29b-41d4-a716-446655440000"
+              pattern="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+              title="Enter a valid UUID for the supplier company"
               className="bg-[var(--background)] border border-[var(--card-border)] rounded-md px-3 py-2 text-sm"
             />
           </div>

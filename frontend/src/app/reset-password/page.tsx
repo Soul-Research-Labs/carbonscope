@@ -8,7 +8,13 @@ import { resetPassword, ApiError } from "@/lib/api";
 
 export default function ResetPasswordPage() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><p>Loading...</p></div>}>
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center min-h-screen">
+          <p>Loading...</p>
+        </div>
+      }
+    >
       <ResetPasswordPageInner />
     </Suspense>
   );

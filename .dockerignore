@@ -21,4 +21,5 @@ frontend/.next
 dist
 build
 tests/
-data/
+# Keep data/emission_factors needed at runtime
+!data/emission_factors

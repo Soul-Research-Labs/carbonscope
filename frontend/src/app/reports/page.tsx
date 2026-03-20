@@ -14,7 +14,15 @@ const PAGE_SIZE = 10;
 
 export default function ReportsPage() {
   return (
-    <Suspense fallback={<div className="max-w-5xl mx-auto p-8 space-y-3"><CardSkeleton /><CardSkeleton /><CardSkeleton /></div>}>
+    <Suspense
+      fallback={
+        <div className="max-w-5xl mx-auto p-8 space-y-3">
+          <CardSkeleton />
+          <CardSkeleton />
+          <CardSkeleton />
+        </div>
+      }
+    >
       <ReportsPageInner />
     </Suspense>
   );

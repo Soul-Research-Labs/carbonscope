@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import { useQuery } from "@tanstack/react-query";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { useAuth } from "@/lib/auth-context";
 import { getReport, exportReportPdf, type EmissionReport } from "@/lib/api";
@@ -21,25 +22,28 @@ export default function ReportDetailPage() {
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
-  const [report, setReport] = useState<EmissionReport | null>(null);
-  const [error, setError] = useState("");
   const [exporting, setExporting] = useState(false);
+
+  const reportQuery = useQuery<EmissionReport>({
+    queryKey: ["report", id],
+    queryFn: () => getReport(id),
+    enabled: !!user && !loading && !!id,
+  });
+
+  const report = reportQuery.data ?? null;
+  const error = reportQuery.error
+    ? reportQuery.error instanceof Error
+      ? reportQuery.error.message
+      : "Failed to load report"
+    : "";
 
   useEffect(() => {
     if (!loading && !user) {
       router.replace("/login");
-      return;
     }
-    if (user && id) {
-      getReport(id)
-        .then(setReport)
-        .catch((e) =>
-          setError(e instanceof Error ? e.message : "Failed to load report"),
-        );
-    }
-  }, [user, loading, router, id]);
+  }, [user, loading, router]);
 
-  if (loading || (!report && !error)) {
+  if (loading || reportQuery.isLoading) {
     return <PageSkeleton />;
   }
 

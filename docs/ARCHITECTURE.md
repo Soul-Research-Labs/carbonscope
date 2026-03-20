@@ -35,7 +35,7 @@ CarbonScope is a three-tier application built on top of the Bittensor decentrali
 │                        API Layer                                        │
 │  ┌──────────────────────────────────────────────────────────────────┐   │
 │  │  FastAPI Backend (Python 3.10+)                                  │   │
-│  │  21 Route Modules · 28 Services · 100+ Endpoints                 │   │
+│  │  20 Route Modules · 28 Services · 100+ Endpoints                 │   │
 │  │  JWT Auth · Rate Limiting · CORS · Security Headers              │   │
 │  └──────────────────────────────────────────────────────────────────┘   │
 ├─────────────────────────────────────────────────────────────────────────┤
@@ -232,7 +232,7 @@ Request ──► RequestIDMiddleware ──► RequestBodyLimitMiddleware ─�
 | **SlowAPI Rate Limiter**       | IP-based rate limiting (auth: 10/min, default: 60/min)           |
 | **Global Exception Handler**   | Catches unhandled exceptions → 500 JSON with request ID          |
 
-### Route Modules (19)
+### Route Modules (20)
 
 | Module                 | Prefix            | Endpoints | Auth Required |
 | :--------------------- | :---------------- | :-------: | :-----------: |
@@ -255,6 +255,7 @@ Request ──► RequestIDMiddleware ──► RequestBodyLimitMiddleware ─�
 | `pcaf_routes`          | `/pcaf`           |     6     |      Yes      |
 | `review_routes`        | `/reviews`        |     4     |      Yes      |
 | `events_routes`        | `/events`         |     1     |      Yes      |
+| `team_routes`          | `/team`           |     4     |     Admin     |
 
 ### Service Layer (26 modules)
 

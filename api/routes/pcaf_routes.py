@@ -19,7 +19,7 @@ from api.schemas import (
     PaginatedResponse,
     PortfolioSummary,
 )
-from api.services.pcaf import calculate_financed_emissions, summarise_portfolio
+from api.services.pcaf import calculate_financed_emissions
 from api.services import audit
 
 router = APIRouter(prefix="/pcaf", tags=["pcaf"])
@@ -83,23 +83,46 @@ async def portfolio_summary(
 ):
     """Get aggregated PCAF summary for a portfolio."""
     portfolio = await _get_portfolio(db, portfolio_id, user.company_id)
-    result = await db.execute(
-        select(FinancedAsset).where(FinancedAsset.portfolio_id == portfolio_id)
-    )
-    assets = result.scalars().all()
-    asset_dicts = [
-        {
-            "outstanding_amount": a.outstanding_amount,
-            "financed_emissions_tco2e": a.financed_emissions_tco2e,
-            "data_quality_score": a.data_quality_score,
-            "asset_class": a.asset_class,
+
+    # Use SQL aggregates instead of loading all asset rows into memory
+    totals_q = select(
+        func.count(FinancedAsset.id).label("asset_count"),
+        func.coalesce(func.sum(FinancedAsset.financed_emissions_tco2e), 0).label("total_fe"),
+        func.coalesce(func.sum(FinancedAsset.outstanding_amount), 0).label("total_oa"),
+        func.coalesce(
+            func.sum(FinancedAsset.data_quality_score * FinancedAsset.outstanding_amount), 0
+        ).label("weighted_dq_num"),
+    ).where(FinancedAsset.portfolio_id == portfolio_id)
+
+    row = (await db.execute(totals_q)).one()
+    total_oa = float(row.total_oa)
+    weighted_dq = round(float(row.weighted_dq_num) / total_oa, 2) if total_oa > 0 else 0.0
+
+    # Per asset-class breakdown
+    by_class_q = select(
+        FinancedAsset.asset_class,
+        func.count(FinancedAsset.id).label("count"),
+        func.coalesce(func.sum(FinancedAsset.financed_emissions_tco2e), 0).label("fe"),
+        func.coalesce(func.sum(FinancedAsset.outstanding_amount), 0).label("oa"),
+    ).where(FinancedAsset.portfolio_id == portfolio_id).group_by(FinancedAsset.asset_class)
+
+    by_class_rows = (await db.execute(by_class_q)).all()
+    by_asset_class = {
+        r.asset_class or "unknown": {
+            "financed_emissions_tco2e": round(float(r.fe), 2),
+            "outstanding_amount": round(float(r.oa), 2),
+            "count": r.count,
         }
-        for a in assets
-    ]
-    summary = summarise_portfolio(asset_dicts)
+        for r in by_class_rows
+    }
+
     return {
         "portfolio": portfolio,
-        **summary,
+        "total_financed_emissions_tco2e": round(float(row.total_fe), 2),
+        "total_outstanding": round(total_oa, 2),
+        "weighted_data_quality": weighted_dq,
+        "asset_count": row.asset_count,
+        "by_asset_class": by_asset_class,
     }
 
 
