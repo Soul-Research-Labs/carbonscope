@@ -253,6 +253,8 @@ jobs:
           config: >-
             p/python
             p/owasp-top-ten
+        env:
+          SEMGREP_SEND_METRICS: "off"
 
       - name: Set up Python
         uses: actions/setup-python@v5

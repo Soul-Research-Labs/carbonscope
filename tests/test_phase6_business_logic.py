@@ -171,7 +171,7 @@ class TestCreditLedger:
         await auth_client.get("/api/v1/billing/subscription")
 
         # Grant extra credits
-        await auth_client.post("/api/v1/billing/credits/grant", params={"amount": 50})
+        await auth_client.post("/api/v1/billing/credits/grant", json={"amount": 50})
 
         resp = await auth_client.get("/api/v1/billing/credits/ledger")
         assert resp.status_code == 200
@@ -185,8 +185,8 @@ class TestCreditLedger:
     async def test_credit_ledger_pagination(self, auth_client: AsyncClient):
         """Credit ledger supports pagination."""
         await auth_client.get("/api/v1/billing/subscription")
-        await auth_client.post("/api/v1/billing/credits/grant", params={"amount": 10})
-        await auth_client.post("/api/v1/billing/credits/grant", params={"amount": 20})
+        await auth_client.post("/api/v1/billing/credits/grant", json={"amount": 10})
+        await auth_client.post("/api/v1/billing/credits/grant", json={"amount": 20})
 
         resp = await auth_client.get("/api/v1/billing/credits/ledger", params={"limit": 1})
         data = resp.json()

@@ -199,7 +199,7 @@ _EVENT_HANDLERS = {
 
 
 @router.post("/webhooks")
-@limiter.limit("60/minute")
+@limiter.limit("300/minute")
 async def stripe_webhook(request: Request):
     """Receive and process Stripe webhook events.
 
@@ -228,8 +228,15 @@ async def stripe_webhook(request: Request):
     if handler:
         try:
             await handler(event_data)
+        except (ValueError, KeyError, TypeError) as e:
+            logger.exception("Error handling Stripe event %s: %s", event_type, e)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Webhook processing error",
+            )
         except Exception:
-            logger.exception("Error handling Stripe event %s", event_type)
+            logger.exception("Unexpected error handling Stripe event %s", event_type)
+            # Return 500 so Stripe retries the webhook
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Webhook processing error",

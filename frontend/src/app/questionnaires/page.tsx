@@ -49,9 +49,30 @@ export default function QuestionnairesPage() {
     if (user) fetchData();
   }, [user, loading, router, fetchData]);
 
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+  const ALLOWED_EXTENSIONS = ["pdf", "docx", "xlsx", "csv"];
+
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Client-side validation
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+    if (!ALLOWED_EXTENSIONS.includes(ext)) {
+      setError(
+        `Unsupported file type. Allowed: ${ALLOWED_EXTENSIONS.join(", ").toUpperCase()}`,
+      );
+      e.target.value = "";
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      setError(
+        `File too large. Maximum size: ${MAX_FILE_SIZE / (1024 * 1024)} MB`,
+      );
+      e.target.value = "";
+      return;
+    }
+
     setUploading(true);
     setError("");
     try {

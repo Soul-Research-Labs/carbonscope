@@ -12,6 +12,7 @@ import {
   deleteSupplyChainLink,
 } from "@/lib/api";
 import { PageSkeleton } from "@/components/Skeleton";
+import { useToast } from "@/components/Toast";
 
 interface Supplier {
   link_id: string;
@@ -52,6 +53,7 @@ export default function SupplyChainPage() {
   const [category, setCategory] = useState("general");
   const [adding, setAdding] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const refresh = useCallback(async () => {
     try {
@@ -87,6 +89,7 @@ export default function SupplyChainPage() {
       setSpend("");
       setCategory("general");
       await refresh();
+      toast("Supplier added successfully", "success");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to add");
     } finally {
@@ -98,6 +101,7 @@ export default function SupplyChainPage() {
     try {
       await updateSupplyChainLink(linkId, "verified");
       await refresh();
+      toast("Supplier verified", "success");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to verify");
     }
@@ -107,6 +111,7 @@ export default function SupplyChainPage() {
     try {
       await deleteSupplyChainLink(linkId);
       await refresh();
+      toast("Supplier removed", "success");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to remove");
     } finally {

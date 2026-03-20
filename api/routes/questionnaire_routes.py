@@ -38,6 +38,13 @@ _ALLOWED_TYPES = {
 }
 _MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
+# Magic byte signatures for file type verification
+_MAGIC_BYTES = {
+    "pdf": b"%PDF",
+    "docx": b"PK\x03\x04",  # ZIP archive (used by OOXML)
+    "xlsx": b"PK\x03\x04",
+}
+
 
 @router.post("/upload", response_model=QuestionnaireOut, status_code=status.HTTP_201_CREATED)
 @limiter.limit("5/minute")
@@ -78,6 +85,14 @@ async def upload_questionnaire(
             )
         chunks.append(chunk)
     content = b"".join(chunks)
+
+    # Verify magic bytes to prevent disguised file uploads
+    expected_magic = _MAGIC_BYTES.get(file_type)
+    if expected_magic and not content.startswith(expected_magic):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"File content does not match expected {file_type.upper()} format",
+        )
 
     extracted_text = extract_text(content, file_type)
 

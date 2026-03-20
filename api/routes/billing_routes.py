@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.config import RATE_LIMIT_AUTH, RATE_LIMIT_DEFAULT
@@ -111,26 +112,24 @@ async def list_plans(
     }
 
 
+class CreditGrantRequest(BaseModel):
+    amount: int = Field(gt=0, le=1_000_000, description="Number of credits to grant")
+
+
 @router.post("/credits/grant", response_model=CreditBalanceOut)
 @limiter.limit(RATE_LIMIT_AUTH)
 async def admin_grant_credits(
     request: Request,
-    amount: int,
+    body: CreditGrantRequest,
     user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
     """Grant credits manually (admin only)."""
-    MAX_GRANT = 1_000_000
-    if amount <= 0:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Amount must be positive")
-    if amount > MAX_GRANT:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Amount must not exceed {MAX_GRANT:,}")
-
-    await grant_credits(db, user.company_id, amount, "manual_grant")
+    await grant_credits(db, user.company_id, body.amount, "manual_grant")
     await audit.record(
         db, user_id=user.id, company_id=user.company_id,
         action="admin_grant_credits", resource_type="credits", resource_id=str(user.company_id),
-        detail=f"granted {amount} credits",
+        detail=f"granted {body.amount} credits",
     )
     balance = await get_credit_balance(db, user.company_id)
     sub = await get_or_create_subscription(db, user.company_id)

@@ -4,6 +4,7 @@ import { render, screen, act } from "@testing-library/react";
 const mockPush = vi.fn();
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 const mockLogin = vi.fn();
@@ -14,6 +15,11 @@ vi.mock("@/lib/api", () => ({
   login: (...a: unknown[]) => mockLogin(...a),
   register: (...a: unknown[]) => mockRegister(...a),
   logoutApi: (...a: unknown[]) => mockLogoutApi(...a),
+}));
+
+vi.mock("@/components/Toast", () => ({
+  useToast: () => ({ toast: vi.fn() }),
+  ToastProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
 import { AuthProvider, useAuth } from "@/lib/auth-context";

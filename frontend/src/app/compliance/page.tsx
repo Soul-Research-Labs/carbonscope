@@ -103,6 +103,9 @@ export default function CompliancePage() {
               onChange={(e) => setSelectedReport(e.target.value)}
               className="bg-[var(--background)] border border-[var(--card-border)] rounded-md px-3 py-2 text-sm"
             >
+              {reports.length === 0 && (
+                <option value="">No reports available</option>
+              )}
               {reports.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.year} — {r.total.toLocaleString()} tCO₂e

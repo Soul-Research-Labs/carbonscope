@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: ghcr.io/carbonscope/carbonscope-frontend:latest
+          image: ghcr.io/carbonscope/carbonscope-frontend:v0.6.0 # Pin to release tag; update on deploy
           ports:
             - containerPort: 3000
           env:

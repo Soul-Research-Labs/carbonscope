@@ -26,6 +26,10 @@ vi.mock("@/components/Skeleton", () => ({
   PageSkeleton: () => <div>Loading...</div>,
 }));
 
+vi.mock("@/components/Toast", () => ({
+  useToast: () => ({ toast: vi.fn() }),
+}));
+
 import AlertsPage from "@/app/alerts/page";
 
 const ALERTS = {

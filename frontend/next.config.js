@@ -22,7 +22,7 @@ const nextConfig = {
             value: [
               "default-src 'self'",
               "script-src 'self'",
-              "style-src 'self' 'unsafe-inline'",
+              "style-src 'self' 'unsafe-inline'", // TODO: remove unsafe-inline once CSS-in-JS nonce support is added
               "img-src 'self' data: blob:",
               "font-src 'self'",
               "connect-src 'self' " +

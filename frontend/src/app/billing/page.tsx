@@ -14,10 +14,12 @@ import {
   ApiError,
 } from "@/lib/api";
 import { CardSkeleton } from "@/components/Skeleton";
+import { useToast } from "@/components/Toast";
 
 export default function BillingPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const { toast } = useToast();
   const [sub, setSub] = useState<SubscriptionOut | null>(null);
   const [credits, setCredits] = useState<CreditBalanceOut | null>(null);
   const [plans, setPlans] = useState<Record<string, PlanLimits> | null>(null);
@@ -52,6 +54,7 @@ export default function BillingPage() {
       setSub(updated);
       const c = await getCredits();
       setCredits(c);
+      toast(`Plan changed to ${plan}`, "success");
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Failed to change plan");
     } finally {

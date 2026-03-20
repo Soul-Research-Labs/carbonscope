@@ -216,12 +216,12 @@ class EmissionReportOut(BaseModel):
     scope2: float
     scope3: float
     total: float
-    breakdown: dict | None = None
-    confidence: float
-    sources: list | None = None
-    assumptions: list | None = None
+    breakdown: dict[str, Any] | None = None
+    confidence: float = Field(ge=0.0, le=1.0)
+    sources: list[str] | None = None
+    assumptions: list[str] | None = None
     methodology_version: str
-    miner_scores: dict | None = None
+    miner_scores: dict[str, Any] | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -336,6 +336,40 @@ class SupplyChainLinkOut(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class SupplierEmissions(BaseModel):
+    scope1: float | None = None
+    scope2: float | None = None
+    total: float | None = None
+    confidence: float | None = None
+    year: int | None = None
+
+
+class SupplierListItem(BaseModel):
+    """Enriched supplier view returned by the list-suppliers endpoint."""
+    link_id: str
+    company_id: str
+    company_name: str
+    industry: str
+    region: str
+    spend_usd: float | None = None
+    category: str
+    status: str
+    emissions: SupplierEmissions | None = None
+    created_at: str
+
+
+class BuyerListItem(BaseModel):
+    """Enriched buyer view returned by the list-buyers endpoint."""
+    link_id: str
+    company_id: str
+    company_name: str
+    industry: str
+    spend_usd: float | None = None
+    category: str
+    status: str
+    created_at: str
 
 
 class SupplyChainLinkUpdate(BaseModel):

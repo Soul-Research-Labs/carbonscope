@@ -117,16 +117,15 @@ class TestBillingSubscriptions:
         """First registered user is admin and can grant credits."""
         # Ensure subscription exists
         await auth_client.get("/api/v1/billing/subscription")
-        resp = await auth_client.post("/api/v1/billing/credits/grant", params={"amount": 500})
+        resp = await auth_client.post("/api/v1/billing/credits/grant", json={"amount": 500})
         assert resp.status_code == 200
         data = resp.json()
         assert data["balance"] >= 500
 
     async def test_grant_credits_invalid_amount(self, auth_client: AsyncClient):
         """Amount must be positive."""
-        resp = await auth_client.post("/api/v1/billing/credits/grant", params={"amount": -10})
-        assert resp.status_code == 400
-        assert "positive" in resp.json()["detail"].lower()
+        resp = await auth_client.post("/api/v1/billing/credits/grant", json={"amount": -10})
+        assert resp.status_code == 422
 
 
 # ── Alerts ───────────────────────────────────────────────────────────

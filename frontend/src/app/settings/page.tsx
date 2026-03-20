@@ -17,18 +17,7 @@ import { PageSkeleton } from "@/components/Skeleton";
 import { StatusMessage } from "@/components/StatusMessage";
 import WebhookSection from "@/components/WebhookSection";
 
-const INDUSTRIES = [
-  "energy",
-  "manufacturing",
-  "technology",
-  "transportation",
-  "retail",
-  "healthcare",
-  "finance",
-  "construction",
-  "agriculture",
-  "other",
-];
+import { INDUSTRIES, industryLabel } from "@/lib/constants";
 
 export default function SettingsPage() {
   const { user, loading } = useAuth();
@@ -239,7 +228,7 @@ export default function SettingsPage() {
           >
             {INDUSTRIES.map((i) => (
               <option key={i} value={i}>
-                {i.charAt(0).toUpperCase() + i.slice(1)}
+                {industryLabel(i)}
               </option>
             ))}
           </select>

@@ -28,6 +28,10 @@ vi.mock("@/lib/auth-context", () => ({
   }),
 }));
 
+vi.mock("@/components/Toast", () => ({
+  useToast: () => ({ toast: vi.fn() }),
+}));
+
 vi.mock("@/components/Skeleton", () => ({
   PageSkeleton: () => <div>Loading...</div>,
 }));

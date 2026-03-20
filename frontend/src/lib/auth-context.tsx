@@ -16,6 +16,7 @@ import {
   type User,
 } from "@/lib/api";
 import { getQueryClient } from "@/lib/query-client";
+import { useToast } from "@/components/Toast";
 
 interface AuthState {
   user: User | null;
@@ -108,9 +109,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem("user", JSON.stringify(u));
       setUser(u);
       const redirect = searchParams.get("redirect");
-      router.push(
-        redirect && redirect.startsWith("/") ? redirect : "/dashboard",
-      );
+      // Prevent open redirect: must start with single '/' and not '//'
+      const safeRedirect =
+        redirect && /^\/[^/\\]/.test(redirect) ? redirect : "/dashboard";
+      router.push(safeRedirect);
     },
     [router, searchParams],
   );
@@ -157,18 +159,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [router]);
 
   // Listen for session-expired events dispatched by the API client
+  const { toast } = useToast();
   useEffect(() => {
     const onSessionExpired = () => {
       syncClientAuthCookie(null);
       getQueryClient().clear();
       setToken(null);
       setUser(null);
+      toast("Your session has expired. Please log in again.", "warning");
       router.push("/login");
     };
     window.addEventListener("auth:session-expired", onSessionExpired);
     return () =>
       window.removeEventListener("auth:session-expired", onSessionExpired);
-  }, [router]);
+  }, [router, toast]);
 
   return (
     <AuthContext.Provider

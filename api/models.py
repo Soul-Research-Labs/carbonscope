@@ -274,6 +274,9 @@ class SupplyChainLink(Base):
 
 class Webhook(Base):
     __tablename__ = "webhooks"
+    __table_args__ = (
+        UniqueConstraint("company_id", "url", name="uq_webhooks_company_url"),
+    )
 
     id: str = Column(String(32), primary_key=True, default=_new_id)
     company_id: str = Column(String(32), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)

@@ -10,6 +10,10 @@ vi.mock("@/components/Skeleton", () => ({
   CardSkeleton: () => <div>Loading...</div>,
 }));
 
+vi.mock("@/components/Toast", () => ({
+  useToast: () => ({ toast: vi.fn() }),
+}));
+
 const mockGetSubscription = vi.fn();
 const mockGetCredits = vi.fn();
 const mockListPlans = vi.fn();

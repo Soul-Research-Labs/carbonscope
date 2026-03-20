@@ -11,7 +11,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
@@ -197,10 +197,12 @@ async def health():
     redis_status = await _check_redis_health()
     redis_ok = redis_status in ("connected", "not_configured")
 
-    return {
-        "status": "ok" if (db_ok and redis_ok) else "degraded",
-        "version": APP_VERSION,
-    }
+    healthy = db_ok and redis_ok
+    status_code = 200 if healthy else 503
+    return JSONResponse(
+        content={"status": "ok" if healthy else "degraded", "version": APP_VERSION},
+        status_code=status_code,
+    )
 
 
 @app.get("/health/detail")

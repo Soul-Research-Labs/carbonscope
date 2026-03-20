@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { PageSkeleton } from "@/components/Skeleton";
+import { useToast } from "@/components/Toast";
 import { useEventSource } from "@/hooks/useEventSource";
 import {
   listAlerts,
@@ -28,6 +29,7 @@ const SEVERITY_BADGES: Record<string, string> = {
 export default function AlertsPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const { toast } = useToast();
   const [data, setData] = useState<PaginatedResponse<AlertOut> | null>(null);
   const [error, setError] = useState("");
   const [unreadOnly, setUnreadOnly] = useState(false);
@@ -64,6 +66,7 @@ export default function AlertsPage() {
     try {
       await acknowledgeAlert(id);
       await fetchAlerts();
+      toast("Alert acknowledged", "success");
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to acknowledge");
     }
@@ -74,6 +77,7 @@ export default function AlertsPage() {
     try {
       await triggerAlertCheck();
       await fetchAlerts();
+      toast("Alert check completed", "success");
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Check failed");
     } finally {

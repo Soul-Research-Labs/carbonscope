@@ -14,6 +14,7 @@ import {
   type ScenarioOut,
 } from "@/lib/api";
 import { PageSkeleton } from "@/components/Skeleton";
+import { useToast } from "@/components/Toast";
 
 const ADJUSTMENT_TYPES = [
   {
@@ -62,6 +63,7 @@ const ADJUSTMENT_TYPES = [
 export default function ScenariosPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const { toast } = useToast();
   const searchParams = useSearchParams();
   const [scenarios, setScenarios] = useState<ScenarioOut[]>([]);
   const [reports, setReports] = useState<EmissionReport[]>([]);
@@ -155,6 +157,7 @@ export default function ScenariosPage() {
       setName("");
       setDescription("");
       setAdjustments({});
+      toast("Scenario created and computed", "success");
     } catch (err: unknown) {
       setError(
         err instanceof Error ? err.message : "Failed to create scenario",
@@ -168,6 +171,7 @@ export default function ScenariosPage() {
     try {
       await computeScenario(id);
       await fetchData(statusFilter);
+      toast("Scenario computed", "success");
     } catch {
       setError("Failed to compute scenario");
     }
@@ -177,6 +181,7 @@ export default function ScenariosPage() {
     try {
       await deleteScenario(id);
       setScenarios((prev) => prev.filter((s) => s.id !== id));
+      toast("Scenario deleted", "success");
     } catch {
       setError("Failed to delete");
     } finally {

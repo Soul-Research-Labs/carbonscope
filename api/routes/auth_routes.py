@@ -313,8 +313,8 @@ async def change_password(
     try:
         from api.services.email import send_password_changed_email
         await send_password_changed_email(user.email)
-    except Exception:
-        logger.warning("Failed to send password-change notification email")
+    except (OSError, ConnectionError, TimeoutError, ValueError) as exc:
+        logger.warning("Failed to send password-change notification email: %s", exc)
 
 
 @router.get("/me/export")
@@ -517,5 +517,5 @@ async def reset_password(
     try:
         from api.services.email import send_password_changed_email
         await send_password_changed_email(user.email)
-    except Exception:
-        logger.warning("Failed to send password-reset notification email")
+    except (OSError, ConnectionError, TimeoutError, ValueError) as exc:
+        logger.warning("Failed to send password-reset notification email: %s", exc)

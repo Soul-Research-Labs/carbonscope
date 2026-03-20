@@ -9,32 +9,7 @@ import {
   validateRegisterForm,
   type RegisterFormValues,
 } from "@/lib/validation";
-
-const INDUSTRIES = [
-  "Energy",
-  "Manufacturing",
-  "Technology",
-  "Transportation",
-  "Retail",
-  "Healthcare",
-  "Finance",
-  "Construction",
-  "Agriculture",
-  "Other",
-];
-
-const REGIONS = [
-  { value: "US", label: "United States" },
-  { value: "EU", label: "European Union" },
-  { value: "UK", label: "United Kingdom" },
-  { value: "CN", label: "China" },
-  { value: "IN", label: "India" },
-  { value: "JP", label: "Japan" },
-  { value: "AU", label: "Australia" },
-  { value: "BR", label: "Brazil" },
-  { value: "CA", label: "Canada" },
-  { value: "OTHER", label: "Other" },
-];
+import { INDUSTRIES, REGIONS, industryLabel } from "@/lib/constants";
 
 export default function RegisterPage() {
   const { register } = useAuth();
@@ -151,8 +126,8 @@ export default function RegisterPage() {
               onChange={(e) => update("industry", e.target.value)}
             >
               {INDUSTRIES.map((ind) => (
-                <option key={ind} value={ind.toLowerCase()}>
-                  {ind}
+                <option key={ind} value={ind}>
+                  {industryLabel(ind)}
                 </option>
               ))}
             </select>

@@ -120,6 +120,7 @@ export default function MarketplacePage() {
         price_credits: 0,
       });
       await fetchListings();
+      toast("Listing created successfully", "success");
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Failed to create listing");
     } finally {

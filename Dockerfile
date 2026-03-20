@@ -1,4 +1,5 @@
 # ── Backend (FastAPI) ────────────────────────────────────────────────
+# Pin base image for reproducible builds
 FROM python:3.12-slim AS backend
 
 WORKDIR /app

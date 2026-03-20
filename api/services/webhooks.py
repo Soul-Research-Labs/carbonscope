@@ -10,6 +10,7 @@ import hashlib
 import hmac
 import json
 import logging
+import random
 import secrets
 import time
 from datetime import datetime, timedelta, timezone
@@ -25,6 +26,12 @@ logger = logging.getLogger(__name__)
 
 # Retry intervals in seconds for attempts 1, 2, 3
 _RETRY_DELAYS = [1, 5, 30]
+
+
+def _retry_delay(attempt: int) -> float:
+    """Exponential backoff with jitter: 2^attempt * (1 + random 0-10%)."""
+    base = _RETRY_DELAYS[min(attempt, len(_RETRY_DELAYS) - 1)]
+    return base * (1 + random.uniform(0, 0.1))
 
 # Supported event types
 EVENT_TYPES = [
@@ -194,7 +201,7 @@ async def dispatch_event(
             delivery.duration_ms = elapsed_ms
 
             if not delivery.success and delivery.retry_count < delivery.max_retries:
-                delay = _RETRY_DELAYS[min(delivery.retry_count, len(_RETRY_DELAYS) - 1)]
+                delay = _retry_delay(delivery.retry_count)
                 delivery.next_retry_at = datetime.now(timezone.utc) + timedelta(seconds=delay)
 
             results.append({
@@ -211,7 +218,7 @@ async def dispatch_event(
             delivery.duration_ms = elapsed_ms
 
             if delivery.retry_count < delivery.max_retries:
-                delay = _RETRY_DELAYS[min(delivery.retry_count, len(_RETRY_DELAYS) - 1)]
+                delay = _retry_delay(delivery.retry_count)
                 delivery.next_retry_at = datetime.now(timezone.utc) + timedelta(seconds=delay)
 
             logger.warning(
@@ -335,7 +342,7 @@ async def process_pending_retries(db: AsyncSession) -> int:
                 delivery.id, delivery.webhook_id,
             )
         else:
-            delay = _RETRY_DELAYS[min(delivery.retry_count, len(_RETRY_DELAYS) - 1)]
+            delay = _retry_delay(delivery.retry_count)
             delivery.next_retry_at = datetime.now(timezone.utc) + timedelta(seconds=delay)
 
         processed += 1
@@ -401,7 +408,7 @@ async def retry_delivery(
     if delivery.success:
         delivery.next_retry_at = None
     else:
-        delay = _RETRY_DELAYS[min(delivery.retry_count, len(_RETRY_DELAYS) - 1)]
+        delay = _retry_delay(delivery.retry_count)
         delivery.next_retry_at = datetime.now(timezone.utc) + timedelta(seconds=delay)
 
     await db.commit()

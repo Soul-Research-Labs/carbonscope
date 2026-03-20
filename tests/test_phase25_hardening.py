@@ -94,7 +94,7 @@ class TestAuditLogging:
 
     async def test_admin_grant_credits_audit(self, auth_client: AsyncClient):
         await auth_client.get("/api/v1/billing/subscription")
-        await auth_client.post("/api/v1/billing/credits/grant", params={"amount": 10})
+        await auth_client.post("/api/v1/billing/credits/grant", json={"amount": 10})
         resp = await auth_client.get("/api/v1/audit-logs/")
         data = resp.json()
         actions = [item["action"] for item in data["items"]]
