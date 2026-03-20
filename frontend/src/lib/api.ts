@@ -54,9 +54,13 @@ async function fetchWithRetry(
 }
 
 function getCsrfToken(): string | null {
-  if (typeof document === "undefined") return null;
-  const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/);
-  return match ? decodeURIComponent(match[1]) : null;
+  try {
+    if (typeof document === "undefined") return null;
+    const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/);
+    return match ? decodeURIComponent(match[1]) : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Prevent multiple concurrent refresh attempts. */
@@ -99,7 +103,6 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     try {
       if (!refreshPromise) refreshPromise = doRefresh();
       await refreshPromise;
-      refreshPromise = null;
       // Retry with fresh cookies (set by doRefresh server response)
       const retry = await fetchWithRetry(`${BASE}${path}`, {
         ...init,
@@ -113,7 +116,6 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       if (retry.status === 204) return undefined as T;
       return retry.json();
     } catch (err) {
-      refreshPromise = null;
       // If refresh also failed, clear display state and notify React
       if (err instanceof ApiError && err.status === 401) {
         localStorage.removeItem("user");
@@ -122,6 +124,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
         }
       }
       throw err;
+    } finally {
+      refreshPromise = null;
     }
   }
 

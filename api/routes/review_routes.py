@@ -88,6 +88,12 @@ async def review_action(
       submitted/in_review -> approved (admin only)
       submitted/in_review -> rejected (admin only)
     """
+    # Approve/reject require admin role
+    if body.action in ("approve", "reject") and user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admins can approve or reject reviews",
+        )
     try:
         review = await svc_get(db, review_id, user.company_id)
         review = await svc_action(db, review, body.action, user.id, user.role, notes=body.notes)

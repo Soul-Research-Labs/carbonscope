@@ -513,8 +513,8 @@ async def logout(
             if jti and exp_ts:
                 expires_at = datetime.fromtimestamp(exp_ts, tz=timezone.utc)
                 await revoke_access_token(db, jti, user.id, expires_at)
-        except Exception:
-            logger.debug("Token revocation skipped (token already invalid)", exc_info=True)
+        except (ValueError, KeyError, OSError) as exc:
+            logger.debug("Token revocation skipped (token already invalid): %s", exc)
 
     await revoke_refresh_tokens(db, user.id)
     await db.commit()
@@ -534,7 +534,7 @@ async def forgot_password(
     db: AsyncSession = Depends(get_db),
 ):
     """Request a password reset. Sends a reset token via email."""
-    result = await db.execute(select(User).where(User.email == body.email))
+    result = await db.execute(select(User).where(User.email == body.email, User.deleted_at.is_(None)))
     user = result.scalar_one_or_none()
     if user is not None:
         token = await create_reset_token(db, user.id, user.email)

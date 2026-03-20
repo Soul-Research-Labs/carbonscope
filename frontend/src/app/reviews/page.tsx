@@ -70,7 +70,11 @@ export default function ReviewsPage() {
     }
   };
 
-  const handleAction = async (reviewId: string, action: string, notes?: string) => {
+  const handleAction = async (
+    reviewId: string,
+    action: string,
+    notes?: string,
+  ) => {
     try {
       const updated = await reviewAction(reviewId, action, notes);
       setReviews((prev) => prev.map((r) => (r.id === reviewId ? updated : r)));
@@ -206,7 +210,10 @@ export default function ReviewsPage() {
         confirmLabel="Reject"
         variant="danger"
         onConfirm={handleReject}
-        onCancel={() => { setRejectTarget(null); setRejectNotes(""); }}
+        onCancel={() => {
+          setRejectTarget(null);
+          setRejectNotes("");
+        }}
       />
       {rejectTarget && (
         <div className="fixed inset-0 z-40" aria-hidden="true" />

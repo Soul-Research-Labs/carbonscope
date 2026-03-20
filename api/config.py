@@ -99,7 +99,7 @@ setup_logging(level=LOG_LEVEL, json_output=LOG_JSON)
 
 # ── Bittensor ───────────────────────────────────────────────────────
 
-BT_NETWORK: str = os.getenv("BT_NETWORK", "test")
+BT_NETWORK: str = os.getenv("BT_NETWORK", "test")  # overridden by k8s configmap in production
 BT_NETUID: int = int(os.getenv("BT_NETUID", "1"))
 BT_WALLET_NAME: str = os.getenv("BT_WALLET_NAME", "api_client")
 BT_WALLET_HOTKEY: str = os.getenv("BT_WALLET_HOTKEY", "default")

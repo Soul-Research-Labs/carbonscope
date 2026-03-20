@@ -3,6 +3,11 @@ services:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -28,6 +33,11 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1.0"
     healthcheck:
       test:
         [

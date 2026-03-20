@@ -82,6 +82,24 @@ export default function DashboardPage() {
         />
       </div>
 
+      {/* Empty state for new users without reports */}
+      {!report && (
+        <div className="card p-8 text-center space-y-3">
+          <p className="text-4xl">📊</p>
+          <h2 className="text-lg font-semibold">No emission reports yet</h2>
+          <p className="text-[var(--muted)] text-sm max-w-md mx-auto">
+            Upload your first emission data to see your carbon footprint
+            breakdown, track trends, and generate compliance reports.
+          </p>
+          <button
+            onClick={() => router.push("/upload")}
+            className="btn-primary mt-2"
+          >
+            Upload Your First Data
+          </button>
+        </div>
+      )}
+
       {/* Stats row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="card">

@@ -90,7 +90,7 @@ async def _check_redis_health() -> str:
                 close = getattr(client, "close", None)
                 if callable(close):
                     await close()
-    except Exception:
+    except (OSError, asyncio.TimeoutError):
         return "unavailable"
 
 
@@ -191,8 +191,8 @@ async def health():
             await session.execute(sa_text("SELECT 1"))
             db_ok = True
             break
-    except Exception:
-        logger.debug("Health check DB probe failed", exc_info=True)
+    except (OSError, asyncio.TimeoutError) as exc:
+        logger.debug("Health check DB probe failed: %s", exc, exc_info=True)
 
     redis_status = await _check_redis_health()
     redis_ok = redis_status in ("connected", "not_configured")
@@ -216,7 +216,7 @@ async def health_detail(_admin=Depends(require_admin)):
             await session.execute(sa_text("SELECT 1"))
             break
         checks["database"] = "connected"
-    except Exception:
+    except (OSError, asyncio.TimeoutError):
         checks["database"] = "unavailable"
 
     smtp_host = os.getenv("SMTP_HOST", "")

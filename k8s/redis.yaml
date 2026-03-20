@@ -87,3 +87,14 @@ spec:
   resources:
     requests:
       storage: 1Gi
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: redis-pdb
+  namespace: carbonscope
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: redis

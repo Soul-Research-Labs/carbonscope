@@ -78,23 +78,35 @@ async def gather_user_export(db: AsyncSession, user: User) -> dict[str, Any]:
     export["data_listings"] = await _collect(DataListing, "seller_company_id")
     export["subscriptions"] = await _collect(Subscription)
 
-    # Financed portfolios + assets
+    # Financed portfolios + assets (batch load to avoid N+1)
     portfolios = (
         await db.execute(select(FinancedPortfolio).where(FinancedPortfolio.company_id == company_id))
     ).scalars().all()
+    portfolio_ids = [p.id for p in portfolios]
+    assets_by_pf: dict[str, list] = {}
+    if portfolio_ids:
+        all_assets = (
+            await db.execute(select(FinancedAsset).where(FinancedAsset.portfolio_id.in_(portfolio_ids)))
+        ).scalars().all()
+        for a in all_assets:
+            assets_by_pf.setdefault(a.portfolio_id, []).append(a)
     export["financed_portfolios"] = []
     for p in portfolios:
         pd = _row_to_dict(p)
-        assets = (await db.execute(select(FinancedAsset).where(FinancedAsset.portfolio_id == p.id))).scalars().all()
-        pd["assets"] = [_row_to_dict(a) for a in assets]
+        pd["assets"] = [_row_to_dict(a) for a in assets_by_pf.get(p.id, [])]
         export["financed_portfolios"].append(pd)
 
-    # Questionnaire questions (nested under questionnaires)
-    for q in export["questionnaires"]:
-        questions = (
-            await db.execute(select(QuestionnaireQuestion).where(QuestionnaireQuestion.questionnaire_id == q["id"]))
+    # Questionnaire questions (batch load to avoid N+1)
+    q_ids = [q["id"] for q in export["questionnaires"]]
+    questions_by_q: dict[str, list] = {}
+    if q_ids:
+        all_questions = (
+            await db.execute(select(QuestionnaireQuestion).where(QuestionnaireQuestion.questionnaire_id.in_(q_ids)))
         ).scalars().all()
-        q["questions"] = [_row_to_dict(qq) for qq in questions]
+        for qq in all_questions:
+            questions_by_q.setdefault(qq.questionnaire_id, []).append(qq)
+    for q in export["questionnaires"]:
+        q["questions"] = [_row_to_dict(qq) for qq in questions_by_q.get(q["id"], [])]
 
     # Data purchases (buyer side)
     if company_id:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -138,8 +139,8 @@ async def purchase_data(
                 await send_marketplace_sale_email(
                     seller_user.email, listing.title, listing.price_credits,
                 )
-        except Exception:
-            logger.warning("Email notification failed for marketplace purchase %s", purchase.id)
+        except (OSError, ConnectionError, asyncio.TimeoutError) as exc:
+            logger.warning("Email notification failed for marketplace purchase %s: %s", purchase.id, exc)
 
         return purchase
     except ValueError as e:

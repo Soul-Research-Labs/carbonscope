@@ -8,9 +8,11 @@ import json
 import logging
 import os
 import time
+import asyncio
 
 from fastapi import APIRouter, HTTPException, Request, status
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.database import async_session
@@ -234,8 +236,8 @@ async def stripe_webhook(request: Request):
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Webhook processing error",
             )
-        except Exception:
-            logger.exception("Unexpected error handling Stripe event %s", event_type)
+        except (SQLAlchemyError, OSError, asyncio.TimeoutError) as exc:
+            logger.error("Unexpected error handling Stripe event %s: %s", event_type, exc, exc_info=True)
             # Return 500 so Stripe retries the webhook
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

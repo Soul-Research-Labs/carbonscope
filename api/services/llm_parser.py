@@ -181,7 +181,7 @@ async def parse_unstructured_text(text: str) -> dict[str, Any]:
         result["_method"] = "llm"
         return result
 
-    except Exception as e:
+    except (json.JSONDecodeError, KeyError, TypeError, OSError, RuntimeError, asyncio.TimeoutError) as e:
         logger.warning("LLM extraction failed, falling back to rule-based: %s", e)
         result = parse_text_rule_based(text)
         result["_method"] = "rule_based"
@@ -335,7 +335,7 @@ async def generate_audit_trail(
 
         return await asyncio.to_thread(_audit_call)
 
-    except Exception as e:
+    except (json.JSONDecodeError, KeyError, TypeError, OSError, RuntimeError, asyncio.TimeoutError) as e:
         logger.warning("LLM audit trail failed, falling back to rule-based: %s", e)
         return generate_audit_trail_local(
             company, industry, year, scope1, scope2, scope3, total,

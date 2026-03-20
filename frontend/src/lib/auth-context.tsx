@@ -99,9 +99,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem("user", JSON.stringify(u));
       setUser(u);
       const redirect = searchParams.get("redirect");
-      // Prevent open redirect: must start with single '/' and not '//'
-      const safeRedirect =
-        redirect && /^\/[^/\\]/.test(redirect) ? redirect : "/dashboard";
+      // Prevent open redirect: validate with URL parser, allow only relative paths
+      let safeRedirect = "/dashboard";
+      if (redirect) {
+        try {
+          const url = new URL(redirect, window.location.origin);
+          if (
+            url.origin === window.location.origin &&
+            url.pathname.startsWith("/")
+          ) {
+            safeRedirect = url.pathname + url.search + url.hash;
+          }
+        } catch {
+          // Malformed URL — use default
+        }
+      }
       router.push(safeRedirect);
     },
     [router, searchParams],

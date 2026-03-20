@@ -92,8 +92,8 @@ describe("DataTable", () => {
       />,
     );
     expect(screen.getByText("Page 1 of 2 (3 items)")).toBeInTheDocument();
-    const prevButtons = screen.getAllByRole("button", { name: "Previous" });
-    const nextButtons = screen.getAllByRole("button", { name: "Next" });
+    const prevButtons = screen.getAllByText("Previous");
+    const nextButtons = screen.getAllByText("Next");
     expect(prevButtons[0]).toBeDisabled();
     expect(nextButtons[0]).toBeEnabled();
   });
@@ -111,7 +111,7 @@ describe("DataTable", () => {
         onPageChange={onPageChange}
       />,
     );
-    await user.click(screen.getAllByRole("button", { name: "Next" })[0]);
+    await user.click(screen.getAllByText("Next")[0]);
     expect(onPageChange).toHaveBeenCalledWith(2);
   });
 
@@ -126,10 +126,8 @@ describe("DataTable", () => {
         onPageChange={() => {}}
       />,
     );
-    expect(screen.getAllByRole("button", { name: "Next" })[0]).toBeDisabled();
-    expect(
-      screen.getAllByRole("button", { name: "Previous" })[0],
-    ).toBeEnabled();
+    expect(screen.getAllByText("Next")[0]).toBeDisabled();
+    expect(screen.getAllByText("Previous")[0]).toBeEnabled();
   });
 
   it("does not render pagination when total fits in one page", () => {

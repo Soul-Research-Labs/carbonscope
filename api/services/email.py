@@ -10,6 +10,8 @@ import html
 import logging
 import os
 
+import asyncio
+
 logger = logging.getLogger(__name__)
 
 # ── Configuration ───────────────────────────────────────────────────
@@ -70,16 +72,16 @@ async def send_email(to: str, subject: str, html_body: str, *, _max_retries: int
 
             logger.info("Email sent: to=%s subject=%s", _mask_email(to), subject)
             return True
-        except Exception:
+        except (OSError, ConnectionError, asyncio.TimeoutError, ValueError) as exc:
             if attempt < _max_retries - 1:
                 delay = 2 ** attempt  # 1s, 2s, 4s …
                 logger.warning(
-                    "Email attempt %d/%d failed for %s — retrying in %ds",
-                    attempt + 1, _max_retries, _mask_email(to), delay,
+                    "Email attempt %d/%d failed for %s — retrying in %ds: %s",
+                    attempt + 1, _max_retries, _mask_email(to), delay, exc,
                 )
                 await asyncio.sleep(delay)
             else:
-                logger.exception("Failed to send email to %s — subject=%s", _mask_email(to), subject)
+                logger.error("Failed to send email to %s — subject=%s", _mask_email(to), subject, exc_info=True)
 
     return False
 

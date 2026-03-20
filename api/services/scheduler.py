@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.database import async_session
@@ -143,8 +144,8 @@ async def _run_periodic_checks() -> None:
 
                             if kept > 0:
                                 publish_event(company_id, "alert.created", {"count": kept})
-                        except Exception:
-                            logger.exception("Alert check failed for company %s", company_id)
+                        except (SQLAlchemyError, OSError, ValueError) as exc:
+                            logger.error("Alert check failed for company %s: %s", company_id, exc, exc_info=True)
 
                     offset += _BATCH
 
@@ -157,8 +158,8 @@ async def _run_periodic_checks() -> None:
         except asyncio.CancelledError:
             logger.info("Scheduler shutting down")
             break
-        except Exception as exc:
-            logger.exception("Scheduler error (%s) — will retry next cycle", type(exc).__name__)
+        except (SQLAlchemyError, OSError, RuntimeError) as exc:
+            logger.error("Scheduler error (%s) — will retry next cycle", type(exc).__name__, exc_info=True)
 
 
 async def _run_monthly_credit_reset() -> None:
@@ -203,8 +204,8 @@ async def _run_monthly_credit_reset() -> None:
                                 if top_up > 0:
                                     await grant_credits(db, company_id, top_up, "monthly_reset")
                                 total_reset += 1
-                            except Exception:
-                                logger.exception("Credit reset failed for company %s", company_id)
+                            except (SQLAlchemyError, OSError, ValueError) as exc:
+                                logger.error("Credit reset failed for company %s: %s", company_id, exc, exc_info=True)
 
                         offset += _BATCH
 
@@ -215,8 +216,8 @@ async def _run_monthly_credit_reset() -> None:
         except asyncio.CancelledError:
             logger.info("Credit reset scheduler shutting down")
             break
-        except Exception as exc:
-            logger.exception("Credit reset error (%s) — will retry next cycle", type(exc).__name__)
+        except (SQLAlchemyError, OSError, RuntimeError) as exc:
+            logger.error("Credit reset error (%s) — will retry next cycle", type(exc).__name__, exc_info=True)
 
 
 async def _run_webhook_retries() -> None:
@@ -235,8 +236,8 @@ async def _run_webhook_retries() -> None:
         except asyncio.CancelledError:
             logger.info("Webhook retry scheduler shutting down")
             break
-        except Exception as exc:
-            logger.exception("Webhook retry error (%s) — will retry next cycle", type(exc).__name__)
+        except (SQLAlchemyError, OSError, RuntimeError) as exc:
+            logger.error("Webhook retry error (%s) — will retry next cycle", type(exc).__name__, exc_info=True)
 
 
 async def _run_token_cleanup() -> None:
@@ -272,8 +273,8 @@ async def _run_token_cleanup() -> None:
         except asyncio.CancelledError:
             logger.info("Token cleanup scheduler shutting down")
             break
-        except Exception as exc:
-            logger.exception("Token cleanup error (%s) — will retry next cycle", type(exc).__name__)
+        except (SQLAlchemyError, OSError, RuntimeError) as exc:
+            logger.error("Token cleanup error (%s) — will retry next cycle", type(exc).__name__, exc_info=True)
 
 
 def start_scheduler() -> None:

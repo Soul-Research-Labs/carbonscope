@@ -256,7 +256,7 @@ async def extract_questions_llm(text: str) -> list[dict[str, Any]]:
         if json_match:
             return json.loads(json_match.group())
         return json.loads(content)
-    except Exception as e:
+    except (json.JSONDecodeError, KeyError, TypeError, OSError) as e:
         logger.warning("LLM question extraction failed, using rule-based: %s", e)
         return extract_questions_rule_based(text)
 
@@ -290,7 +290,7 @@ async def generate_draft_answer(
         )
         answer = await asyncio.to_thread(_llm_call_sync, client, provider, prompt, 512)
         return answer.strip(), 0.75
-    except Exception as e:
+    except (KeyError, TypeError, OSError) as e:
         logger.warning("LLM draft answer failed: %s", e)
         return _draft_answer_rule_based(question, company_name, industry), 0.3
 

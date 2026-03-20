@@ -210,9 +210,9 @@ class TestUserSelfDelete:
         resp = await auth_client.delete("/api/v1/auth/me")
         assert resp.status_code == 204
 
-        # Subsequent requests should fail (user is now deactivated)
+        # Subsequent requests should fail (soft-deleted user filtered out)
         me2 = await auth_client.get("/api/v1/auth/me")
-        assert me2.status_code == 403  # is_active = False → 403
+        assert me2.status_code == 401  # deleted_at filter → user not found → 401
 
 
 # ── B6: GET single supply chain link ────────────────────────────────

@@ -97,5 +97,5 @@ def get_db_pool_status() -> str:
         return "sqlite/no_pool"
     try:
         return engine.sync_engine.pool.status()
-    except Exception:
+    except (AttributeError, RuntimeError):
         return "unavailable"

@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode } from "react";
+import { memo, type ReactNode } from "react";
 import { SkeletonRows } from "@/components/Skeleton";
 
 export interface Column<T> {
@@ -20,7 +20,7 @@ interface DataTableProps<T> {
   onPageChange?: (offset: number) => void;
 }
 
-export function DataTable<T extends Record<string, unknown>>({
+function DataTableInner<T extends Record<string, unknown>>({
   columns,
   data,
   loading = false,
@@ -158,3 +158,5 @@ export function DataTable<T extends Record<string, unknown>>({
     </div>
   );
 }
+
+export const DataTable = memo(DataTableInner) as typeof DataTableInner;

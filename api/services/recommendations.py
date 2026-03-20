@@ -195,7 +195,7 @@ def generate_recommendations(
         try:
             if not strategy["applicable_when"](provided_data, breakdown):
                 continue
-        except Exception:
+        except (TypeError, KeyError, AttributeError, ValueError):
             logger.warning("Strategy %s evaluation failed", strategy.get("name", "unknown"), exc_info=True)
             continue
 
