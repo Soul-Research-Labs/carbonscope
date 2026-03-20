@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -43,8 +45,8 @@ async def create_review(
 @limiter.limit(RATE_LIMIT_DEFAULT)
 async def list_reviews(
     request: Request,
-    status_filter: str | None = None,
-    limit: int = Query(20, ge=1, le=100),
+    status_filter: Literal["draft", "submitted", "in_review", "approved", "rejected"] | None = None,
+    limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

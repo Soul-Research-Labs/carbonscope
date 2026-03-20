@@ -88,7 +88,7 @@ export default function MFAPage() {
       )}
 
       {status && (
-        <div className="mb-6 rounded-lg border border-gray-700 bg-gray-800 p-6">
+        <div className="mb-6 rounded-lg border border-[var(--card-border)] bg-[var(--card)] p-6">
           <div className="flex items-center gap-3">
             <div
               className={`h-3 w-3 rounded-full ${
@@ -113,7 +113,7 @@ export default function MFAPage() {
       )}
 
       {setup && (
-        <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
+        <div className="rounded-lg border border-[var(--card-border)] bg-[var(--card)] p-6">
           <h2 className="mb-4 text-xl font-semibold">Setup TOTP</h2>
 
           <div className="mb-4">
@@ -146,6 +146,7 @@ export default function MFAPage() {
               value={totpCode}
               onChange={(e) => setTotpCode(e.target.value)}
               maxLength={6}
+              aria-label="TOTP verification code"
             />
             <button
               onClick={handleVerify}
@@ -173,6 +174,7 @@ export default function MFAPage() {
               value={disableCode}
               onChange={(e) => setDisableCode(e.target.value)}
               maxLength={6}
+              aria-label="TOTP code to disable MFA"
             />
             <button
               onClick={handleDisable}

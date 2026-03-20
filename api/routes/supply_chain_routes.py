@@ -59,7 +59,7 @@ async def add_supplier(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid supplier link parameters")
 
 
-@router.get("/suppliers")
+@router.get("/suppliers", response_model=PaginatedResponse[SupplyChainLinkOut])
 @limiter.limit(RATE_LIMIT_DEFAULT)
 async def get_suppliers(
     request: Request,
@@ -73,7 +73,7 @@ async def get_suppliers(
     return {"items": items, "total": total, "limit": limit, "offset": offset}
 
 
-@router.get("/buyers")
+@router.get("/buyers", response_model=PaginatedResponse[SupplyChainLinkOut])
 @limiter.limit(RATE_LIMIT_DEFAULT)
 async def get_buyers(
     request: Request,
@@ -87,7 +87,7 @@ async def get_buyers(
     return {"items": items, "total": total, "limit": limit, "offset": offset}
 
 
-@router.get("/scope3-from-suppliers")
+@router.get("/scope3-from-suppliers", response_model=dict)
 @limiter.limit(RATE_LIMIT_DEFAULT)
 async def scope3_from_suppliers(
     request: Request,

@@ -65,7 +65,12 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-    """Add security headers to every response."""
+    """Add security headers to every response.
+
+    These duplicate nginx headers intentionally for defense-in-depth:
+    direct API access (e.g. development, internal traffic) is still protected.
+    Keep values in sync with nginx/nginx.conf.
+    """
 
     async def dispatch(self, request: Request, call_next):
         response = await call_next(request)

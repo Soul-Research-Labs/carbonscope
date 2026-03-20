@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import select
@@ -46,7 +46,7 @@ async def gather_user_export(db: AsyncSession, user: User) -> dict[str, Any]:
     """Collect all data belonging to a user and their company."""
     company_id = user.company_id
     export: dict[str, Any] = {
-        "exported_at": datetime.utcnow().isoformat(),
+        "exported_at": datetime.now(timezone.utc).isoformat(),
         "user": _row_to_dict(user),
     }
 

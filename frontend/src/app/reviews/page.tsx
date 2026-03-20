@@ -94,13 +94,14 @@ export default function ReviewsPage() {
       {error && <p className="mb-4 text-red-400">{error}</p>}
 
       {showCreate && (
-        <div className="mb-6 rounded-lg border border-gray-700 bg-gray-800 p-4">
+        <div className="mb-6 rounded-lg border border-[var(--card-border)] bg-[var(--card)] p-4">
           <h3 className="mb-2 font-semibold">Create Review for Report</h3>
           <div className="flex gap-4">
             <select
-              className="rounded bg-gray-700 px-3 py-2 text-white"
+              className="input"
               value={selectedReport}
               onChange={(e) => setSelectedReport(e.target.value)}
+              aria-label="Select report for review"
             >
               <option value="">Select a report...</option>
               {reports.map((r) => (
@@ -129,7 +130,7 @@ export default function ReviewsPage() {
         {reviews.map((r) => (
           <div
             key={r.id}
-            className="rounded-lg border border-gray-700 bg-gray-800 p-4"
+            className="rounded-lg border border-[var(--card-border)] bg-[var(--card)] p-4"
           >
             <div className="flex items-center justify-between">
               <div>

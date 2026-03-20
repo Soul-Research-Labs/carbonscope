@@ -22,9 +22,18 @@ spec:
             component: backup
         spec:
           restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 70
+            fsGroup: 70
           containers:
             - name: pg-backup
               image: postgres:16-alpine
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
               env:
                 - name: PGHOST
                   value: postgres

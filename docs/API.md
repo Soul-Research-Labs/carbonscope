@@ -28,6 +28,7 @@
 - [Data Marketplace](#data-marketplace)
 - [Webhooks](#webhooks)
 - [Stripe Webhooks](#stripe-webhooks)
+- [Team Management](#team-management)
 - [Audit Logs](#audit-logs)
 - [Health & Metrics](#health--metrics)
 - [Common Patterns](#common-patterns)
@@ -1720,6 +1721,100 @@ Stripe signs each webhook with HMAC-SHA256 over `{timestamp}.{payload}`. The end
 | 200  | Event processed successfully           |
 | 400  | Signature verification failed          |
 | 503  | `STRIPE_WEBHOOK_SECRET` not configured |
+
+---
+
+## Team Management
+
+All team endpoints are at `/api/v1/team`.
+
+### Invite Member (Admin)
+
+```
+POST /team/invite
+Authorization: Bearer <token>  (Admin only)
+```
+
+**Request Body** (`InviteCreate`):
+```json
+{
+  "email": "newmember@example.com",
+  "role": "member"          // "admin" | "member"
+}
+```
+
+**Response:** `201 Created` — `InviteOut`
+
+---
+
+### Accept Invitation
+
+```
+POST /team/invite/accept
+```
+
+No auth required — uses the invite token from the email link.
+
+**Request Body** (`InviteAccept`):
+```json
+{
+  "token": "<invite-token>",
+  "full_name": "New Member",
+  "password": "SecurePass123!"
+}
+```
+
+**Response:** `200 OK` — `UserOut` (the newly created user)
+
+---
+
+### List Members
+
+```
+GET /team/members?limit=50&offset=0
+Authorization: Bearer <token>
+```
+
+**Response:** `PaginatedResponse[TeamMemberOut]`
+
+---
+
+### List Invitations (Admin)
+
+```
+GET /team/invitations?limit=50&offset=0
+Authorization: Bearer <token>  (Admin only)
+```
+
+Returns pending (not yet accepted, not expired) invitations.
+
+**Response:** `PaginatedResponse[InviteOut]`
+
+---
+
+### Update Member Role (Admin)
+
+```
+PATCH /team/members/{member_id}/role?role=admin
+Authorization: Bearer <token>  (Admin only)
+```
+
+Cannot change your own role.
+
+**Response:** `200 OK` — `TeamMemberOut`
+
+---
+
+### Remove Member (Admin)
+
+```
+DELETE /team/members/{member_id}
+Authorization: Bearer <token>  (Admin only)
+```
+
+Soft-deletes the member. Cannot remove yourself.
+
+**Response:** `204 No Content`
 
 ---
 

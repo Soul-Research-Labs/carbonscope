@@ -69,7 +69,7 @@ async def send_email(to: str, subject: str, html_body: str) -> bool:
         logger.info("Email sent: to=%s subject=%s", _mask_email(to), subject)
         return True
     except Exception:
-        logger.exception("Failed to send email to %s", _mask_email(to))
+        logger.exception("Failed to send email to %s — subject=%s", _mask_email(to), subject)
         return False
 
 

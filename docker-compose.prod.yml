@@ -69,6 +69,8 @@ services:
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}
       - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}
       - REDIS_URL=redis://redis:6379/0
+      - TOTP_ENCRYPTION_KEY=${TOTP_ENCRYPTION_KEY:?Set TOTP_ENCRYPTION_KEY in .env}
+      - SENTRY_DSN=${SENTRY_DSN:-}
     depends_on:
       db:
         condition: service_healthy

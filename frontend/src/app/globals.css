@@ -65,6 +65,42 @@ body {
   cursor: not-allowed;
 }
 
+.btn-secondary {
+  background: var(--card);
+  color: var(--foreground);
+  border: 1px solid var(--card-border);
+  padding: 0.5rem 1.25rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  transition: background 0.15s;
+  cursor: pointer;
+}
+.btn-secondary:hover {
+  background: var(--card-border);
+}
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+  padding: 0.5rem 1.25rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  transition: background 0.15s;
+  cursor: pointer;
+  border: none;
+}
+.btn-danger:hover {
+  opacity: 0.9;
+}
+.btn-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .input {
   background: var(--card);
   border: 1px solid var(--card-border);
@@ -102,6 +138,21 @@ a:focus-visible,
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Slide-in animation for toasts */
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out;
 }
 
 .label {

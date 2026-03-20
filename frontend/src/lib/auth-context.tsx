@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   login as apiLogin,
   logoutApi,
@@ -59,6 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // Restore from localStorage on mount
   useEffect(() => {
@@ -79,6 +80,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(
     async (email: string, password: string) => {
       const resp = await apiLogin(email, password);
+
+      // If server requests MFA, redirect to MFA verification instead of granting access
+      if (resp.mfa_required) {
+        localStorage.setItem("mfa_pending_token", resp.access_token);
+        router.push("/mfa-verify");
+        return;
+      }
+
       localStorage.setItem("token", resp.access_token);
       if (resp.refresh_token) {
         localStorage.setItem("refresh_token", resp.refresh_token);
@@ -98,9 +107,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
       localStorage.setItem("user", JSON.stringify(u));
       setUser(u);
-      router.push("/dashboard");
+      const redirect = searchParams.get("redirect");
+      router.push(redirect && redirect.startsWith("/") ? redirect : "/dashboard");
     },
-    [router],
+    [router, searchParams],
   );
 
   const register = useCallback(

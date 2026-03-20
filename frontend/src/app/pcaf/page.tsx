@@ -123,7 +123,7 @@ export default function PCAFPage() {
       {error && <p className="mb-4 text-red-400">{error}</p>}
 
       {showCreate && (
-        <div className="mb-6 rounded-lg border border-gray-700 bg-gray-800 p-4">
+        <div className="mb-6 rounded-lg border border-[var(--card-border)] bg-[var(--card)] p-4">
           <h3 className="mb-2 font-semibold">Create Portfolio</h3>
           <div className="flex gap-4">
             <input

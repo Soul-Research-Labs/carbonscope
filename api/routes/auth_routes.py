@@ -512,3 +512,10 @@ async def reset_password(
     user.hashed_password = hash_password(body.new_password)
     await revoke_refresh_tokens(db, user.id)
     await db.commit()
+
+    # Notify user their password was changed (fire-and-forget)
+    try:
+        from api.services.email import send_password_changed_email
+        await send_password_changed_email(user.email)
+    except Exception:
+        logger.warning("Failed to send password-reset notification email")

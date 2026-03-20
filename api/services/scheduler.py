@@ -198,7 +198,10 @@ async def _run_monthly_credit_reset() -> None:
                             try:
                                 sub = await get_or_create_subscription(db, company_id)
                                 monthly = PLAN_LIMITS.get(sub.plan, PLAN_LIMITS["free"])["monthly_credits"]
-                                await grant_credits(db, company_id, monthly, "monthly_reset")
+                                current = await get_credit_balance(db, company_id)
+                                top_up = max(0, monthly - current)
+                                if top_up > 0:
+                                    await grant_credits(db, company_id, top_up, "monthly_reset")
                                 total_reset += 1
                             except Exception:
                                 logger.exception("Credit reset failed for company %s", company_id)

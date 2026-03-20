@@ -57,7 +57,7 @@ async def create_portfolio(
 @limiter.limit(RATE_LIMIT_DEFAULT)
 async def list_portfolios(
     request: Request,
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

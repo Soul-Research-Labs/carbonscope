@@ -1,14 +1,13 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: postgres
   namespace: carbonscope
   labels:
     app: postgres
 spec:
+  serviceName: postgres
   replicas: 1
-  strategy:
-    type: Recreate
   selector:
     matchLabels:
       app: postgres
@@ -60,10 +59,15 @@ spec:
               command: ["pg_isready", "-U", "carbonscope"]
             initialDelaySeconds: 30
             periodSeconds: 10
-      volumes:
-        - name: pgdata
-          persistentVolumeClaim:
-            claimName: postgres-pvc
+  volumeClaimTemplates:
+    - metadata:
+        name: pgdata
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
 ---
 apiVersion: v1
 kind: Service
@@ -77,15 +81,3 @@ spec:
     - port: 5432
       targetPort: 5432
   clusterIP: None
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: postgres-pvc
-  namespace: carbonscope
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 10Gi

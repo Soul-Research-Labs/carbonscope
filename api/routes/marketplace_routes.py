@@ -60,7 +60,7 @@ async def browse_marketplace(
     industry: str | None = Query(None),
     region: str | None = Query(None),
     data_type: str | None = Query(None),
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -151,7 +151,7 @@ async def purchase_data(
 @limiter.limit(RATE_LIMIT_DEFAULT)
 async def get_my_listings(
     request: Request,
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -182,7 +182,7 @@ async def withdraw_data_listing(
 @limiter.limit(RATE_LIMIT_DEFAULT)
 async def get_my_sales(
     request: Request,
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

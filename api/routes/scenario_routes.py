@@ -59,7 +59,7 @@ async def list_scenarios(
     status: str | None = Query(default=None, pattern="^(draft|computed|archived)$"),
     sort_by: str = Query(default="created_at", pattern="^(created_at|updated_at|name)$"),
     order: str = Query(default="desc", pattern="^(asc|desc)$"),
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

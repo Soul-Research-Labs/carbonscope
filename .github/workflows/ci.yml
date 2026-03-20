@@ -214,6 +214,19 @@ jobs:
         working-directory: frontend
         run: npm run build
 
+      - name: Start frontend server
+        working-directory: frontend
+        run: npx next start -p 3000 &
+        env:
+          HOSTNAME: 0.0.0.0
+
+      - name: Wait for frontend
+        run: |
+          for i in $(seq 1 30); do
+            curl -s http://localhost:3000 > /dev/null && break
+            sleep 1
+          done
+
       - name: Run Playwright E2E tests
         working-directory: frontend
         run: npx playwright test
@@ -254,7 +267,7 @@ jobs:
         run: pip-audit -r requirements.txt
 
       - name: Run safety check
-        run: safety check -r requirements.txt --output text || true
+        run: safety check -r requirements.txt --output text
 
       - name: Run bandit
         run: bandit -r api/ -ll --skip B101
@@ -268,7 +281,7 @@ jobs:
 
       - name: Audit frontend dependencies
         working-directory: frontend
-        run: npm audit --audit-level=high || true
+        run: npm audit --audit-level=high
 
       - name: Detect hardcoded secrets
         uses: trufflesecurity/trufflehog@main
@@ -311,6 +324,28 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Extract frontend metadata
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}-frontend
+          tags: |
+            type=sha
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: frontend
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

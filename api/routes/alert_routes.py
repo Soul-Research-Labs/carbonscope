@@ -22,7 +22,7 @@ router = APIRouter(prefix="/alerts", tags=["alerts"])
 async def get_alerts(
     request: Request,
     unread_only: bool = Query(False),
-    limit: int = Query(50, ge=1, le=100),
+    limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
