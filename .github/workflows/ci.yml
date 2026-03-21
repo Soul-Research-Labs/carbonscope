@@ -157,6 +157,19 @@ jobs:
       - name: Lint
         run: ruff check . --select E,F,W --ignore E501
 
+  k8s-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate K8s manifests (dry-run)
+        run: |
+          for f in k8s/*.yaml; do
+            echo "--- Validating $f ---"
+            # Replace placeholder tag so manifests parse correctly
+            sed 's/__IMAGE_TAG__/ci-test/g' "$f" | kubectl apply --dry-run=client -f - || exit 1
+          done
+
   frontend:
     runs-on: ubuntu-latest
     steps:
@@ -403,7 +416,7 @@ jobs:
         run: docker run --rm ghcr.io/${{ github.repository }}:sha-${GITHUB_SHA::7} python -c "import api; print('OK')"
 
       - name: Trivy vulnerability scan
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@0.24.0
         with:
           image-ref: ghcr.io/${{ github.repository }}:sha-${{ github.sha }}
           format: table

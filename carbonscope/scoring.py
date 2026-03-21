@@ -12,6 +12,7 @@ from carbonscope.validation.benchmark import check_benchmark_alignment
 
 # ── Scoring weights (must sum to 1.0) ──────────────────────────────
 
+# Weights when ground truth IS available (accuracy is meaningful)
 W_ACCURACY = 0.40
 W_COMPLIANCE = 0.25
 W_COMPLETENESS = 0.15
@@ -20,6 +21,16 @@ W_BENCHMARK = 0.05
 
 assert round(W_ACCURACY + W_COMPLIANCE + W_COMPLETENESS + W_ANTI_HALLUCINATION + W_BENCHMARK, 10) == 1.0, \
     "Scoring weights must sum to 1.0"
+
+# Weights when ground truth is NOT available (accuracy is just neutral 0.5)
+W_ACCURACY_NO_GT = 0.10
+W_COMPLIANCE_NO_GT = 0.35
+W_COMPLETENESS_NO_GT = 0.20
+W_ANTI_HALLUCINATION_NO_GT = 0.25
+W_BENCHMARK_NO_GT = 0.10
+
+assert round(W_ACCURACY_NO_GT + W_COMPLIANCE_NO_GT + W_COMPLETENESS_NO_GT + W_ANTI_HALLUCINATION_NO_GT + W_BENCHMARK_NO_GT, 10) == 1.0, \
+    "No-ground-truth scoring weights must sum to 1.0"
 
 
 # ── Individual scoring functions ────────────────────────────────────
@@ -97,11 +108,13 @@ def calc_completeness_score(
 
 
 # Overconfidence penalty thresholds
-_CONFIDENCE_TRIGGER = 0.8        # minimum confidence to consider penalizing
-_VERY_SPARSE_MAX_FIELDS = 3      # fields ≤ this with confidence > 0.9 → max penalty
-_SPARSE_MAX_FIELDS = 5           # fields ≤ this with confidence ≥ 0.8 → moderate penalty
-_PENALTY_SEVERE = 0.15           # penalty for very sparse + very confident
-_PENALTY_MODERATE = 0.10         # penalty for sparse + confident
+_CONFIDENCE_TRIGGER = 0.7        # minimum confidence to consider penalizing
+_VERY_SPARSE_MAX_FIELDS = 3      # fields ≤ this with confidence > 0.85 → max penalty
+_SPARSE_MAX_FIELDS = 5           # fields ≤ this with confidence ≥ 0.7 → moderate penalty
+_MODERATE_MAX_FIELDS = 8         # fields ≤ this with confidence ≥ 0.8 → light penalty
+_PENALTY_SEVERE = 0.25           # penalty for very sparse + very confident
+_PENALTY_MODERATE = 0.15         # penalty for sparse + confident
+_PENALTY_LIGHT = 0.08            # penalty for moderate data + high confidence
 
 
 def calc_overconfidence_penalty(
@@ -113,18 +126,23 @@ def calc_overconfidence_penalty(
     The penalty discourages miners from returning inflated confidence scores
     when they have very little actual data to work with (~15 possible fields).
 
-    Returns 0.0–0.15 (subtracted from the weighted final score).
+    Returns 0.0–0.25 (subtracted from the weighted final score).
     """
     if confidence is None or confidence < _CONFIDENCE_TRIGGER:
         return 0.0
 
     provided_data = questionnaire.get("provided_data", {})
-    fields_provided = len(provided_data)
+    fields_provided = sum(
+        1 for v in provided_data.values()
+        if v is not None and v != 0 and v != ""
+    )
 
-    if fields_provided <= _VERY_SPARSE_MAX_FIELDS and confidence > 0.9:
+    if fields_provided <= _VERY_SPARSE_MAX_FIELDS and confidence > 0.85:
         return _PENALTY_SEVERE
     if fields_provided <= _SPARSE_MAX_FIELDS and confidence >= _CONFIDENCE_TRIGGER:
         return _PENALTY_MODERATE
+    if fields_provided <= _MODERATE_MAX_FIELDS and confidence >= 0.8:
+        return _PENALTY_LIGHT
 
     return 0.0
 
@@ -170,7 +188,8 @@ def score_response(
            "anti_hallucination": float, "benchmark": float, "final": float}``
     """
     # Accuracy
-    if ground_truth is not None:
+    has_ground_truth = ground_truth is not None
+    if has_ground_truth:
         accuracy = calc_accuracy_score(emissions, ground_truth)
     else:
         accuracy = 0.5  # Neutral when no ground truth
@@ -187,13 +206,19 @@ def score_response(
     # Benchmark alignment
     benchmark = check_benchmark_alignment(emissions, industry)
 
+    # Select weights based on ground truth availability
+    if has_ground_truth:
+        wa, wc, wk, wah, wb = W_ACCURACY, W_COMPLIANCE, W_COMPLETENESS, W_ANTI_HALLUCINATION, W_BENCHMARK
+    else:
+        wa, wc, wk, wah, wb = W_ACCURACY_NO_GT, W_COMPLIANCE_NO_GT, W_COMPLETENESS_NO_GT, W_ANTI_HALLUCINATION_NO_GT, W_BENCHMARK_NO_GT
+
     # Weighted final
     final = (
-        W_ACCURACY * accuracy
-        + W_COMPLIANCE * compliance
-        + W_COMPLETENESS * completeness
-        + W_ANTI_HALLUCINATION * anti_hallucination
-        + W_BENCHMARK * benchmark
+        wa * accuracy
+        + wc * compliance
+        + wk * completeness
+        + wah * anti_hallucination
+        + wb * benchmark
     )
     
     # Penalties

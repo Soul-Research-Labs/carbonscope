@@ -106,15 +106,12 @@ export default function ReviewsPage() {
     <main className="mx-auto max-w-5xl p-8">
       <div className="mb-8 flex items-center justify-between">
         <h1 className="text-3xl font-bold">Data Reviews</h1>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="rounded-lg bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700"
-        >
+        <button onClick={() => setShowCreate(true)} className="btn-primary">
           New Review
         </button>
       </div>
 
-      {error && <p className="mb-4 text-red-400">{error}</p>}
+      {error && <p className="mb-4 text-[var(--danger)]">{error}</p>}
 
       {showCreate && (
         <div className="mb-6 rounded-lg border border-[var(--card-border)] bg-[var(--card)] p-4">
@@ -133,10 +130,7 @@ export default function ReviewsPage() {
                 </option>
               ))}
             </select>
-            <button
-              onClick={handleCreate}
-              className="rounded bg-emerald-600 px-4 py-2 text-white"
-            >
+            <button onClick={handleCreate} className="btn-primary">
               Create
             </button>
             <button
@@ -180,7 +174,7 @@ export default function ReviewsPage() {
                 {r.status === "draft" && (
                   <button
                     onClick={() => handleAction(r.id, "submit")}
-                    className="rounded bg-blue-600 px-3 py-1 text-sm text-white"
+                    className="btn-primary text-sm px-3 py-1"
                   >
                     Submit
                   </button>
@@ -189,13 +183,13 @@ export default function ReviewsPage() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleAction(r.id, "approve")}
-                      className="rounded bg-emerald-600 px-3 py-1 text-sm text-white"
+                      className="btn-primary text-sm px-3 py-1"
                     >
                       Approve
                     </button>
                     <button
                       onClick={() => setRejectTarget(r.id)}
-                      className="rounded bg-red-600 px-3 py-1 text-sm text-white"
+                      className="btn-danger text-sm px-3 py-1"
                     >
                       Reject
                     </button>

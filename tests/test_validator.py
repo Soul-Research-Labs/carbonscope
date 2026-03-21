@@ -32,6 +32,17 @@ def _make_validator(**overrides):
     v._max_failures = 3
     v._backoff_seconds = 2.0
     v._max_backoff = 60.0
+    # Adaptive alpha / cold start fields
+    v._query_counts = overrides.get("query_counts", {})
+    v._cold_start_rounds = overrides.get("cold_start_rounds", 10)
+    v._cold_start_alpha = overrides.get("cold_start_alpha", min(0.3, v.alpha * 3))
+    v._cold_start_seed = overrides.get("cold_start_seed", 0.3)
+    # Dynamic miner skipping / metagraph sync
+    v._consecutive_zeros = overrides.get("consecutive_zeros", {})
+    v._skip_zero_after = overrides.get("skip_zero_after", 10)
+    v._metagraph_sync_interval = 120
+    v._last_metagraph_sync = 0.0
+    v.case_index = overrides.get("case_index", 0)
     return v
 
 
@@ -39,16 +50,29 @@ def _make_validator(**overrides):
 
 
 class TestUpdateScores:
-    def test_new_uid_gets_raw_score(self):
+    def test_new_uid_gets_cold_start_blend(self):
         v = _make_validator()
         v._save_scores = MagicMock()
         v.update_scores(42, 0.8)
-        assert v.scores[42] == 0.8
+        # Cold start: seed * (1 - cold_start_alpha) + score * cold_start_alpha
+        # = 0.3 * 0.7 + 0.8 * 0.3 = 0.45
+        expected = 0.3 * (1 - 0.3) + 0.8 * 0.3
+        assert abs(v.scores[42] - expected) < 1e-9
+        assert v._query_counts[42] == 1
 
-    def test_ema_blends_existing_score(self):
+    def test_ema_blends_existing_score_cold_start(self):
         v = _make_validator(scores={42: 0.5})
         v._save_scores = MagicMock()
         v.update_scores(42, 1.0)
+        # Cold start alpha (0.3) used since query_count ≤ cold_start_rounds
+        # EMA: 0.7 * 0.5 + 0.3 * 1.0 = 0.65
+        assert abs(v.scores[42] - 0.65) < 1e-9
+
+    def test_ema_uses_base_alpha_after_warmup(self):
+        v = _make_validator(scores={42: 0.5}, query_counts={42: 11})
+        v._save_scores = MagicMock()
+        v.update_scores(42, 1.0)
+        # Past cold start: uses base alpha (0.1)
         # EMA: 0.9 * 0.5 + 0.1 * 1.0 = 0.55
         assert abs(v.scores[42] - 0.55) < 1e-9
 
@@ -64,6 +88,21 @@ class TestUpdateScores:
         v._save_scores = MagicMock()
         v.update_scores(1, 0.5)
         v._save_scores.assert_called_once()
+
+    def test_consecutive_zeros_tracked(self):
+        v = _make_validator(scores={5: 0.5})
+        v._save_scores = MagicMock()
+        v.update_scores(5, 0.0)
+        v.update_scores(5, 0.0)
+        assert v._consecutive_zeros[5] == 2
+        v.update_scores(5, 0.3)
+        assert v._consecutive_zeros[5] == 0
+
+    def test_consecutive_zeros_new_uid(self):
+        v = _make_validator()
+        v._save_scores = MagicMock()
+        v.update_scores(99, 0.0)
+        assert v._consecutive_zeros[99] == 1
 
 
 # ── Score persistence ───────────────────────────────────────────────
@@ -116,13 +155,13 @@ class TestSetWeights:
         assert abs(weights[idx] - 0.7) < 1e-9
 
     def test_all_zero_scores_uniform(self):
-        """When all scores are zero, all weights should be 0 (no reward)."""
+        """When all scores are zero, assign uniform weights so miners stay visible."""
         v = _make_validator(scores={0: 0.0, 1: 0.0, 2: 0.0})
         v.set_weights()
         call_args = v.subtensor.set_weights.call_args
         weights = call_args.kwargs.get("weights") or call_args[1].get("weights")
         for w in weights:
-            assert w == 0.0
+            assert abs(w - 1.0 / 3) < 1e-9
 
     def test_retry_on_failure(self):
         v = _make_validator(scores={0: 0.5})

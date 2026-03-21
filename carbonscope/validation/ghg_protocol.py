@@ -60,4 +60,37 @@ def check_ghg_compliance(response_emissions: dict, response_breakdown: dict | No
         score -= 0.10
         penalties.append("No breakdown provided despite non-zero emissions")
 
+    # 5. Breakdown-to-scope transitive consistency
+    if response_breakdown is not None and total > 0:
+        _BREAKDOWN_TOLERANCE = 0.02  # 2% tolerance for rounding
+
+        s1_detail = response_breakdown.get("scope1_detail")
+        if s1_detail and isinstance(s1_detail, dict) and s1 > 0:
+            s1_detail_sum = sum(v for v in s1_detail.values() if isinstance(v, (int, float)))
+            if s1_detail_sum > 0 and abs(s1_detail_sum - s1) / max(s1, s1_detail_sum) > _BREAKDOWN_TOLERANCE:
+                score -= 0.10
+                penalties.append(
+                    f"Scope 1 breakdown sum ({s1_detail_sum:.1f}) != scope1 ({s1:.1f})"
+                )
+
+        s2_detail = response_breakdown.get("scope2_detail")
+        if s2_detail and isinstance(s2_detail, dict) and s2 > 0:
+            # Scope 2: use location_based as default (per GHG Protocol)
+            s2_loc = s2_detail.get("location_based", 0)
+            if isinstance(s2_loc, (int, float)) and s2_loc > 0:
+                if abs(s2_loc - s2) / max(s2, s2_loc) > _BREAKDOWN_TOLERANCE:
+                    score -= 0.05
+                    penalties.append(
+                        f"Scope 2 location_based ({s2_loc:.1f}) != scope2 ({s2:.1f})"
+                    )
+
+        s3_detail = response_breakdown.get("scope3_detail")
+        if s3_detail and isinstance(s3_detail, dict) and s3 > 0:
+            s3_detail_sum = sum(v for v in s3_detail.values() if isinstance(v, (int, float)))
+            if s3_detail_sum > 0 and abs(s3_detail_sum - s3) / max(s3, s3_detail_sum) > _BREAKDOWN_TOLERANCE:
+                score -= 0.10
+                penalties.append(
+                    f"Scope 3 breakdown sum ({s3_detail_sum:.1f}) != scope3 ({s3:.1f})"
+                )
+
     return max(score, 0.0)

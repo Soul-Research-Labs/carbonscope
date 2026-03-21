@@ -36,8 +36,8 @@ def check_benchmark_alignment(emissions: dict, industry: str) -> float:
     if not expected:
         return 0.5
 
-    # Tolerance: 25 percentage points deviation per scope before penalty
-    tolerance = 0.25
+    # Tolerance: 15 percentage points deviation per scope before penalty
+    tolerance = 0.15
     score = 1.0
 
     for key in ["scope1_pct", "scope2_pct", "scope3_pct"]:
@@ -47,7 +47,7 @@ def check_benchmark_alignment(emissions: dict, industry: str) -> float:
         if deviation > tolerance:
             # Proportional penalty for excess deviation
             excess = deviation - tolerance
-            penalty = min(excess / 0.5, 1.0) * 0.33  # max ~0.33 penalty per scope
+            penalty = min(excess / 0.4, 1.0) * 0.33  # max ~0.33 penalty per scope
             score -= penalty
 
     return max(score, 0.0)

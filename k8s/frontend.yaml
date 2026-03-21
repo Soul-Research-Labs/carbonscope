@@ -24,7 +24,7 @@ spec:
               app: frontend
       containers:
         - name: frontend
-          image: ghcr.io/carbonscope/carbonscope-frontend:v0.6.0 # Pin to release tag; update on deploy
+          image: ghcr.io/carbonscope/carbonscope-frontend:__IMAGE_TAG__ # Set via CI: sed -i 's/__IMAGE_TAG__/$TAG/'
           ports:
             - containerPort: 3000
           env:

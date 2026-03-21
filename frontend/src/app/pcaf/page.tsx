@@ -120,15 +120,12 @@ export default function PCAFPage() {
     <main className="mx-auto max-w-6xl p-8">
       <div className="mb-8 flex items-center justify-between">
         <h1 className="text-3xl font-bold">PCAF Financed Emissions</h1>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="rounded-lg bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700"
-        >
+        <button onClick={() => setShowCreate(true)} className="btn-primary">
           New Portfolio
         </button>
       </div>
 
-      {error && <p className="mb-4 text-red-400">{error}</p>}
+      {error && <p className="mb-4 text-[var(--danger)]">{error}</p>}
 
       {showCreate && (
         <div className="mb-6 rounded-lg border border-[var(--card-border)] bg-[var(--card)] p-4">
@@ -148,10 +145,7 @@ export default function PCAFPage() {
               onChange={(e) => setNewYear(Number(e.target.value))}
               aria-label="Portfolio year"
             />
-            <button
-              onClick={handleCreate}
-              className="rounded bg-emerald-600 px-4 py-2 text-white"
-            >
+            <button onClick={handleCreate} className="btn-primary">
               Create
             </button>
             <button
@@ -176,7 +170,7 @@ export default function PCAFPage() {
               onClick={() => setSelectedId(p.id)}
               className={`w-full rounded-lg border p-3 text-left ${
                 selectedId === p.id
-                  ? "border-emerald-500 bg-emerald-900/20"
+                  ? "border-[var(--primary)] bg-[var(--primary)]/10"
                   : "border-[var(--card-border)] bg-[var(--card)] hover:border-[var(--muted)]"
               }`}
             >
@@ -200,7 +194,7 @@ export default function PCAFPage() {
                   <p className="text-sm text-[var(--muted)]">
                     Total Financed Emissions
                   </p>
-                  <p className="text-2xl font-bold text-emerald-400">
+                  <p className="text-2xl font-bold text-[var(--primary)]">
                     {summary.total_financed_emissions.toLocaleString()} tCO₂e
                   </p>
                 </div>
@@ -222,7 +216,7 @@ export default function PCAFPage() {
                 <h3 className="text-lg font-semibold">Assets</h3>
                 <button
                   onClick={() => setShowAssetForm(true)}
-                  className="rounded bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-700"
+                  className="btn-primary text-sm px-3 py-1"
                 >
                   Add Asset
                 </button>
@@ -312,10 +306,7 @@ export default function PCAFPage() {
                     </select>
                   </div>
                   <div className="mt-3 flex gap-2">
-                    <button
-                      onClick={handleAddAsset}
-                      className="rounded bg-emerald-600 px-4 py-2 text-white"
-                    >
+                    <button onClick={handleAddAsset} className="btn-primary">
                       Add
                     </button>
                     <button
@@ -344,7 +335,7 @@ export default function PCAFPage() {
                     </div>
                     <button
                       onClick={() => setDeleteAssetId(a.id)}
-                      className="text-red-400 hover:text-red-300"
+                      className="text-[var(--danger)] hover:opacity-80"
                     >
                       Delete
                     </button>

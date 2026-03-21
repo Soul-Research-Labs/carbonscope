@@ -23,6 +23,7 @@ export default function ReportDetailPage() {
   const params = useParams();
   const id = params.id as string;
   const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState("");
 
   const reportQuery = useQuery<EmissionReport>({
     queryKey: ["report", id],
@@ -145,7 +146,9 @@ export default function ReportDetailPage() {
               a.click();
               URL.revokeObjectURL(url);
             } catch (e) {
-              setError(e instanceof Error ? e.message : "PDF export failed");
+              setExportError(
+                e instanceof Error ? e.message : "PDF export failed",
+              );
             } finally {
               setExporting(false);
             }
@@ -156,6 +159,10 @@ export default function ReportDetailPage() {
           {exporting ? "Exporting…" : "📄 Export PDF"}
         </button>
       </div>
+
+      {exportError && (
+        <div className="text-[var(--danger)] text-sm">{exportError}</div>
+      )}
 
       {/* Detailed breakdown */}
       {report.breakdown && Object.keys(report.breakdown).length > 0 && (

@@ -96,7 +96,7 @@ export default function MFAPage() {
           <div className="flex items-center gap-3">
             <div
               className={`h-3 w-3 rounded-full ${
-                status.mfa_enabled ? "bg-emerald-500" : "bg-gray-500"
+                status.mfa_enabled ? "bg-[var(--primary)]" : "bg-[var(--muted)]"
               }`}
             />
             <p className="text-lg font-medium">
@@ -108,10 +108,7 @@ export default function MFAPage() {
 
       {/* Setup flow */}
       {status && !status.mfa_enabled && !setup && (
-        <button
-          onClick={handleSetup}
-          className="rounded-lg bg-emerald-600 px-6 py-3 text-white hover:bg-emerald-700"
-        >
+        <button onClick={handleSetup} className="btn-primary px-6 py-3">
           Enable MFA
         </button>
       )}
@@ -125,7 +122,7 @@ export default function MFAPage() {
               Scan this QR code with your authenticator app, or enter the secret
               manually:
             </p>
-            <code className="block rounded bg-[var(--background)] p-3 text-sm text-emerald-400 break-all">
+            <code className="block rounded bg-[var(--background)] p-3 text-sm text-[var(--primary)] break-all">
               {setup.secret}
             </code>
           </div>
@@ -155,10 +152,7 @@ export default function MFAPage() {
               maxLength={6}
               aria-label="TOTP verification code"
             />
-            <button
-              onClick={handleVerify}
-              className="rounded bg-emerald-600 px-4 py-2 text-white"
-            >
+            <button onClick={handleVerify} className="btn-primary">
               Verify & Enable
             </button>
           </div>
@@ -183,10 +177,7 @@ export default function MFAPage() {
               maxLength={6}
               aria-label="TOTP code to disable MFA"
             />
-            <button
-              onClick={handleDisable}
-              className="rounded bg-red-600 px-4 py-2 text-white"
-            >
+            <button onClick={handleDisable} className="btn-danger">
               Disable
             </button>
           </div>

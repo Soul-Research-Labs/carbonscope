@@ -1,12 +1,13 @@
 """Bittensor subnet bridge — connects the platform API to the CarbonScope subnet.
 
-Sends questionnaires to miners via Dendrite, collects responses, picks the
-best-scoring result, and returns it.
+Sends questionnaires to miners via Dendrite, collects responses, scores them,
+applies consensus-based selection (median aggregation), and returns the result.
 """
 
 from __future__ import annotations
 
 import logging
+import statistics
 import threading
 import time
 from typing import Any
@@ -26,42 +27,75 @@ _metagraph = None
 _wallet = None
 _bt_lock = threading.Lock()
 
-# ── Circuit breaker ──────────────────────────────────────────────────
-_CB_FAILURE_THRESHOLD = 3   # consecutive failures before opening
-_CB_RECOVERY_TIMEOUT = 60   # seconds to wait before half-open attempt
+# ── Per-miner circuit breakers ──────────────────────────────────────
+_PER_MINER_FAILURE_THRESHOLD = 3   # consecutive failures per miner
+_PER_MINER_RECOVERY_TIMEOUT = 120  # seconds before retrying a failed miner
 
-_cb_failures: int = 0
-_cb_opened_at: float = 0.0
-_cb_lock = threading.Lock()
+# Global circuit breaker (fallback when all miners fail)
+_GLOBAL_CB_FAILURE_THRESHOLD = 5
+_GLOBAL_CB_RECOVERY_TIMEOUT = 60
+
+_miner_cb: dict[int, dict] = {}  # uid -> {"failures": int, "opened_at": float}
+_miner_cb_lock = threading.Lock()
+
+_global_cb_failures: int = 0
+_global_cb_opened_at: float = 0.0
+_global_cb_lock = threading.Lock()
 
 
-def _cb_record_success() -> None:
-    global _cb_failures, _cb_opened_at
-    with _cb_lock:
-        _cb_failures = 0
-        _cb_opened_at = 0.0
+def _miner_cb_record_success(uid: int) -> None:
+    with _miner_cb_lock:
+        _miner_cb.pop(uid, None)
 
 
-def _cb_record_failure() -> None:
-    global _cb_failures, _cb_opened_at
-    with _cb_lock:
-        _cb_failures += 1
-        if _cb_failures >= _CB_FAILURE_THRESHOLD:
-            _cb_opened_at = time.monotonic()
+def _miner_cb_record_failure(uid: int) -> None:
+    with _miner_cb_lock:
+        state = _miner_cb.setdefault(uid, {"failures": 0, "opened_at": 0.0})
+        state["failures"] += 1
+        if state["failures"] >= _PER_MINER_FAILURE_THRESHOLD:
+            state["opened_at"] = time.monotonic()
+            logger.warning("Per-miner circuit breaker OPEN for miner %d", uid)
+
+
+def _miner_cb_is_open(uid: int) -> bool:
+    with _miner_cb_lock:
+        state = _miner_cb.get(uid)
+        if state is None:
+            return False
+        if state["failures"] < _PER_MINER_FAILURE_THRESHOLD:
+            return False
+        elapsed = time.monotonic() - state["opened_at"]
+        if elapsed >= _PER_MINER_RECOVERY_TIMEOUT:
+            return False  # half-open attempt
+        return True
+
+
+def _global_cb_record_success() -> None:
+    global _global_cb_failures, _global_cb_opened_at
+    with _global_cb_lock:
+        _global_cb_failures = 0
+        _global_cb_opened_at = 0.0
+
+
+def _global_cb_record_failure() -> None:
+    global _global_cb_failures, _global_cb_opened_at
+    with _global_cb_lock:
+        _global_cb_failures += 1
+        if _global_cb_failures >= _GLOBAL_CB_FAILURE_THRESHOLD:
+            _global_cb_opened_at = time.monotonic()
             logger.warning(
-                "Circuit breaker OPEN after %d consecutive failures; "
+                "Global circuit breaker OPEN after %d consecutive failures; "
                 "will retry in %ds",
-                _cb_failures, _CB_RECOVERY_TIMEOUT,
+                _global_cb_failures, _GLOBAL_CB_RECOVERY_TIMEOUT,
             )
 
 
-def _cb_is_open() -> bool:
-    with _cb_lock:
-        if _cb_failures < _CB_FAILURE_THRESHOLD:
+def _global_cb_is_open() -> bool:
+    with _global_cb_lock:
+        if _global_cb_failures < _GLOBAL_CB_FAILURE_THRESHOLD:
             return False
-        elapsed = time.monotonic() - _cb_opened_at
-        if elapsed >= _CB_RECOVERY_TIMEOUT:
-            # Allow a half-open attempt
+        elapsed = time.monotonic() - _global_cb_opened_at
+        if elapsed >= _GLOBAL_CB_RECOVERY_TIMEOUT:
             return False
         return True
 
@@ -106,23 +140,23 @@ async def estimate_emissions(
     context: dict[str, Any] | None = None,
     timeout: float = 30.0,
 ) -> dict[str, Any]:
-    """Send a questionnaire to subnet miners and return the best response.
+    """Send a questionnaire to subnet miners and return the consensus response.
 
     Returns a dict with keys: emissions, breakdown, confidence, sources,
     assumptions, methodology_version, miner_scores.
 
-    Raises RuntimeError if the circuit breaker is open or no valid responses
-    are received.
+    Raises RuntimeError if the global circuit breaker is open or no valid
+    responses are received.
     """
-    if _cb_is_open():
+    if _global_cb_is_open():
         raise RuntimeError("Circuit breaker open — subnet temporarily unavailable")
 
     try:
         result = await _do_subnet_query(questionnaire, context, timeout)
-        _cb_record_success()
+        _global_cb_record_success()
         return result
     except RuntimeError:
-        _cb_record_failure()
+        _global_cb_record_failure()
         raise
 
 
@@ -131,7 +165,7 @@ async def _do_subnet_query(
     context: dict[str, Any] | None = None,
     timeout: float = 30.0,
 ) -> dict[str, Any]:
-    """Internal: perform the actual subnet query without circuit breaker logic."""
+    """Internal: perform the actual subnet query with consensus scoring."""
     _init_bt()
 
     synapse = CarbonSynapse(
@@ -143,27 +177,42 @@ async def _do_subnet_query(
     if not axons:
         raise RuntimeError("No active miners found on the subnet")
 
+    # Filter out miners with open circuit breakers
+    active_axons = []
+    active_uids = []
+    for uid_idx, axon in enumerate(axons):
+        uid = uid_idx  # axon index maps to miner UID ordering
+        if not _miner_cb_is_open(uid):
+            active_axons.append(axon)
+            active_uids.append(uid)
+
+    if not active_axons:
+        raise RuntimeError("All miners have open circuit breakers — subnet temporarily unavailable")
+
     from api.config import BT_QUERY_TIMEOUT
     responses: list[CarbonSynapse] = _dendrite.query(
-        axons=axons,
+        axons=active_axons,
         synapse=synapse,
         timeout=timeout or BT_QUERY_TIMEOUT,
     )
 
-    # Score each response and pick the best
+    # Score each response
     industry = questionnaire.get("industry", "manufacturing")
-    best_score = -1.0
-    best_response: CarbonSynapse | None = None
+    valid_responses: list[tuple[int, CarbonSynapse, dict]] = []
     all_scores: dict[int, dict] = {}
 
-    for idx, resp in enumerate(responses):
+    for uid, resp in zip(active_uids, responses):
         if not resp.is_success or resp.emissions is None:
+            _miner_cb_record_failure(uid)
             continue
 
         # Skip error responses signalled by negative confidence
         if resp.confidence is not None and resp.confidence < 0:
-            logger.info("Skipping miner %d: error response (confidence=%s)", idx, resp.confidence)
+            logger.info("Skipping miner %d: error response (confidence=%s)", uid, resp.confidence)
+            _miner_cb_record_failure(uid)
             continue
+
+        _miner_cb_record_success(uid)
 
         result = score_response(
             emissions=resp.emissions,
@@ -174,14 +223,20 @@ async def _do_subnet_query(
             questionnaire=questionnaire,
             industry=industry,
         )
-        all_scores[idx] = result
+        all_scores[uid] = result
+        valid_responses.append((uid, resp, result))
 
-        if result["final"] > best_score:
-            best_score = result["final"]
-            best_response = resp
-
-    if best_response is None:
+    if not valid_responses:
         raise RuntimeError("No valid responses received from miners")
+
+    # Consensus: if ≥3 valid responses, use median-based selection
+    # Otherwise fall back to best-score selection
+    if len(valid_responses) >= 3:
+        selected = _select_by_consensus(valid_responses)
+    else:
+        selected = max(valid_responses, key=lambda x: x[2]["final"])
+
+    _, best_response, _ = selected
 
     return {
         "emissions": best_response.emissions,
@@ -192,6 +247,32 @@ async def _do_subnet_query(
         "methodology_version": best_response.methodology_version,
         "miner_scores": all_scores,
     }
+
+
+def _select_by_consensus(
+    responses: list[tuple[int, CarbonSynapse, dict]],
+) -> tuple[int, CarbonSynapse, dict]:
+    """Select the response closest to the median emissions across all valid responses.
+
+    This discourages outlier/fabricated emissions, rewarding miners whose
+    results align with the majority.
+    """
+    # Compute median total emissions
+    totals = [r[1].emissions.get("total", 0) for r in responses]
+    median_total = statistics.median(totals)
+
+    # Filter to responses with quality score above threshold
+    min_quality = 0.3
+    quality_responses = [r for r in responses if r[2]["final"] >= min_quality]
+    if not quality_responses:
+        quality_responses = responses  # fallback if all below threshold
+
+    # Select the response closest to median among quality candidates
+    best = min(
+        quality_responses,
+        key=lambda r: abs(r[1].emissions.get("total", 0) - median_total),
+    )
+    return best
 
 
 def estimate_emissions_local(
@@ -242,7 +323,8 @@ def estimate_emissions_local(
 
     vkm = data.get("vehicle_km") or 0
     if vkm > 0:
-        val = calc_mobile_combustion("heavy_truck_diesel", distance_km=vkm)
+        vtype = data.get("vehicle_type", "heavy_truck_diesel")
+        val = calc_mobile_combustion(vtype, distance_km=vkm)
         s1 += val
         s1_detail["mobile_combustion"] = val
 

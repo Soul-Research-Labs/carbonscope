@@ -26,7 +26,14 @@ class CarbonSynapse(bt.Synapse):
         ``methodology_version``.
     """
 
+    # Protocol version — bumped on breaking changes to request/response shape
+    PROTOCOL_VERSION: ClassVar[int] = 2
+
     # ── Request fields (validator fills these) ──────────────────────
+
+    protocol_version: int = 2
+    """Protocol version of this synapse.  Validators and miners can use this
+    to detect incompatible peers and gracefully degrade."""
 
     questionnaire: dict = {}
     """Company data.  Expected keys:
@@ -101,8 +108,12 @@ class CarbonSynapse(bt.Synapse):
     of computation.  Validators can verify: ``sha256(json(questionnaire) + json(emissions))``."""
 
     def compute_request_hash(self) -> str:
-        """Compute the SHA-256 hash binding the request to the response."""
-        payload = json.dumps(self.questionnaire, sort_keys=True) + json.dumps(
+        """Compute the SHA-256 hash binding the request to the response.
+
+        Includes protocol version as a prefix byte so hash schemes can evolve.
+        """
+        version_prefix = f"v{self.protocol_version}:"
+        payload = version_prefix + json.dumps(self.questionnaire, sort_keys=True) + json.dumps(
             self.emissions, sort_keys=True, default=str
         )
         return hashlib.sha256(payload.encode()).hexdigest()

@@ -29,7 +29,7 @@ spec:
               app: backend
       initContainers:
         - name: migrate
-          image: ghcr.io/carbonscope/carbonscope:v0.6.0 # Update via: kubectl set image or CI/CD pipeline
+          image: ghcr.io/carbonscope/carbonscope:__IMAGE_TAG__ # Set via CI: sed -i 's/__IMAGE_TAG__/$TAG/' backend.yaml
           imagePullPolicy: IfNotPresent
           command: ["alembic", "upgrade", "head"]
           envFrom:
@@ -50,7 +50,7 @@ spec:
               value: "postgresql+asyncpg://carbonscope:$(POSTGRES_PASSWORD)@postgres:5432/carbonscope"
       containers:
         - name: backend
-          image: ghcr.io/carbonscope/carbonscope:v0.6.0 # Must match initContainers image tag
+          image: ghcr.io/carbonscope/carbonscope:__IMAGE_TAG__ # Must match initContainers image tag
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000

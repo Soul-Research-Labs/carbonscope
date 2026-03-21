@@ -9,7 +9,7 @@ from __future__ import annotations
 import random
 from typing import Any
 
-from carbonscope.emission_factors.scope1 import calc_stationary_combustion, calc_mobile_combustion
+from carbonscope.emission_factors.scope1 import calc_stationary_combustion, calc_mobile_combustion, calc_fugitive_emissions
 from carbonscope.emission_factors.scope2 import calc_location_based
 from carbonscope.emission_factors.scope3 import (
     calc_cat1_purchased_goods,
@@ -116,6 +116,95 @@ CURATED_CASES: list[dict[str, Any]] = [
         },
         "context": {"methodology": "ghg_protocol"},
     },
+    {
+        "id": "financial_services_heavy_s3",
+        "description": "Large bank — minimal S1/S2, dominated by financed emissions (S3)",
+        "questionnaire": {
+            "company": "Global Finance Corp",
+            "industry": "financial_services",
+            "services_used": ["commercial banking", "investment management"],
+            "provided_data": {
+                "electricity_kwh": 800_000,
+                "employee_count": 2000,
+                "revenue_usd": 500_000_000,
+                "supplier_spend_usd": 15_000_000,
+                "business_travel_usd": 5_000_000,
+                "office_sqm": 20_000,
+            },
+            "region": "GB",
+            "year": 2025,
+        },
+        "context": {"methodology": "ghg_protocol"},
+    },
+    {
+        "id": "zero_emission_renewable",
+        "description": "Edge case — fully renewable energy, minimal operations",
+        "questionnaire": {
+            "company": "GreenEnergy Startup",
+            "industry": "technology",
+            "services_used": ["software development"],
+            "provided_data": {
+                "electricity_kwh": 50_000,
+                "rec_kwh": 50_000,  # 100% covered by RECs
+                "employee_count": 10,
+                "revenue_usd": 2_000_000,
+                "office_sqm": 200,
+            },
+            "region": "CAMX",
+            "year": 2025,
+        },
+        "context": {"methodology": "ghg_protocol"},
+    },
+    {
+        "id": "mega_corp_extreme_scale",
+        "description": "Edge case — billion-dollar manufacturing giant, extreme values",
+        "questionnaire": {
+            "company": "MegaCorp Industries",
+            "industry": "manufacturing",
+            "services_used": ["heavy manufacturing", "global logistics"],
+            "provided_data": {
+                "fuel_use_liters": 50_000_000,
+                "fuel_type": "diesel",
+                "natural_gas_m3": 20_000_000,
+                "electricity_kwh": 200_000_000,
+                "vehicle_km": 30_000_000,
+                "employee_count": 50_000,
+                "revenue_usd": 5_000_000_000,
+                "supplier_spend_usd": 2_000_000_000,
+                "shipping_ton_km": 500_000_000,
+                "waste_kg": 10_000_000,
+                "business_travel_usd": 50_000_000,
+            },
+            "region": "US",
+            "year": 2025,
+        },
+        "context": {"methodology": "ghg_protocol"},
+    },
+    {
+        "id": "construction_mixed_fleet",
+        "description": "Construction company with mixed vehicle fleet and refrigerants",
+        "questionnaire": {
+            "company": "BuildRight Construction",
+            "industry": "construction",
+            "services_used": ["commercial construction", "site development"],
+            "provided_data": {
+                "fuel_use_liters": 200_000,
+                "fuel_type": "diesel",
+                "vehicle_km": 800_000,
+                "vehicle_type": "heavy_truck_diesel",
+                "electricity_kwh": 500_000,
+                "employee_count": 300,
+                "revenue_usd": 80_000_000,
+                "supplier_spend_usd": 40_000_000,
+                "waste_kg": 500_000,
+                "refrigerant_type": "R-410A",
+                "refrigerant_kg_leaked": 50,
+            },
+            "region": "US",
+            "year": 2025,
+        },
+        "context": {"methodology": "ghg_protocol"},
+    },
 ]
 
 
@@ -137,7 +226,12 @@ def _compute_ground_truth(case: dict[str, Any]) -> dict[str, float]:
         s1 += calc_stationary_combustion("natural_gas", ng, "m3")
     vkm = data.get("vehicle_km") or 0
     if vkm > 0:
-        s1 += calc_mobile_combustion("heavy_truck_diesel", distance_km=vkm)
+        vtype = data.get("vehicle_type", "heavy_truck_diesel")
+        s1 += calc_mobile_combustion(vtype, distance_km=vkm)
+    ref_type = data.get("refrigerant_type")
+    ref_kg = data.get("refrigerant_kg_leaked") or 0
+    if ref_type and ref_kg > 0:
+        s1 += calc_fugitive_emissions(ref_type, ref_kg)
 
     # Scope 2
     s2 = 0.0

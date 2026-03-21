@@ -1,10 +1,11 @@
-"""Load and query emission factor JSON datasets."""
+"""Load and query emission factor JSON datasets with versioning and TTL cache."""
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
-from functools import lru_cache
+import time
 from pathlib import Path
 from typing import Any
 
@@ -23,10 +24,25 @@ _DATASET_FILES: dict[str, str] = {
     "gwp": "gwp_ar6.json",
 }
 
+# TTL cache: {dataset: (data, sha256, loaded_at)}
+_cache: dict[str, tuple[dict[str, Any], str, float]] = {}
+_CACHE_TTL_SECONDS = 3600  # Re-read datasets after 1 hour
 
-@lru_cache(maxsize=16)
+
+def _file_sha256(path: Path) -> str:
+    """Compute SHA-256 hex digest of a file."""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(8192), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
 def load_factors(dataset: str) -> dict[str, Any]:
-    """Load a named emission factor dataset from disk.
+    """Load a named emission factor dataset from disk with TTL caching.
+
+    Caches parsed JSON for up to ``_CACHE_TTL_SECONDS``.  Re-reads from
+    disk when the TTL expires or the file's SHA-256 has changed.
 
     Parameters
     ----------
@@ -45,8 +61,53 @@ def load_factors(dataset: str) -> dict[str, Any]:
             f"Unknown dataset: {dataset!r}. Available: {sorted(_DATASET_FILES)}"
         )
     path = _DATA_DIR / filename
+    now = time.monotonic()
+
+    cached = _cache.get(dataset)
+    if cached is not None:
+        data, old_sha, loaded_at = cached
+        if now - loaded_at < _CACHE_TTL_SECONDS:
+            return data
+        # TTL expired — check if file changed
+        new_sha = _file_sha256(path)
+        if new_sha == old_sha:
+            _cache[dataset] = (data, old_sha, now)  # refresh TTL
+            return data
+        _logger.info("Dataset %s changed on disk (sha256=%s→%s), reloading", dataset, old_sha[:12], new_sha[:12])
+
     with open(path) as f:
-        return json.load(f)
+        data = json.load(f)
+    sha = _file_sha256(path)
+    _cache[dataset] = (data, sha, now)
+    return data
+
+
+def get_dataset_version(dataset: str) -> str:
+    """Return the SHA-256 hex digest of a dataset file.
+
+    Useful for including dataset provenance in audit trails.
+    """
+    filename = _DATASET_FILES.get(dataset)
+    if filename is None:
+        raise ValueError(
+            f"Unknown dataset: {dataset!r}. Available: {sorted(_DATASET_FILES)}"
+        )
+    # Use cached checksum if available
+    cached = _cache.get(dataset)
+    if cached is not None:
+        return cached[1]
+    return _file_sha256(_DATA_DIR / filename)
+
+
+def invalidate_cache(dataset: str | None = None) -> None:
+    """Clear the cache for a specific dataset or all datasets.
+
+    Primarily for testing and hot-reload scenarios.
+    """
+    if dataset is None:
+        _cache.clear()
+    else:
+        _cache.pop(dataset, None)
 
 
 def get_factor(dataset: str, *keys: str) -> Any:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections import deque
+from collections import OrderedDict, deque
 from unittest.mock import MagicMock, patch
 import pytest
 from pydantic import ValidationError
@@ -93,7 +93,7 @@ def _make_miner(**overrides):
     m.metagraph = MagicMock()
     m.metagraph.hotkeys = ["hk_validator_1", "hk_miner_1"]
     m.metagraph.validator_permit = [True, False]
-    m._request_times = {}
+    m._request_times = OrderedDict()
     m._RATE_LIMIT_MAX = overrides.get("rate_limit_max", 3)
     m._RATE_LIMIT_WINDOW = overrides.get("rate_limit_window", 60)
     return m

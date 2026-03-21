@@ -241,7 +241,6 @@ function ScenariosPageInner() {
           onChange={(e) => {
             const val = e.target.value;
             setStatusFilter(val);
-            fetchData(val);
           }}
           className="input text-sm px-3 py-1.5 w-48"
         >

@@ -1,0 +1,35 @@
+Frontend overhaul: sidebar nav, bug fixes, theme consistency, and backend improvements
+
+Frontend:
+- Replace horizontal Navbar with collapsible Sidebar (desktop + mobile drawer)
+- Add 5 grouped nav sections (Main, Analysis, Operations, Platform, Account)
+- Wire missing routes: /benchmarks, /pcaf, /reviews, /recommendations
+- Fix crash in reports/[id] export (undefined setError to exportError state)
+- Fix crash in scenarios page (removed nonexistent fetchData call)
+- Standardize theme colors in PCAF, Reviews, MFA pages (CSS variables)
+- Add Web Vitals telemetry hook with sendBeacon reporting
+- Add env validation, robots.ts, sitemap.ts, OG/Twitter meta, JSON-LD
+- Add .env.production.example and .env.staging.example
+- Raise coverage thresholds (80/70/70/80)
+- Update Sidebar tests (8 tests covering sections, routes, user info, logout)
+
+Backend and Subnet:
+- Add per-miner circuit breakers and median-based consensus in subnet bridge
+- Add adaptive EMA alpha with cold-start scoring in validator
+- Add dynamic miner skipping for consecutive zero scorers
+- Add protocol versioning (v2) with hash prefix in CarbonSynapse
+- Add dual scoring weights (with/without ground truth)
+- Tighten overconfidence penalty and benchmark tolerance
+- Add breakdown-to-scope transitive consistency checks in GHG compliance
+- Add TTL + SHA-256 cache for emission factor datasets
+- Add API deprecation middleware (Sunset/Deprecation headers)
+- Add 4 new curated test cases (financial services, zero-emission, mega-corp, construction)
+- Support vehicle_type field in miner and ground truth computation
+- Normalize scope3 materiality weights
+- Use LRU eviction for miner rate limiter
+- Configurable validator/miner scripts (interval, timeout, alpha, rate limits)
+
+DevOps:
+- Add K8s manifest validation job in CI
+- Use __IMAGE_TAG__ placeholder in K8s backend/frontend deployments
+- Fix Trivy action version (0.28.0 to 0.24.0)

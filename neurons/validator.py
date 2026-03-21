@@ -71,6 +71,12 @@ class CarbonValidator:
         raw_alpha = getattr(self.config, "ema_alpha", 0.1)
         self.alpha = max(0.0, min(1.0, float(raw_alpha)))
 
+        # Per-miner adaptive alpha: new miners learn faster
+        self._query_counts: dict[int, int] = {}
+        self._cold_start_rounds = 10  # queries before miner is "established"
+        self._cold_start_alpha = min(0.3, self.alpha * 3)  # higher learning rate for new miners
+        self._cold_start_seed = 0.3   # neutral starting score for new miners
+
         # Track how many blocks since last weight update
         self.last_weight_block = 0
 
@@ -79,6 +85,14 @@ class CarbonValidator:
         self._max_failures = getattr(self.config, "circuit_breaker_max_failures", 3)
         self._backoff_seconds = getattr(self.config, "circuit_breaker_base_backoff", 2.0)
         self._max_backoff = getattr(self.config, "circuit_breaker_max_backoff", 60.0)
+
+        # Metagraph sync config
+        self._metagraph_sync_interval = getattr(self.config, "metagraph_sync_interval", 120)
+        self._last_metagraph_sync = 0.0  # epoch seconds
+
+        # Dynamic miner skipping: skip miners with N consecutive zero scores
+        self._skip_zero_after = getattr(self.config, "skip_zero_after", 10)
+        self._consecutive_zeros: dict[int, int] = {}
 
     # ── Config ──────────────────────────────────────────────────────
 
@@ -98,6 +112,10 @@ class CarbonValidator:
                             help="Base backoff seconds for circuit breaker")
         parser.add_argument("--circuit_breaker_max_backoff", type=float, default=60.0,
                             help="Maximum backoff seconds for circuit breaker")
+        parser.add_argument("--metagraph_sync_interval", type=int, default=120,
+                            help="Seconds between metagraph syncs (default 120)")
+        parser.add_argument("--skip_zero_after", type=int, default=10,
+                            help="Skip miners with this many consecutive zero scores")
         bt.Wallet.add_args(parser)
         bt.Subtensor.add_args(parser)
         bt.logging.add_args(parser)
@@ -195,11 +213,34 @@ class CarbonValidator:
     # ── Weight management ───────────────────────────────────────────
 
     def update_scores(self, uid: int, score: float) -> None:
-        """Update EMA score for a miner and persist to disk."""
-        if uid in self.scores:
-            self.scores[uid] = (1 - self.alpha) * self.scores[uid] + self.alpha * score
+        """Update EMA score for a miner with adaptive alpha.
+
+        New miners use a higher learning rate (cold_start_alpha) so they can
+        prove themselves quickly.  Established miners use the base alpha for
+        stability.  First-time miners are seeded with a blended neutral score
+        to avoid over-rewarding or over-penalizing on a single query.
+        """
+        # Track consecutive zeros for dynamic skipping
+        if score == 0.0:
+            self._consecutive_zeros[uid] = self._consecutive_zeros.get(uid, 0) + 1
         else:
-            self.scores[uid] = score
+            self._consecutive_zeros[uid] = 0
+
+        if uid in self.scores:
+            self._query_counts[uid] = self._query_counts.get(uid, 0) + 1
+            alpha = (
+                self._cold_start_alpha
+                if self._query_counts[uid] <= self._cold_start_rounds
+                else self.alpha
+            )
+            self.scores[uid] = (1 - alpha) * self.scores[uid] + alpha * score
+        else:
+            # Cold start: blend neutral seed with first observed score
+            self._query_counts[uid] = 1
+            self.scores[uid] = (
+                self._cold_start_seed * (1 - self._cold_start_alpha)
+                + score * self._cold_start_alpha
+            )
         self._save_scores()
 
     def should_set_weights(self) -> bool:
@@ -228,8 +269,8 @@ class CarbonValidator:
         if total > 0:
             weights = [w / total for w in raw]
         else:
-            # All miners scored zero — assign uniform zero weights
-            weights = [0.0] * len(uids)
+            # All miners scored zero — assign uniform weights so miners remain visible
+            weights = [1.0 / len(uids)] * len(uids)
 
         zero_count = sum(1 for w in raw if w == 0.0)
         bt.logging.info(
@@ -337,13 +378,35 @@ class CarbonValidator:
 
         try:
             while True:
-                self.metagraph.sync(subtensor=self.subtensor)
+                # Sync metagraph at configurable interval
+                now = time.time()
+                if now - self._last_metagraph_sync >= self._metagraph_sync_interval:
+                    self.metagraph.sync(subtensor=self.subtensor)
+                    self._last_metagraph_sync = now
 
                 miner_uids = [
                     uid for uid in range(self.metagraph.n)
                     if not self.metagraph.validator_permit[uid]
                     and self.metagraph.active[uid]
                 ]
+
+                # Skip miners with too many consecutive zero scores
+                if self._skip_zero_after > 0:
+                    skipped = [
+                        uid for uid in miner_uids
+                        if self._consecutive_zeros.get(uid, 0) >= self._skip_zero_after
+                    ]
+                    if skipped:
+                        bt.logging.debug(
+                            f"Skipping {len(skipped)} miners with {self._skip_zero_after}+ "
+                            f"consecutive zeros: {skipped[:10]}{'...' if len(skipped) > 10 else ''}"
+                        )
+                        miner_uids = [uid for uid in miner_uids if uid not in skipped]
+                        # Periodically give skipped miners another chance (every 10th round)
+                        if self.case_index % 10 == 0 and skipped:
+                            probe = random.sample(skipped, min(3, len(skipped)))
+                            miner_uids.extend(probe)
+                            bt.logging.debug(f"Probing {len(probe)} skipped miners: {probe}")
 
                 if not miner_uids:
                     bt.logging.warning("No active miners found. Waiting...")

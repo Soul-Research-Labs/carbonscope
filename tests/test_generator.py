@@ -12,7 +12,7 @@ from carbonscope.test_cases.generator import (
 class TestCuratedCases:
     def test_curated_cases_load(self):
         cases = get_curated_cases()
-        assert len(cases) == 5
+        assert len(cases) == 9
 
     def test_each_case_has_ground_truth(self):
         for case in get_curated_cases():

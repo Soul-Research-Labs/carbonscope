@@ -11,6 +11,11 @@ from carbonscope.scoring import (
     W_COMPLETENESS,
     W_ANTI_HALLUCINATION,
     W_BENCHMARK,
+    W_ACCURACY_NO_GT,
+    W_COMPLIANCE_NO_GT,
+    W_COMPLETENESS_NO_GT,
+    W_ANTI_HALLUCINATION_NO_GT,
+    W_BENCHMARK_NO_GT,
 )
 from carbonscope.validation.ghg_protocol import check_ghg_compliance
 from carbonscope.validation.sanity_checks import run_sanity_checks
@@ -175,6 +180,10 @@ class TestBenchmarkAlignment:
 class TestScoreResponse:
     def test_weights_sum_to_one(self):
         total = W_ACCURACY + W_COMPLIANCE + W_COMPLETENESS + W_ANTI_HALLUCINATION + W_BENCHMARK
+        assert total == pytest.approx(1.0)
+
+    def test_no_gt_weights_sum_to_one(self):
+        total = W_ACCURACY_NO_GT + W_COMPLIANCE_NO_GT + W_COMPLETENESS_NO_GT + W_ANTI_HALLUCINATION_NO_GT + W_BENCHMARK_NO_GT
         assert total == pytest.approx(1.0)
 
     def test_good_response_scores_high(self):

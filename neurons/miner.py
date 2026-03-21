@@ -10,7 +10,7 @@ from __future__ import annotations
 import argparse
 import time
 import traceback
-from collections import deque
+from collections import OrderedDict, deque
 
 import bittensor as bt
 from pydantic import BaseModel, Field, ValidationError, field_validator
@@ -53,6 +53,7 @@ class ProvidedDataInput(BaseModel):
     natural_gas_m3: float = Field(default=0, ge=0, le=100_000_000)
     electricity_kwh: float = Field(default=0, ge=0, le=1_000_000_000)
     vehicle_km: float = Field(default=0, ge=0, le=100_000_000)
+    vehicle_type: str = "heavy_truck_diesel"
     employee_count: int = Field(default=0, ge=0, le=1_000_000)
     revenue_usd: float = Field(default=0, ge=0, le=1_000_000_000_000)
     supplier_spend_usd: float = Field(default=0, ge=0, le=1_000_000_000_000)
@@ -133,8 +134,8 @@ class CarbonMiner:
             blacklist_fn=self.blacklist,
         )
 
-        # Per-hotkey request tracking for rate limiting
-        self._request_times: dict[str, deque] = {}
+        # Per-hotkey request tracking for rate limiting (OrderedDict for LRU eviction)
+        self._request_times: OrderedDict[str, deque] = OrderedDict()
 
         bt.logging.info(f"Axon created on port {self.axon.port}")
 
@@ -169,14 +170,17 @@ class CarbonMiner:
         if not self.metagraph.validator_permit[uid]:
             return True, "Caller is not a validator"
 
-        # Per-hotkey rate limiting (bounded)
+        # Per-hotkey rate limiting (bounded with LRU eviction)
         now = time.time()
         if caller not in self._request_times:
-            # Evict oldest entries if at capacity
-            if len(self._request_times) >= self._MAX_TRACKED_HOTKEYS:
-                oldest_key = next(iter(self._request_times))
-                del self._request_times[oldest_key]
+            # Evict least recently used entries if at capacity
+            while len(self._request_times) >= self._MAX_TRACKED_HOTKEYS:
+                evicted_key, _ = self._request_times.popitem(last=False)
+                bt.logging.debug(f"Rate limiter LRU eviction: {evicted_key}")
             self._request_times[caller] = deque()
+        else:
+            # Move to end (most recently used)
+            self._request_times.move_to_end(caller)
         times = self._request_times[caller]
         # Remove entries outside the window
         while times and times[0] < now - self._RATE_LIMIT_WINDOW:
@@ -225,7 +229,15 @@ class CarbonMiner:
         scope3, scope3_detail = self._estimate_scope3(data, industry, region, assumptions, sources)
 
         total = scope1 + scope2 + scope3
-        confidence = calc_data_completeness(data, industry)
+        data_completeness = calc_data_completeness(data, industry)
+        # Model confidence: penalize when most values come from gap-filling
+        non_zero_fields = sum(
+            1 for k, v in data.items()
+            if v is not None and v != 0 and v != "" and k not in ("fuel_type", "vehicle_type")
+        )
+        total_relevant_fields = 13  # max activity-data fields
+        input_ratio = min(non_zero_fields / total_relevant_fields, 1.0)
+        confidence = round(data_completeness * 0.6 + input_ratio * 0.4, 4)
 
         synapse.emissions = {
             "scope1": round(scope1, 2),
@@ -239,7 +251,7 @@ class CarbonMiner:
             "scope3_detail": scope3_detail,
         }
         synapse.confidence = round(confidence, 4)
-        synapse.data_completeness = round(confidence, 4)
+        synapse.data_completeness = round(data_completeness, 4)
         synapse.sources = sources or ["EPA emission factors v2025"]
         synapse.assumptions = assumptions or ["Standard GHG Protocol methodology applied"]
         synapse.methodology_version = "ghg_protocol_v2025"
@@ -276,10 +288,11 @@ class CarbonMiner:
 
         vehicle_km = data.get("vehicle_km") or 0
         if vehicle_km > 0:
-            val = calc_mobile_combustion("heavy_truck_diesel", distance_km=vehicle_km)
+            vehicle_type = data.get("vehicle_type", "heavy_truck_diesel")
+            val = calc_mobile_combustion(vehicle_type, distance_km=vehicle_km)
             detail["mobile_combustion"] = val
             scope1 += val
-            assumptions.append("Assumed heavy diesel truck for vehicle fleet")
+            assumptions.append(f"Vehicle fleet type: {vehicle_type}")
 
         ref_type = data.get("refrigerant_type")
         ref_leaked = data.get("refrigerant_kg_leaked") or 0

@@ -108,6 +108,25 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         return response
 
 
+class APIDeprecationMiddleware(BaseHTTPMiddleware):
+    """Add Sunset and Deprecation headers to API v1 routes.
+
+    Signals to consumers that v1 will eventually be superseded by v2,
+    per RFC 8594 (Sunset Header) and the draft Deprecation header spec.
+    The sunset date is set via API_V1_SUNSET_DATE env var (ISO 8601).
+    """
+
+    _sunset_date = os.getenv("API_V1_SUNSET_DATE", "")  # e.g. "2026-12-31"
+
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        if request.url.path.startswith("/api/v1/") and self._sunset_date:
+            response.headers["Sunset"] = self._sunset_date
+            response.headers["Deprecation"] = "true"
+            response.headers["Link"] = '</api/v2/>; rel="successor-version"'
+        return response
+
+
 async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Catch unhandled exceptions and return a safe 500 response."""
     request_id = getattr(request.state, "request_id", "unknown")
@@ -126,6 +145,7 @@ def register_middleware(app: FastAPI) -> None:
     app.add_middleware(RequestIDMiddleware)
     app.add_middleware(RequestLoggingMiddleware)
     app.add_middleware(SecurityHeadersMiddleware)
+    app.add_middleware(APIDeprecationMiddleware)
     app.add_middleware(RequestBodyLimitMiddleware)
     app.add_exception_handler(Exception, global_exception_handler)
 

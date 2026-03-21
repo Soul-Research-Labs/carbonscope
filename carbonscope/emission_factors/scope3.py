@@ -124,6 +124,11 @@ def fill_industry_defaults(
     profile = get_industry_profile(industry)
     materiality = profile.get("scope3_materiality", {})
 
+    # Normalize materiality weights to sum to 1.0
+    mat_total = sum(materiality.values())
+    if mat_total > 0 and abs(mat_total - 1.0) > 0.01:
+        materiality = {k: v / mat_total for k, v in materiality.items()}
+
     # Estimate total Scope 3 from revenue or employee count
     revenue = provided_data.get("revenue_usd", 0) or 0
     employees = provided_data.get("employee_count", 0) or 0

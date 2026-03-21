@@ -16,43 +16,67 @@ from api.services import subnet_bridge
 @pytest.fixture(autouse=True)
 def reset_circuit_breaker():
     """Reset circuit-breaker state before each test."""
-    subnet_bridge._cb_failures = 0
-    subnet_bridge._cb_opened_at = 0.0
+    subnet_bridge._global_cb_failures = 0
+    subnet_bridge._global_cb_opened_at = 0.0
+    subnet_bridge._miner_cb.clear()
     yield
-    subnet_bridge._cb_failures = 0
-    subnet_bridge._cb_opened_at = 0.0
+    subnet_bridge._global_cb_failures = 0
+    subnet_bridge._global_cb_opened_at = 0.0
+    subnet_bridge._miner_cb.clear()
 
 
 def test_cb_initially_closed():
-    assert not subnet_bridge._cb_is_open()
+    assert not subnet_bridge._global_cb_is_open()
 
 
 def test_cb_opens_after_threshold_failures():
-    for _ in range(subnet_bridge._CB_FAILURE_THRESHOLD):
-        subnet_bridge._cb_record_failure()
-    assert subnet_bridge._cb_is_open()
+    for _ in range(subnet_bridge._GLOBAL_CB_FAILURE_THRESHOLD):
+        subnet_bridge._global_cb_record_failure()
+    assert subnet_bridge._global_cb_is_open()
 
 
 def test_cb_success_resets():
-    for _ in range(subnet_bridge._CB_FAILURE_THRESHOLD):
-        subnet_bridge._cb_record_failure()
-    assert subnet_bridge._cb_is_open()
-    subnet_bridge._cb_record_success()
-    assert not subnet_bridge._cb_is_open()
+    for _ in range(subnet_bridge._GLOBAL_CB_FAILURE_THRESHOLD):
+        subnet_bridge._global_cb_record_failure()
+    assert subnet_bridge._global_cb_is_open()
+    subnet_bridge._global_cb_record_success()
+    assert not subnet_bridge._global_cb_is_open()
 
 
 def test_cb_recovers_after_timeout():
-    for _ in range(subnet_bridge._CB_FAILURE_THRESHOLD):
-        subnet_bridge._cb_record_failure()
+    for _ in range(subnet_bridge._GLOBAL_CB_FAILURE_THRESHOLD):
+        subnet_bridge._global_cb_record_failure()
     # Simulate passage of recovery timeout
-    subnet_bridge._cb_opened_at = time.monotonic() - subnet_bridge._CB_RECOVERY_TIMEOUT - 1
-    assert not subnet_bridge._cb_is_open(), "Should be half-open after recovery timeout"
+    subnet_bridge._global_cb_opened_at = time.monotonic() - subnet_bridge._GLOBAL_CB_RECOVERY_TIMEOUT - 1
+    assert not subnet_bridge._global_cb_is_open(), "Should be half-open after recovery timeout"
 
 
 def test_cb_below_threshold_stays_closed():
-    for _ in range(subnet_bridge._CB_FAILURE_THRESHOLD - 1):
-        subnet_bridge._cb_record_failure()
-    assert not subnet_bridge._cb_is_open()
+    for _ in range(subnet_bridge._GLOBAL_CB_FAILURE_THRESHOLD - 1):
+        subnet_bridge._global_cb_record_failure()
+    assert not subnet_bridge._global_cb_is_open()
+
+
+# ── Per-miner circuit breaker tests ────────────────────────────────
+
+
+def test_per_miner_cb_initially_closed():
+    assert not subnet_bridge._miner_cb_is_open(0)
+
+
+def test_per_miner_cb_opens_after_failures():
+    for _ in range(subnet_bridge._PER_MINER_FAILURE_THRESHOLD):
+        subnet_bridge._miner_cb_record_failure(42)
+    assert subnet_bridge._miner_cb_is_open(42)
+    assert not subnet_bridge._miner_cb_is_open(99)  # other miners unaffected
+
+
+def test_per_miner_cb_success_resets():
+    for _ in range(subnet_bridge._PER_MINER_FAILURE_THRESHOLD):
+        subnet_bridge._miner_cb_record_failure(42)
+    assert subnet_bridge._miner_cb_is_open(42)
+    subnet_bridge._miner_cb_record_success(42)
+    assert not subnet_bridge._miner_cb_is_open(42)
 
 
 # ── estimate_emissions — circuit breaker integration ────────────────
@@ -60,8 +84,8 @@ def test_cb_below_threshold_stays_closed():
 
 @pytest.mark.asyncio
 async def test_estimate_emissions_raises_when_cb_open():
-    for _ in range(subnet_bridge._CB_FAILURE_THRESHOLD):
-        subnet_bridge._cb_record_failure()
+    for _ in range(subnet_bridge._GLOBAL_CB_FAILURE_THRESHOLD):
+        subnet_bridge._global_cb_record_failure()
     with pytest.raises(RuntimeError, match="Circuit breaker open"):
         await subnet_bridge.estimate_emissions({"industry": "tech"})
 
