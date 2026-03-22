@@ -44,7 +44,7 @@ def _check_password_strength(v: str) -> str:
 
 class UserRegister(BaseModel):
     email: EmailStr
-    password: str = Field(min_length=8, max_length=128)
+    password: str = Field(min_length=8, max_length=72)
     full_name: str = Field(min_length=1, max_length=255)
     company_name: str = Field(min_length=1, max_length=255)
     industry: str = Field(min_length=1, max_length=100)
@@ -89,8 +89,8 @@ class UserProfileUpdate(BaseModel):
 
 
 class PasswordChange(BaseModel):
-    current_password: str = Field(min_length=1, max_length=128)
-    new_password: str = Field(min_length=8, max_length=128)
+    current_password: str = Field(min_length=1, max_length=72)
+    new_password: str = Field(min_length=8, max_length=72)
 
     @field_validator("new_password")
     @classmethod

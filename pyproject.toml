@@ -20,6 +20,7 @@ dependencies = [
     "asyncpg>=0.31",
     "alembic>=1.18",
     "passlib[bcrypt]>=1.7.4",
+    "bcrypt>=3.2.2,<4.0",
     "PyJWT>=2.11",
     "httpx>=0.28",
     "slowapi>=0.1.9",

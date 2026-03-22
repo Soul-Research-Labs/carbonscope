@@ -34,12 +34,20 @@ def _hash_token(token: str) -> str:
 # ── Password helpers ────────────────────────────────────────────────
 
 
+def _truncate_password(plain: str) -> str:
+    """Truncate to 72 UTF-8 bytes — bcrypt's hard limit (bcrypt 4.x raises on longer input)."""
+    encoded = plain.encode("utf-8")
+    if len(encoded) <= 72:
+        return plain
+    return encoded[:72].decode("utf-8", errors="ignore")
+
+
 def hash_password(plain: str) -> str:
-    return pwd_context.hash(plain)
+    return pwd_context.hash(_truncate_password(plain))
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+    return pwd_context.verify(_truncate_password(plain), hashed)
 
 
 # ── JWT helpers ─────────────────────────────────────────────────────

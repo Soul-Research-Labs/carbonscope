@@ -182,8 +182,9 @@ export default function RegisterPage() {
             error={fieldErrors.password}
             required
             minLength={8}
+            maxLength={72}
             autoComplete="new-password"
-            hint="Min 8 characters, must include an uppercase letter and a digit."
+            hint="8–72 characters, must include an uppercase letter, a digit, and a special character."
           />
           <FormField
             label="Confirm Password"
