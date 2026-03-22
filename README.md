@@ -458,48 +458,48 @@ npm run test:watch        # Watch mode for development
 <details>
 <summary><strong>Frontend Test Coverage (40 test files, 250 tests)</strong></summary>
 
-| File                           | Coverage                                              |
-| :----------------------------- | :---------------------------------------------------- |
-| `Breadcrumbs.test.tsx`         | Rendering, links, accessibility, separators           |
-| `ConfirmDialog.test.tsx`       | Open/close, confirm/cancel, variants, custom labels   |
-| `DataTable.test.tsx`           | Sorting, pagination, empty states, mobile cards       |
-| `FormField.test.tsx`           | Labels, errors, hints, children, accessibility        |
-| `Navbar.test.tsx`              | Navigation links, active states, mobile menu          |
-| `Skeleton.test.tsx`            | Skeleton variants, animation, sizing                  |
-| `Toast.test.tsx`               | Toast types, auto-dismiss, manual close               |
-| `api.test.ts`                  | ApiError, auth headers, error handling                |
-| `api-new-methods.test.ts`      | Credit ledger, delete account, supply chain, webhooks |
-| `auto-refresh.test.ts`         | Token refresh on 401, retry logic                     |
-| `LoginPage.test.tsx`           | Form submission, validation, error handling           |
-| `ForgotPasswordPage.test.tsx`  | Form render, submit, loading state, error handling    |
-| `RegisterPage.test.tsx`        | Form render, submit, 409/429 errors, generic error    |
-| `DashboardPage.test.tsx`       | KPI cards, API data rendering, empty states           |
-| `RecommendationsPage.test.tsx` | Strategy listing, navigation, data display            |
-| `SellerDashboardPage.test.tsx` | Revenue summary, sales table, pagination              |
-| `PCAFPage.test.tsx`            | Portfolio list, asset table, data rendering           |
-| `ReviewsPage.test.tsx`         | Review list, create form, status display              |
-| `MFAPage.test.tsx`             | MFA status, setup, QR code, disable flow              |
-| `BenchmarksPage.test.tsx`      | Benchmark metrics, industry comparison                |
-| `SettingsPage.test.tsx`        | Profile, company, webhooks, password sections         |
-| `UploadPage.test.tsx`          | Form rendering, submit/error, scope labels            |
-| `CompliancePage.test.tsx`      | Framework buttons, generate, error handling           |
-| `BillingPage.test.tsx`         | Plan display, credits, plan change, error handling    |
-| `ReportsPage.test.tsx`         | Sort controls, export CSV/JSON, year filter           |
-| `AlertsPage.test.tsx`          | Alert list, severity, run check, unread filter        |
-| `AuditLogsPage.test.tsx`       | Table rendering, empty state, error, accessibility    |
-| `QuestionnairesPage.test.tsx`  | Tabs, list, templates, apply template                 |
-| `AuthContext.test.tsx`         | JWT decoding, localStorage, login/logout/register     |
-| `MarketplacePage.test.tsx`     | Listing count, filter, create modal, fetch error      |
-| `ScenariosPage.test.tsx`       | Create form, scenario creation, status filter         |
-| `SupplyChainPage.test.tsx`     | Scope 3 summary, add supplier, fetch error            |
-| `ResetPasswordPage.test.tsx`   | Password mismatch, weak password, successful reset    |
-| `useEventSource.test.ts`       | SSE hook lifecycle, reconnect, event handling         |
-| `validation.test.ts`           | Input validation helpers, edge cases                  |
-| `ErrorCard.test.tsx`           | Retry button, title, message, role=alert              |
-| `useDebounce.test.ts`          | Value debounce, delay, fast-type stabilization        |
-| `TeamPage.test.tsx`            | Team member list, invite form, role management        |
-| `RecommendationDetailPage.test.tsx` | Single recommendation, loading, error recovery  |
-| `QuestionnaireDetailPage.test.tsx`  | Question form, save draft, approve flow         |
+| File                                | Coverage                                              |
+| :---------------------------------- | :---------------------------------------------------- |
+| `Breadcrumbs.test.tsx`              | Rendering, links, accessibility, separators           |
+| `ConfirmDialog.test.tsx`            | Open/close, confirm/cancel, variants, custom labels   |
+| `DataTable.test.tsx`                | Sorting, pagination, empty states, mobile cards       |
+| `FormField.test.tsx`                | Labels, errors, hints, children, accessibility        |
+| `Navbar.test.tsx`                   | Navigation links, active states, mobile menu          |
+| `Skeleton.test.tsx`                 | Skeleton variants, animation, sizing                  |
+| `Toast.test.tsx`                    | Toast types, auto-dismiss, manual close               |
+| `api.test.ts`                       | ApiError, auth headers, error handling                |
+| `api-new-methods.test.ts`           | Credit ledger, delete account, supply chain, webhooks |
+| `auto-refresh.test.ts`              | Token refresh on 401, retry logic                     |
+| `LoginPage.test.tsx`                | Form submission, validation, error handling           |
+| `ForgotPasswordPage.test.tsx`       | Form render, submit, loading state, error handling    |
+| `RegisterPage.test.tsx`             | Form render, submit, 409/429 errors, generic error    |
+| `DashboardPage.test.tsx`            | KPI cards, API data rendering, empty states           |
+| `RecommendationsPage.test.tsx`      | Strategy listing, navigation, data display            |
+| `SellerDashboardPage.test.tsx`      | Revenue summary, sales table, pagination              |
+| `PCAFPage.test.tsx`                 | Portfolio list, asset table, data rendering           |
+| `ReviewsPage.test.tsx`              | Review list, create form, status display              |
+| `MFAPage.test.tsx`                  | MFA status, setup, QR code, disable flow              |
+| `BenchmarksPage.test.tsx`           | Benchmark metrics, industry comparison                |
+| `SettingsPage.test.tsx`             | Profile, company, webhooks, password sections         |
+| `UploadPage.test.tsx`               | Form rendering, submit/error, scope labels            |
+| `CompliancePage.test.tsx`           | Framework buttons, generate, error handling           |
+| `BillingPage.test.tsx`              | Plan display, credits, plan change, error handling    |
+| `ReportsPage.test.tsx`              | Sort controls, export CSV/JSON, year filter           |
+| `AlertsPage.test.tsx`               | Alert list, severity, run check, unread filter        |
+| `AuditLogsPage.test.tsx`            | Table rendering, empty state, error, accessibility    |
+| `QuestionnairesPage.test.tsx`       | Tabs, list, templates, apply template                 |
+| `AuthContext.test.tsx`              | JWT decoding, localStorage, login/logout/register     |
+| `MarketplacePage.test.tsx`          | Listing count, filter, create modal, fetch error      |
+| `ScenariosPage.test.tsx`            | Create form, scenario creation, status filter         |
+| `SupplyChainPage.test.tsx`          | Scope 3 summary, add supplier, fetch error            |
+| `ResetPasswordPage.test.tsx`        | Password mismatch, weak password, successful reset    |
+| `useEventSource.test.ts`            | SSE hook lifecycle, reconnect, event handling         |
+| `validation.test.ts`                | Input validation helpers, edge cases                  |
+| `ErrorCard.test.tsx`                | Retry button, title, message, role=alert              |
+| `useDebounce.test.ts`               | Value debounce, delay, fast-type stabilization        |
+| `TeamPage.test.tsx`                 | Team member list, invite form, role management        |
+| `RecommendationDetailPage.test.tsx` | Single recommendation, loading, error recovery        |
+| `QuestionnaireDetailPage.test.tsx`  | Question form, save draft, approve flow               |
 
 </details>
 

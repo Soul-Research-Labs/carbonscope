@@ -9,9 +9,16 @@ import { test, expect, Page } from "@playwright/test";
 // ── Fixtures ──────────────────────────────────────────────────────────
 
 async function seedAuth(page: Page) {
-  const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
+  const header = Buffer.from(
+    JSON.stringify({ alg: "HS256", typ: "JWT" }),
+  ).toString("base64url");
   const payload = Buffer.from(
-    JSON.stringify({ sub: 1, email: "alice@carbonscope.io", company_id: 1, role: "admin" }),
+    JSON.stringify({
+      sub: 1,
+      email: "alice@carbonscope.io",
+      company_id: 1,
+      role: "admin",
+    }),
   ).toString("base64url");
   const fakeToken = `${header}.${payload}.fakesig`;
 
@@ -71,7 +78,10 @@ async function mockAll(page: Page) {
     }
 
     /** Carbon reports */
-    if (url.includes("/carbon/reports") && !url.match(/\/carbon\/reports\/\d/)) {
+    if (
+      url.includes("/carbon/reports") &&
+      !url.match(/\/carbon\/reports\/\d/)
+    ) {
       return route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -366,7 +376,8 @@ test.describe("Upload page", () => {
     expect(page.url()).not.toMatch(/login/);
     // Look for a file input or explicit drop zone
     const hasFileInput = (await page.locator('input[type="file"]').count()) > 0;
-    const hasDropZone = (await page.locator('[data-testid="drop-zone"], label[for]').count()) > 0;
+    const hasDropZone =
+      (await page.locator('[data-testid="drop-zone"], label[for]').count()) > 0;
     expect(hasFileInput || hasDropZone).toBeTruthy();
   });
 });
@@ -475,7 +486,9 @@ test.describe("Marketplace page", () => {
   test("search input is present", async ({ page }) => {
     await page.goto("/marketplace");
     await page.waitForTimeout(1000);
-    const searchInput = page.locator('input[type="text"], input[placeholder*="search" i]');
+    const searchInput = page.locator(
+      'input[type="text"], input[placeholder*="search" i]',
+    );
     // At least one text input should exist for filtering
     expect(await searchInput.count()).toBeGreaterThan(0);
   });
