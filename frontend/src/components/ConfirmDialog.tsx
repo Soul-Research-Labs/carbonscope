@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useEffect } from "react";
+import { useCallback, useRef, useEffect, type ReactNode } from "react";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -11,6 +11,7 @@ interface ConfirmDialogProps {
   variant?: "danger" | "default";
   onConfirm: () => void;
   onCancel: () => void;
+  children?: ReactNode;
 }
 
 export default function ConfirmDialog({
@@ -22,6 +23,7 @@ export default function ConfirmDialog({
   variant = "default",
   onConfirm,
   onCancel,
+  children,
 }: ConfirmDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
@@ -67,7 +69,7 @@ export default function ConfirmDialog({
 
   const confirmClass =
     variant === "danger"
-      ? "bg-red-600 hover:bg-red-700 text-white"
+      ? "btn-danger"
       : "bg-[var(--primary)] hover:opacity-90 text-black";
 
   return (
@@ -88,6 +90,7 @@ export default function ConfirmDialog({
         <p id="confirm-message" className="mt-2 text-sm text-[var(--muted)]">
           {message}
         </p>
+        {children}
         <div className="mt-6 flex justify-end gap-3">
           <button
             ref={cancelRef}

@@ -158,6 +158,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("auth:session-expired", onSessionExpired);
   }, [router, toast]);
 
+  // Cross-tab auth sync: detect login/logout in other tabs via storage events
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== "user") return;
+      if (e.newValue === null) {
+        // Another tab logged out
+        syncLoggedInCookie(false);
+        getQueryClient().clear();
+        setUser(null);
+        router.push("/login");
+      } else {
+        // Another tab logged in
+        try {
+          const u = JSON.parse(e.newValue) as User;
+          syncLoggedInCookie(true);
+          setUser(u);
+        } catch {
+          // Ignore malformed data
+        }
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [router]);
+
   return (
     <AuthContext.Provider value={{ user, loading, login, register, logout }}>
       {children}

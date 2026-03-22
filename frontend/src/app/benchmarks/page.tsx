@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
-import { useAuth } from "@/lib/auth-context";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { PageSkeleton } from "@/components/Skeleton";
+import { ErrorCard } from "@/components/ErrorCard";
+import Breadcrumbs from "@/components/Breadcrumbs";
 import {
   getIndustryBenchmarks,
   getPeerComparison,
@@ -15,8 +16,7 @@ import {
 
 export default function BenchmarksPage() {
   useDocumentTitle("Benchmarks");
-  const { user, loading } = useAuth();
-  const router = useRouter();
+  const { user, loading } = useRequireAuth();
   const [industry, setIndustry] = useState("technology");
 
   const benchmarksQuery = useQuery<[IndustryBenchmark, PeerComparison]>({
@@ -34,17 +34,19 @@ export default function BenchmarksPage() {
         ? "Failed to load benchmarks"
         : "";
 
-  useEffect(() => {
-    if (!loading && !user) router.push("/login");
-  }, [user, loading, router]);
-
   if (loading || benchmarksQuery.isLoading) return <PageSkeleton />;
   if (!user) return null;
 
   return (
-    <main className="mx-auto max-w-5xl p-8">
+    <div className="mx-auto max-w-5xl p-8">
+      <Breadcrumbs
+        items={[
+          { label: "Dashboard", href: "/dashboard" },
+          { label: "Benchmarks" },
+        ]}
+      />
       <div className="mb-8 flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Industry Benchmarks</h1>
+        <h1 className="text-2xl font-bold">Industry Benchmarks</h1>
         <select
           className="input w-auto"
           value={industry}
@@ -67,7 +69,19 @@ export default function BenchmarksPage() {
       </div>
 
       {error && (
-        <p className="mb-4 rounded bg-red-900/30 p-3 text-red-400">{error}</p>
+        <ErrorCard message={error} onRetry={() => benchmarksQuery.refetch()} />
+      )}
+
+      {!benchmarks && !error && (
+        <div className="card p-12 text-center">
+          <span className="text-4xl mb-3 block">📊</span>
+          <p className="text-[var(--muted)] mb-2">
+            No benchmark data available
+          </p>
+          <p className="text-sm text-[var(--muted)]">
+            Select an industry above to view benchmarks.
+          </p>
+        </div>
       )}
 
       {/* Benchmark metrics */}
@@ -137,6 +151,6 @@ export default function BenchmarksPage() {
           </div>
         </section>
       )}
-    </main>
+    </div>
   );
 }

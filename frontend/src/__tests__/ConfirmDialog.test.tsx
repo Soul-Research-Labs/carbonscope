@@ -57,7 +57,7 @@ describe("ConfirmDialog", () => {
   it("applies danger variant styling to confirm button", () => {
     render(<ConfirmDialog {...defaultProps} variant="danger" />);
     const confirmBtn = screen.getByText("Confirm");
-    expect(confirmBtn.className).toContain("bg-red-600");
+    expect(confirmBtn.className).toContain("btn-danger");
   });
 
   it("has proper ARIA attributes", () => {

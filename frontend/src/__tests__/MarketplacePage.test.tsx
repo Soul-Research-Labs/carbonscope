@@ -55,6 +55,14 @@ vi.mock("@/components/ConfirmDialog", () => ({
     ) : null,
 }));
 
+vi.mock("@/components/Breadcrumbs", () => ({
+  default: () => <nav data-testid="breadcrumbs" />,
+}));
+
+vi.mock("@/components/StatusMessage", () => ({
+  StatusMessage: ({ message }: { message: string }) => <div>{message}</div>,
+}));
+
 import MarketplacePage from "@/app/marketplace/page";
 
 function renderWithQueryClient(ui: ReactElement) {
@@ -107,13 +115,15 @@ describe("MarketplacePage", () => {
     const industryInput = screen.getByPlaceholderText(/filter by industry/i);
     fireEvent.change(industryInput, { target: { value: "energy" } });
 
-    fireEvent.click(await screen.findByText("Apply"));
-
-    await waitFor(() => {
-      expect(mockBrowseListings).toHaveBeenCalledWith(
-        expect.objectContaining({ industry: "energy" }),
-      );
-    });
+    // Wait for debounce (300ms) to fire and trigger refetch
+    await waitFor(
+      () => {
+        expect(mockBrowseListings).toHaveBeenCalledWith(
+          expect.objectContaining({ industry: "energy" }),
+        );
+      },
+      { timeout: 1000 },
+    );
   });
 
   it("opens create listing modal", async () => {
@@ -125,6 +135,6 @@ describe("MarketplacePage", () => {
   it("shows error on fetch failure", async () => {
     mockBrowseListings.mockRejectedValue(new Error("network error"));
     renderWithQueryClient(<MarketplacePage />);
-    expect(await screen.findByText(/Error:/)).toBeInTheDocument();
+    expect(await screen.findByText("network error")).toBeInTheDocument();
   });
 });

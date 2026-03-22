@@ -14,17 +14,19 @@ interface DataTableProps<T> {
   data: T[];
   loading?: boolean;
   emptyMessage?: string;
+  caption?: string;
   total?: number;
   limit?: number;
   offset?: number;
   onPageChange?: (offset: number) => void;
 }
 
-function DataTableInner<T extends Record<string, unknown>>({
+function DataTableInner<T extends object>({
   columns,
   data,
   loading = false,
   emptyMessage = "No data found.",
+  caption,
   total,
   limit,
   offset = 0,
@@ -40,8 +42,9 @@ function DataTableInner<T extends Record<string, unknown>>({
       <table
         className="hidden sm:table min-w-full divide-y divide-[var(--card-border)]"
         role="table"
-        aria-label="Data table"
+        aria-label={caption ?? "Data table"}
       >
+        {caption && <caption className="sr-only">{caption}</caption>}
         <thead className="bg-[var(--card)]">
           <tr>
             {columns.map((col) => (
@@ -69,13 +72,15 @@ function DataTableInner<T extends Record<string, unknown>>({
             </tr>
           ) : (
             data.map((row, i) => (
-              <tr key={(row.id as string) ?? i}>
+              <tr key={((row as Record<string, unknown>).id as string) ?? i}>
                 {columns.map((col) => (
                   <td
                     key={col.key}
                     className="whitespace-nowrap px-4 py-3 text-sm text-[var(--foreground)]"
                   >
-                    {col.render ? col.render(row) : String(row[col.key] ?? "")}
+                    {col.render
+                      ? col.render(row)
+                      : String((row as Record<string, unknown>)[col.key] ?? "")}
                   </td>
                 ))}
               </tr>
@@ -85,7 +90,11 @@ function DataTableInner<T extends Record<string, unknown>>({
       </table>
 
       {/* Mobile card layout */}
-      <div className="sm:hidden space-y-3" role="list" aria-label="Data list">
+      <div
+        className="sm:hidden space-y-3"
+        role="list"
+        aria-label={caption ?? "Data list"}
+      >
         {loading ? (
           <div className="space-y-3">
             {Array.from({ length: 3 }).map((_, i) => (
@@ -105,7 +114,7 @@ function DataTableInner<T extends Record<string, unknown>>({
         ) : (
           data.map((row, i) => (
             <div
-              key={(row.id as string) ?? i}
+              key={((row as Record<string, unknown>).id as string) ?? i}
               role="listitem"
               className="rounded-lg border border-[var(--card-border)] bg-[var(--card)] p-4 space-y-2"
             >
@@ -118,7 +127,9 @@ function DataTableInner<T extends Record<string, unknown>>({
                     {col.header}
                   </span>
                   <span className="text-[var(--foreground)] text-right">
-                    {col.render ? col.render(row) : String(row[col.key] ?? "")}
+                    {col.render
+                      ? col.render(row)
+                      : String((row as Record<string, unknown>)[col.key] ?? "")}
                   </span>
                 </div>
               ))}

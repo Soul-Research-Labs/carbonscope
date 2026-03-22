@@ -5,10 +5,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
-import { useAuth } from "@/lib/auth-context";
+import { useDebounce } from "@/hooks/useDebounce";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { PageSkeleton } from "@/components/Skeleton";
+import { StatusMessage } from "@/components/StatusMessage";
 import { useToast } from "@/components/Toast";
+import Breadcrumbs from "@/components/Breadcrumbs";
 import {
   browseListings,
   purchaseListing,
@@ -30,13 +33,15 @@ export default function MarketplacePage() {
 
 function MarketplacePageInner() {
   useDocumentTitle("Data Marketplace");
-  const { user, loading } = useAuth();
+  const { user, loading } = useRequireAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const [error, setError] = useState("");
   const [industry, setIndustry] = useState(searchParams.get("industry") ?? "");
   const [region, setRegion] = useState(searchParams.get("region") ?? "");
+  const debouncedIndustry = useDebounce(industry, 300);
+  const debouncedRegion = useDebounce(region, 300);
 
   // Create listing state
   const [showCreate, setShowCreate] = useState(false);
@@ -52,11 +57,16 @@ function MarketplacePageInner() {
   const [purchaseTarget, setPurchaseTarget] = useState<string | null>(null);
 
   const listingsQuery = useQuery<PaginatedResponse<DataListingOut>>({
-    queryKey: ["marketplace", user?.company_id, industry, region],
+    queryKey: [
+      "marketplace",
+      user?.company_id,
+      debouncedIndustry,
+      debouncedRegion,
+    ],
     queryFn: () =>
       browseListings({
-        industry: industry || undefined,
-        region: region || undefined,
+        industry: debouncedIndustry || undefined,
+        region: debouncedRegion || undefined,
         limit: 50,
       }),
     enabled: !!user && !loading,
@@ -74,21 +84,14 @@ function MarketplacePageInner() {
     }
   }, [listingsQuery.error]);
 
-  // Sync filters to URL
+  // Sync debounced filters to URL
   useEffect(() => {
     const params = new URLSearchParams();
-    if (industry) params.set("industry", industry);
-    if (region) params.set("region", region);
+    if (debouncedIndustry) params.set("industry", debouncedIndustry);
+    if (debouncedRegion) params.set("region", debouncedRegion);
     const qs = params.toString();
     router.replace(`/marketplace${qs ? `?${qs}` : ""}`, { scroll: false });
-  }, [industry, region, router]);
-
-  useEffect(() => {
-    if (!loading && !user) {
-      router.replace("/login");
-      return;
-    }
-  }, [user, loading, router]);
+  }, [debouncedIndustry, debouncedRegion, router]);
 
   async function handlePurchase(id: string) {
     setPurchaseTarget(null);
@@ -146,13 +149,23 @@ function MarketplacePageInner() {
   }
 
   if (error && !data) {
-    return <div className="p-8 text-[var(--danger)]">Error: {error}</div>;
+    return (
+      <div className="p-8">
+        <StatusMessage message={error} variant="error" />
+      </div>
+    );
   }
 
   const listings = data?.items ?? [];
 
   return (
     <div className="max-w-6xl mx-auto p-8 space-y-6">
+      <Breadcrumbs
+        items={[
+          { label: "Dashboard", href: "/dashboard" },
+          { label: "Marketplace" },
+        ]}
+      />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Data Marketplace</h1>
@@ -175,11 +188,7 @@ function MarketplacePageInner() {
         </Link>
       </div>
 
-      {error && (
-        <div className="p-3 rounded-md bg-[var(--danger)]/10 text-[var(--danger)] text-sm">
-          {error}
-        </div>
-      )}
+      {error && <StatusMessage message={error} variant="error" />}
 
       {/* Filters */}
       <div className="flex gap-3 flex-wrap">
@@ -193,7 +202,7 @@ function MarketplacePageInner() {
             placeholder="Filter by industry..."
             value={industry}
             onChange={(e) => setIndustry(e.target.value)}
-            className="input text-sm px-3 py-1.5 w-48"
+            className="input text-sm px-3 py-1.5 w-full sm:w-48"
           />
         </div>
         <div>
@@ -206,15 +215,9 @@ function MarketplacePageInner() {
             placeholder="Filter by region..."
             value={region}
             onChange={(e) => setRegion(e.target.value)}
-            className="input text-sm px-3 py-1.5 w-48"
+            className="input text-sm px-3 py-1.5 w-full sm:w-48"
           />
         </div>
-        <button
-          onClick={() => listingsQuery.refetch()}
-          className="text-sm px-4 py-1.5 rounded-md bg-[var(--card-border)] hover:bg-[var(--primary)] hover:text-black transition-colors"
-        >
-          Apply
-        </button>
         <span className="text-sm text-[var(--muted)] self-center">
           {data?.total ?? 0} listing{data?.total !== 1 ? "s" : ""}
         </span>

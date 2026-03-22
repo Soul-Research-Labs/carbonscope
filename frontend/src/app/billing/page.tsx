@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
-import { useAuth } from "@/lib/auth-context";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 import {
   getSubscription,
   getCredits,
@@ -18,11 +17,13 @@ import {
 import { CardSkeleton } from "@/components/Skeleton";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { useToast } from "@/components/Toast";
+import { ErrorCard } from "@/components/ErrorCard";
+import { StatusMessage } from "@/components/StatusMessage";
+import Breadcrumbs from "@/components/Breadcrumbs";
 
 export default function BillingPage() {
   useDocumentTitle("Billing");
-  const { user, loading } = useAuth();
-  const router = useRouter();
+  const { user, loading } = useRequireAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [error, setError] = useState("");
@@ -31,32 +32,25 @@ export default function BillingPage() {
 
   const subQuery = useQuery<SubscriptionOut>({
     queryKey: ["billing-subscription", user?.company_id],
-    queryFn: getSubscription,
+    queryFn: () => getSubscription(),
     enabled: !!user && !loading,
   });
 
   const creditsQuery = useQuery<CreditBalanceOut>({
     queryKey: ["billing-credits", user?.company_id],
-    queryFn: getCredits,
+    queryFn: () => getCredits(),
     enabled: !!user && !loading,
   });
 
   const plansQuery = useQuery<Record<string, PlanLimits>>({
     queryKey: ["billing-plans"],
-    queryFn: listPlans,
+    queryFn: () => listPlans(),
     enabled: !!user && !loading,
   });
 
   const sub = subQuery.data ?? null;
   const credits = creditsQuery.data ?? null;
   const plans = plansQuery.data ?? null;
-
-  useEffect(() => {
-    if (!loading && !user) {
-      router.replace("/login");
-      return;
-    }
-  }, [user, loading, router]);
 
   // Surface errors from any of the billing queries
   useEffect(() => {
@@ -94,11 +88,28 @@ export default function BillingPage() {
   }
 
   if (error && !sub) {
-    return <div className="p-8 text-[var(--danger)]">Error: {error}</div>;
+    return (
+      <div className="max-w-5xl mx-auto p-8">
+        <ErrorCard
+          message={error}
+          onRetry={() => {
+            subQuery.refetch();
+            creditsQuery.refetch();
+            plansQuery.refetch();
+          }}
+        />
+      </div>
+    );
   }
 
   return (
     <div className="max-w-5xl mx-auto p-8 space-y-8">
+      <Breadcrumbs
+        items={[
+          { label: "Dashboard", href: "/dashboard" },
+          { label: "Billing" },
+        ]}
+      />
       <div>
         <h1 className="text-2xl font-bold">Billing & Subscription</h1>
         <p className="text-[var(--muted)]">
@@ -106,11 +117,7 @@ export default function BillingPage() {
         </p>
       </div>
 
-      {error && (
-        <div className="p-3 rounded-md bg-[var(--danger)]/10 text-[var(--danger)] text-sm">
-          {error}
-        </div>
-      )}
+      {error && <StatusMessage message={error} variant="error" />}
 
       {/* Current plan & credits */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

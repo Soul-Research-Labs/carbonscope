@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { useRouter, useParams } from "next/navigation";
-import { useAuth } from "@/lib/auth-context";
+import { useState } from "react";
+import { useParams } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import {
   getQuestionnaire,
   updateQuestion,
@@ -11,55 +13,48 @@ import {
   type QuestionOut,
 } from "@/lib/api";
 import Breadcrumbs from "@/components/Breadcrumbs";
+import { StatusMessage } from "@/components/StatusMessage";
+import { ErrorCard } from "@/components/ErrorCard";
+import { PageSkeleton } from "@/components/Skeleton";
+import { useToast } from "@/components/Toast";
 
 export default function QuestionnaireDetailPage() {
-  const { user, loading } = useAuth();
-  const router = useRouter();
+  const { user, loading } = useRequireAuth();
   const params = useParams();
   const id = params.id as string;
 
-  const [detail, setDetail] = useState<QuestionnaireDetail | null>(null);
+  const {
+    data: detail,
+    error: fetchError,
+    refetch,
+  } = useQuery<QuestionnaireDetail>({
+    queryKey: ["questionnaire", id],
+    queryFn: () => getQuestionnaire(id),
+    enabled: !!user && !!id,
+  });
+
+  useDocumentTitle(
+    detail ? `Questionnaire — ${detail.questionnaire.title}` : "Questionnaire",
+  );
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editAnswer, setEditAnswer] = useState("");
-  const [error, setError] = useState("");
+  const [actionError, setActionError] = useState("");
   const [saving, setSaving] = useState(false);
-
-  const fetchDetail = useCallback(async () => {
-    try {
-      const d = await getQuestionnaire(id);
-      setDetail(d);
-    } catch {
-      setError("Failed to load questionnaire");
-    }
-  }, [id]);
-
-  useEffect(() => {
-    if (!loading && !user) {
-      router.replace("/login");
-      return;
-    }
-    if (user && id) fetchDetail();
-  }, [user, loading, router, id, fetchDetail]);
+  const { toast } = useToast();
 
   async function handleSave(question: QuestionOut) {
     setSaving(true);
     try {
-      const updated = await updateQuestion(id, question.id, {
+      await updateQuestion(id, question.id, {
         human_answer: editAnswer,
         status: "reviewed",
       });
-      setDetail((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          questions: prev.questions.map((q) =>
-            q.id === updated.id ? updated : q,
-          ),
-        };
-      });
+      await refetch();
       setEditingId(null);
+      toast("Answer saved", "success");
     } catch {
-      setError("Failed to save answer");
+      setActionError("Failed to save answer");
     } finally {
       setSaving(false);
     }
@@ -67,20 +62,13 @@ export default function QuestionnaireDetailPage() {
 
   async function handleApprove(question: QuestionOut) {
     try {
-      const updated = await updateQuestion(id, question.id, {
+      await updateQuestion(id, question.id, {
         status: "approved",
       });
-      setDetail((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          questions: prev.questions.map((q) =>
-            q.id === updated.id ? updated : q,
-          ),
-        };
-      });
+      await refetch();
+      toast("Question approved", "success");
     } catch {
-      setError("Failed to approve");
+      setActionError("Failed to approve");
     }
   }
 
@@ -94,22 +82,34 @@ export default function QuestionnaireDetailPage() {
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      setError("Failed to export PDF");
+      setActionError("Failed to export PDF");
     }
   }
 
   const statusColor = (s: string) => {
     const m: Record<string, string> = {
-      draft: "text-yellow-400",
-      reviewed: "text-blue-400",
-      approved: "text-green-400",
+      draft: "var(--warning)",
+      reviewed: "var(--info)",
+      approved: "var(--success)",
     };
-    return m[s] || "text-[var(--muted)]";
+    return m[s] || "var(--muted)";
   };
 
-  if (loading || !detail) {
-    return <div className="p-8 text-center text-[var(--muted)]">Loading…</div>;
-  }
+  if (loading || (!detail && !fetchError)) return <PageSkeleton />;
+  if (fetchError)
+    return (
+      <div className="max-w-4xl mx-auto p-8">
+        <ErrorCard
+          message={
+            fetchError instanceof Error
+              ? fetchError.message
+              : "Failed to load questionnaire"
+          }
+          onRetry={() => refetch()}
+        />
+      </div>
+    );
+  if (!detail) return null;
 
   const approvedCount = detail.questions.filter(
     (q) => q.status === "approved",
@@ -151,11 +151,7 @@ export default function QuestionnaireDetailPage() {
         />
       </div>
 
-      {error && (
-        <div className="mb-4 p-3 rounded bg-red-900/20 border border-red-800 text-red-400 text-sm">
-          {error}
-        </div>
-      )}
+      {actionError && <StatusMessage message={actionError} variant="error" />}
 
       {/* Questions */}
       <div className="space-y-4">
@@ -172,7 +168,8 @@ export default function QuestionnaireDetailPage() {
                 <span className="font-medium">{q.question_text}</span>
               </div>
               <span
-                className={`text-xs font-medium uppercase ${statusColor(q.status)}`}
+                className="text-xs font-medium uppercase"
+                style={{ color: statusColor(q.status) }}
               >
                 {q.status}
               </span>
@@ -203,7 +200,16 @@ export default function QuestionnaireDetailPage() {
             {q.human_answer && editingId !== q.id && (
               <div className="mb-3">
                 <p className="text-xs text-[var(--muted)] mb-1">Your Answer</p>
-                <p className="text-sm bg-green-900/10 border border-green-900/30 rounded p-3">
+                <p
+                  className="text-sm rounded p-3"
+                  style={{
+                    background:
+                      "color-mix(in srgb, var(--success) 10%, transparent)",
+                    borderColor:
+                      "color-mix(in srgb, var(--success) 20%, transparent)",
+                    border: "1px solid",
+                  }}
+                >
                   {q.human_answer}
                 </p>
               </div>
@@ -249,7 +255,12 @@ export default function QuestionnaireDetailPage() {
                 {q.status !== "approved" && (
                   <button
                     onClick={() => handleApprove(q)}
-                    className="px-3 py-1.5 rounded bg-green-800/50 text-green-300 text-sm font-medium hover:bg-green-800/70"
+                    className="px-3 py-1.5 rounded text-sm font-medium"
+                    style={{
+                      background:
+                        "color-mix(in srgb, var(--success) 30%, transparent)",
+                      color: "var(--success)",
+                    }}
                   >
                     Approve
                   </button>

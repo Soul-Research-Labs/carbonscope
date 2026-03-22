@@ -138,6 +138,6 @@ describe("SupplyChainPage", () => {
     mockListSuppliers.mockRejectedValue(new Error("fail"));
     mockGetScope3.mockRejectedValue(new Error("fail"));
     renderWithQueryClient(<SupplyChainPage />);
-    expect(await screen.findByText(/Error:/)).toBeInTheDocument();
+    expect(await screen.findByText("fail")).toBeInTheDocument();
   });
 });

@@ -48,7 +48,7 @@ export function FormField({
           id={id}
           className={`block w-full rounded-md border px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 ${
             error
-              ? "border-red-500 focus:ring-red-400"
+              ? "border-[var(--danger)] focus:ring-[var(--danger)]"
               : "border-[var(--card-border)] focus:ring-[var(--primary)]"
           } ${className}`}
           aria-invalid={!!error}
@@ -60,12 +60,21 @@ export function FormField({
       )}
 
       {error && (
-        <p id={`${id}-error`} className="text-sm text-red-600" role="alert">
+        <p
+          id={`${id}-error`}
+          className="text-sm"
+          style={{ color: "var(--danger)" }}
+          role="alert"
+        >
           {error}
         </p>
       )}
       {!error && hint && (
-        <p id={`${id}-hint`} className="text-sm text-gray-500">
+        <p
+          id={`${id}-hint`}
+          className="text-sm"
+          style={{ color: "var(--muted)" }}
+        >
           {hint}
         </p>
       )}

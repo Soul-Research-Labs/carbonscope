@@ -35,6 +35,18 @@ vi.mock("@/components/Skeleton", () => ({
   PageSkeleton: () => <div>Loading...</div>,
 }));
 
+vi.mock("@/components/Breadcrumbs", () => ({
+  default: () => <nav data-testid="breadcrumbs" />,
+}));
+
+vi.mock("@/components/StatusMessage", () => ({
+  StatusMessage: ({ message }: { message: string }) => <div>{message}</div>,
+}));
+
+vi.mock("@/components/Toast", () => ({
+  useToast: () => ({ toast: vi.fn() }),
+}));
+
 type ConfirmDialogProps = {
   open: boolean;
   onConfirm: () => void;

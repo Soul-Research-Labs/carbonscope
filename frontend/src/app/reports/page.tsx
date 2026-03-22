@@ -5,10 +5,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
-import { useAuth } from "@/lib/auth-context";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { listReports, exportReports, type EmissionReport } from "@/lib/api";
 import { CardSkeleton } from "@/components/Skeleton";
 import Breadcrumbs from "@/components/Breadcrumbs";
+import { StatusMessage } from "@/components/StatusMessage";
 
 const PAGE_SIZE = 10;
 
@@ -30,7 +31,7 @@ export default function ReportsPage() {
 
 function ReportsPageInner() {
   useDocumentTitle("Reports");
-  const { user, loading } = useAuth();
+  const { user, loading } = useRequireAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -56,7 +57,7 @@ function ReportsPageInner() {
     () => searchParams.get("year") ?? "",
   );
   const [debouncedYear, setDebouncedYear] = useState(yearFilter);
-  const yearTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const yearTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [actionError, setActionError] = useState("");
   const [exporting, setExporting] = useState(false);
 
@@ -92,12 +93,6 @@ function ReportsPageInner() {
     enabled: !!user && !loading,
     placeholderData: (prev) => prev,
   });
-
-  useEffect(() => {
-    if (!loading && !user) {
-      router.replace("/login");
-    }
-  }, [user, loading, router]);
 
   const reports: EmissionReport[] = reportsQuery.data?.items ?? [];
   const total = reportsQuery.data?.total ?? 0;
@@ -222,10 +217,8 @@ function ReportsPageInner() {
         </div>
       </div>
 
-      {error && <div className="text-[var(--danger)] mb-4">{error}</div>}
-      {actionError && (
-        <div className="text-[var(--danger)] mb-4">{actionError}</div>
-      )}
+      {error && <StatusMessage message={error} variant="error" />}
+      {actionError && <StatusMessage message={actionError} variant="error" />}
 
       {reports.length === 0 && !fetching ? (
         <div className="card text-center py-12">

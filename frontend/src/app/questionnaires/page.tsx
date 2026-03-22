@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
-import { useAuth } from "@/lib/auth-context";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import Breadcrumbs from "@/components/Breadcrumbs";
 import {
   listQuestionnaires,
   uploadQuestionnaire,
@@ -17,10 +18,12 @@ import {
   type TemplateSummary,
 } from "@/lib/api";
 import { PageSkeleton } from "@/components/Skeleton";
+import { StatusMessage } from "@/components/StatusMessage";
+import { useToast } from "@/components/Toast";
 
 export default function QuestionnairesPage() {
   useDocumentTitle("Questionnaires");
-  const { user, loading } = useAuth();
+  const { user, loading } = useRequireAuth();
   const router = useRouter();
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
@@ -28,6 +31,7 @@ export default function QuestionnairesPage() {
     "list",
   );
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const dataQuery = useQuery<
     [{ items: QuestionnaireOut[] }, TemplateSummary[]]
@@ -45,13 +49,6 @@ export default function QuestionnairesPage() {
       setError("Failed to load data");
     }
   }, [dataQuery.error]);
-
-  useEffect(() => {
-    if (!loading && !user) {
-      router.replace("/login");
-      return;
-    }
-  }, [user, loading, router]);
 
   const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
   const ALLOWED_EXTENSIONS = ["pdf", "docx", "xlsx", "csv"];
@@ -107,6 +104,7 @@ export default function QuestionnairesPage() {
     try {
       await deleteQuestionnaire(id);
       await dataQuery.refetch();
+      toast("Questionnaire deleted", "success");
     } catch {
       setError("Failed to delete questionnaire");
     } finally {
@@ -116,15 +114,15 @@ export default function QuestionnairesPage() {
 
   const statusBadge = (status: string) => {
     const colors: Record<string, string> = {
-      uploaded: "bg-yellow-900/30 text-yellow-400",
-      extracting: "bg-blue-900/30 text-blue-400",
-      extracted: "bg-green-900/30 text-green-400",
-      reviewed: "bg-purple-900/30 text-purple-400",
-      exported: "bg-[var(--background)]/30 text-[var(--muted)]",
+      uploaded: "badge-warning",
+      extracting: "badge-info",
+      extracted: "badge-success",
+      reviewed: "badge-muted",
+      exported: "badge-muted",
     };
     return (
       <span
-        className={`px-2 py-0.5 rounded text-xs font-medium ${colors[status] || "bg-[var(--card)] text-[var(--muted)]"}`}
+        className={`px-2 py-0.5 rounded text-xs font-medium badge ${colors[status] || "badge-muted"}`}
       >
         {status}
       </span>
@@ -135,19 +133,29 @@ export default function QuestionnairesPage() {
 
   return (
     <div className="max-w-5xl mx-auto p-8">
+      <Breadcrumbs
+        items={[
+          { label: "Dashboard", href: "/dashboard" },
+          { label: "Questionnaires" },
+        ]}
+      />
       <h1 className="text-2xl font-bold mb-6">Sustainability Questionnaires</h1>
 
-      {error && (
-        <div className="mb-4 p-3 rounded bg-red-900/20 border border-red-800 text-red-400 text-sm">
-          {error}
-        </div>
-      )}
+      {error && <StatusMessage message={error} variant="error" />}
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-6 border-b border-[var(--card-border)]">
+      <div
+        className="flex gap-1 mb-6 border-b border-[var(--card-border)]"
+        role="tablist"
+        aria-label="Questionnaire sections"
+      >
         {(["list", "upload", "templates"] as const).map((tab) => (
           <button
             key={tab}
+            role="tab"
+            aria-selected={activeTab === tab}
+            aria-controls={`tabpanel-${tab}`}
+            id={`tab-${tab}`}
             onClick={() => setActiveTab(tab)}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               activeTab === tab
@@ -166,7 +174,12 @@ export default function QuestionnairesPage() {
 
       {/* Upload tab */}
       {activeTab === "upload" && (
-        <div className="rounded-lg border border-[var(--card-border)] bg-[var(--card)] p-8 text-center">
+        <div
+          role="tabpanel"
+          id="tabpanel-upload"
+          aria-labelledby="tab-upload"
+          className="rounded-lg border border-[var(--card-border)] bg-[var(--card)] p-8 text-center"
+        >
           <p className="text-[var(--muted)] mb-4">
             Upload a sustainability questionnaire (PDF, DOCX, XLSX, or CSV). Our
             AI will extract questions and generate draft responses using your
@@ -190,7 +203,12 @@ export default function QuestionnairesPage() {
 
       {/* Templates tab */}
       {activeTab === "templates" && (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div
+          role="tabpanel"
+          id="tabpanel-templates"
+          aria-labelledby="tab-templates"
+          className="grid gap-4 md:grid-cols-2"
+        >
           {templates.map((tpl) => (
             <div
               key={tpl.id}
@@ -198,7 +216,7 @@ export default function QuestionnairesPage() {
             >
               <div className="flex justify-between items-start mb-2">
                 <h3 className="font-semibold">{tpl.title}</h3>
-                <span className="text-xs bg-blue-900/30 text-blue-400 px-2 py-0.5 rounded">
+                <span className="text-xs badge-info px-2 py-0.5 rounded">
                   {tpl.framework}
                 </span>
               </div>
@@ -223,7 +241,12 @@ export default function QuestionnairesPage() {
 
       {/* List tab */}
       {activeTab === "list" && (
-        <div className="space-y-3">
+        <div
+          role="tabpanel"
+          id="tabpanel-list"
+          aria-labelledby="tab-list"
+          className="space-y-3"
+        >
           {questionnaires.length === 0 ? (
             <div className="text-center py-16 rounded-xl border border-[var(--card-border)] bg-[var(--card)]">
               <span className="text-4xl mb-3 block">📋</span>

@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { useAuth } from "@/lib/auth-context";
+import { useQuery } from "@tanstack/react-query";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
+import { PageSkeleton } from "@/components/Skeleton";
+import { ErrorCard } from "@/components/ErrorCard";
 import {
   getRecommendations,
   type RecommendationSummary,
@@ -10,34 +12,30 @@ import {
 } from "@/lib/api";
 
 export default function RecommendationsPage() {
-  const { user, loading } = useAuth();
+  const { user, loading } = useRequireAuth();
   const router = useRouter();
   const { reportId } = useParams() as { reportId: string };
-  const [data, setData] = useState<RecommendationSummary | null>(null);
-  const [error, setError] = useState("");
 
-  useEffect(() => {
-    if (!loading && !user) {
-      router.replace("/login");
-      return;
-    }
-    if (user && reportId) {
-      getRecommendations(reportId)
-        .then(setData)
-        .catch((e) =>
-          setError(
-            e instanceof Error ? e.message : "Failed to load recommendations",
-          ),
-        );
-    }
-  }, [user, loading, router, reportId]);
+  const { data, error, refetch } = useQuery<RecommendationSummary>({
+    queryKey: ["recommendations", reportId],
+    queryFn: () => getRecommendations(reportId),
+    enabled: !!user && !!reportId,
+  });
 
-  if (loading || (!data && !error))
-    return (
-      <div className="p-8 text-[var(--muted)]">Loading recommendations...</div>
-    );
+  if (loading || (!data && !error)) return <PageSkeleton />;
   if (error)
-    return <div className="p-8 text-[var(--danger)]">Error: {error}</div>;
+    return (
+      <div className="max-w-5xl mx-auto p-8">
+        <ErrorCard
+          message={
+            error instanceof Error
+              ? error.message
+              : "Failed to load recommendations"
+          }
+          onRetry={() => refetch()}
+        />
+      </div>
+    );
   if (!data) return null;
 
   const { recommendations, summary } = data;

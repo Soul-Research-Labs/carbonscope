@@ -70,10 +70,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   );
 
   const colors: Record<ToastType, string> = {
-    success: "bg-green-600",
-    error: "bg-red-600",
-    warning: "bg-yellow-600",
-    info: "bg-blue-600",
+    success: "toast-success",
+    error: "toast-error",
+    warning: "toast-warning",
+    info: "toast-info",
   };
 
   const icons: Record<ToastType, string> = {
@@ -92,7 +92,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             key={t.id}
             role={t.type === "error" ? "alert" : "status"}
             aria-live={t.type === "error" ? "assertive" : "polite"}
-            className={`${colors[t.type]} text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 min-w-[280px] max-w-[400px] animate-slide-in`}
+            className={`${colors[t.type]} px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 min-w-[280px] max-w-[400px] animate-slide-in`}
             onMouseEnter={() => pauseTimer(t.id)}
             onMouseLeave={() => resumeTimer(t.id)}
             onFocus={() => pauseTimer(t.id)}

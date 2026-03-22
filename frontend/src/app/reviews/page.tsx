@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
-import { useAuth } from "@/lib/auth-context";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { PageSkeleton } from "@/components/Skeleton";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import { StatusMessage } from "@/components/StatusMessage";
+import Breadcrumbs from "@/components/Breadcrumbs";
 import {
   listReviews,
   createReview,
@@ -17,22 +18,16 @@ import {
 } from "@/lib/api";
 
 const STATUS_STYLES: Record<string, string> = {
-  draft:
-    "bg-[var(--status-draft-bg,rgba(107,114,128,0.2))] text-[var(--muted)]",
-  submitted:
-    "bg-[var(--status-submitted-bg,rgba(59,130,246,0.2))] text-[var(--status-submitted-fg,#60a5fa)]",
-  approved:
-    "bg-[var(--status-approved-bg,rgba(16,185,129,0.2))] text-[var(--status-approved-fg,#34d399)]",
-  rejected:
-    "bg-[var(--status-rejected-bg,rgba(239,68,68,0.2))] text-[var(--status-rejected-fg,#f87171)]",
-  revision_requested:
-    "bg-[var(--status-revision-bg,rgba(234,179,8,0.2))] text-[var(--status-revision-fg,#facc15)]",
+  draft: "badge-muted",
+  submitted: "badge-info",
+  approved: "badge-success",
+  rejected: "badge-danger",
+  revision_requested: "badge-warning",
 };
 
 export default function ReviewsPage() {
   useDocumentTitle("Data Reviews");
-  const { user, loading } = useAuth();
-  const router = useRouter();
+  const { user, loading } = useRequireAuth();
   const [error, setError] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [selectedReport, setSelectedReport] = useState("");
@@ -41,13 +36,13 @@ export default function ReviewsPage() {
 
   const reviewsQuery = useQuery<{ items: DataReview[] }>({
     queryKey: ["reviews", user?.company_id],
-    queryFn: listReviews,
+    queryFn: () => listReviews(),
     enabled: !!user && !loading,
   });
 
   const reportsQuery = useQuery<{ items: EmissionReport[] }>({
     queryKey: ["reviews-reports", user?.company_id],
-    queryFn: listReports,
+    queryFn: () => listReports(),
     enabled: !!user && !loading,
   });
 
@@ -63,10 +58,6 @@ export default function ReviewsPage() {
       );
     }
   }, [reviewsQuery.error]);
-
-  useEffect(() => {
-    if (!loading && !user) router.push("/login");
-  }, [user, loading, router]);
 
   const handleCreate = async () => {
     if (!selectedReport) return;
@@ -103,15 +94,21 @@ export default function ReviewsPage() {
   if (!user) return null;
 
   return (
-    <main className="mx-auto max-w-5xl p-8">
+    <div className="mx-auto max-w-5xl p-8">
+      <Breadcrumbs
+        items={[
+          { label: "Dashboard", href: "/dashboard" },
+          { label: "Reviews" },
+        ]}
+      />
       <div className="mb-8 flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Data Reviews</h1>
+        <h1 className="text-2xl font-bold">Data Reviews</h1>
         <button onClick={() => setShowCreate(true)} className="btn-primary">
           New Review
         </button>
       </div>
 
-      {error && <p className="mb-4 text-[var(--danger)]">{error}</p>}
+      {error && <StatusMessage message={error} variant="error" />}
 
       {showCreate && (
         <div className="mb-6 rounded-lg border border-[var(--card-border)] bg-[var(--card)] p-4">
@@ -167,7 +164,7 @@ export default function ReviewsPage() {
               </div>
               <div className="flex items-center gap-3">
                 <span
-                  className={`rounded-full px-3 py-1 text-xs font-medium ${STATUS_STYLES[r.status] || "bg-gray-600"}`}
+                  className={`rounded-full px-3 py-1 text-xs font-medium badge ${STATUS_STYLES[r.status] || "badge-muted"}`}
                 >
                   {r.status}
                 </span>
@@ -200,16 +197,20 @@ export default function ReviewsPage() {
           </div>
         ))}
         {reviews.length === 0 && (
-          <p className="text-[var(--muted)]">
-            No reviews yet. Create one for an emission report.
-          </p>
+          <div className="card p-12 text-center">
+            <span className="text-4xl mb-3 block">📋</span>
+            <p className="text-[var(--muted)] mb-2">No reviews yet</p>
+            <p className="text-sm text-[var(--muted)]">
+              Create one for an emission report to get started.
+            </p>
+          </div>
         )}
       </div>
 
       <ConfirmDialog
         open={!!rejectTarget}
         title="Reject Review"
-        message="Are you sure you want to reject this review? Please provide a reason."
+        message="Are you sure you want to reject this review? Please provide a reason below."
         confirmLabel="Reject"
         variant="danger"
         onConfirm={handleReject}
@@ -217,10 +218,19 @@ export default function ReviewsPage() {
           setRejectTarget(null);
           setRejectNotes("");
         }}
-      />
+      >
+        <textarea
+          className="input mt-3 w-full"
+          rows={3}
+          placeholder="Reason for rejection…"
+          value={rejectNotes}
+          onChange={(e) => setRejectNotes(e.target.value)}
+          aria-label="Rejection reason"
+        />
+      </ConfirmDialog>
       {rejectTarget && (
         <div className="fixed inset-0 z-40" aria-hidden="true" />
       )}
-    </main>
+    </div>
   );
 }

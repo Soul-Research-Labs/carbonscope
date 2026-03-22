@@ -9,6 +9,7 @@ export function StatusMessage({ message, variant }: StatusMessageProps) {
   return (
     <div
       role={variant === "error" ? "alert" : "status"}
+      aria-live={variant === "error" ? "assertive" : "polite"}
       className={`text-sm rounded-md p-3`}
       style={{
         color,

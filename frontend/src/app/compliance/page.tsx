@@ -1,17 +1,17 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "@/lib/auth-context";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 import {
   listReports,
   generateComplianceReport,
   type EmissionReport,
 } from "@/lib/api";
 import { PageSkeleton } from "@/components/Skeleton";
+import { StatusMessage } from "@/components/StatusMessage";
 
 type Framework = "ghg_protocol" | "cdp" | "tcfd" | "sbti";
 
@@ -40,14 +40,14 @@ const FRAMEWORKS: { id: Framework; label: string; desc: string }[] = [
 
 export default function CompliancePage() {
   useDocumentTitle("Compliance Reports");
-  const { user, loading } = useAuth();
-  const router = useRouter();
+  const { user, loading } = useRequireAuth();
   const [selectedReport, setSelectedReport] = useState("");
   const [selectedFramework, setSelectedFramework] =
     useState<Framework>("ghg_protocol");
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState("");
+  const [showRawJson, setShowRawJson] = useState(false);
 
   const resultJson = useMemo(
     () => (result ? JSON.stringify(result, null, 2) : ""),
@@ -61,13 +61,6 @@ export default function CompliancePage() {
   });
 
   const reports: EmissionReport[] = reportsQuery.data?.items ?? [];
-
-  useEffect(() => {
-    if (!loading && !user) {
-      router.replace("/login");
-      return;
-    }
-  }, [user, loading, router]);
 
   useEffect(() => {
     if (reports.length > 0 && !selectedReport) {
@@ -115,7 +108,7 @@ export default function CompliancePage() {
             <select
               value={selectedReport}
               onChange={(e) => setSelectedReport(e.target.value)}
-              className="bg-[var(--background)] border border-[var(--card-border)] rounded-md px-3 py-2 text-sm"
+              className="input text-sm"
             >
               {reports.length === 0 && (
                 <option value="">No reports available</option>
@@ -158,7 +151,7 @@ export default function CompliancePage() {
         </div>
       </div>
 
-      {error && <div className="text-[var(--danger)]">{error}</div>}
+      {error && <StatusMessage message={error} variant="error" />}
 
       {/* Result */}
       {result && (
@@ -167,28 +160,149 @@ export default function CompliancePage() {
             <h2 className="text-lg font-semibold">
               {FRAMEWORKS.find((f) => f.id === selectedFramework)?.label} Report
             </h2>
-            <button
-              onClick={() => {
-                const blob = new Blob([resultJson], {
-                  type: "application/json",
-                });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = `${selectedFramework}_report.json`;
-                a.click();
-                URL.revokeObjectURL(url);
-              }}
-              className="text-sm text-[var(--primary)] hover:underline"
-            >
-              Download JSON ↓
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowRawJson((v) => !v)}
+                className="text-sm text-[var(--muted)] hover:text-[var(--foreground)]"
+              >
+                {showRawJson ? "Structured View" : "Raw JSON"}
+              </button>
+              <button
+                onClick={() => {
+                  const blob = new Blob([resultJson], {
+                    type: "application/json",
+                  });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `${selectedFramework}_report.json`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}
+                className="text-sm text-[var(--primary)] hover:underline"
+              >
+                Download JSON ↓
+              </button>
+            </div>
           </div>
-          <pre className="bg-[var(--background)] border border-[var(--card-border)] rounded-lg p-4 text-xs overflow-auto max-h-[600px]">
-            {resultJson}
-          </pre>
+          {showRawJson ? (
+            <pre className="bg-[var(--background)] border border-[var(--card-border)] rounded-lg p-4 text-xs overflow-auto max-h-[600px]">
+              {resultJson}
+            </pre>
+          ) : (
+            <ComplianceResultView data={result} />
+          )}
         </div>
       )}
+    </div>
+  );
+}
+
+function ComplianceResultView({ data }: { data: Record<string, unknown> }) {
+  return (
+    <div className="space-y-4">
+      {Object.entries(data).map(([key, value]) => (
+        <ComplianceSection key={key} sectionKey={key} value={value} />
+      ))}
+    </div>
+  );
+}
+
+function ComplianceSection({
+  sectionKey,
+  value,
+}: {
+  sectionKey: string;
+  value: unknown;
+}) {
+  const label = sectionKey
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+
+  if (value === null || value === undefined) {
+    return (
+      <div className="border border-[var(--card-border)] rounded-lg p-4">
+        <h3 className="font-semibold text-sm mb-1">{label}</h3>
+        <p className="text-[var(--muted)] text-sm">—</p>
+      </div>
+    );
+  }
+
+  if (typeof value === "object" && !Array.isArray(value)) {
+    const obj = value as Record<string, unknown>;
+    return (
+      <details className="border border-[var(--card-border)] rounded-lg" open>
+        <summary className="p-4 cursor-pointer font-semibold text-sm hover:bg-[var(--card)]">
+          {label}
+        </summary>
+        <div className="px-4 pb-4 space-y-2">
+          {Object.entries(obj).map(([k, v]) => (
+            <ComplianceField key={k} fieldKey={k} value={v} />
+          ))}
+        </div>
+      </details>
+    );
+  }
+
+  if (Array.isArray(value)) {
+    return (
+      <details className="border border-[var(--card-border)] rounded-lg" open>
+        <summary className="p-4 cursor-pointer font-semibold text-sm hover:bg-[var(--card)]">
+          {label} ({value.length} items)
+        </summary>
+        <div className="px-4 pb-4 space-y-2">
+          {value.map((item, i) => (
+            <div
+              key={i}
+              className="border-l-2 border-[var(--primary)]/30 pl-3 py-1"
+            >
+              {typeof item === "object" && item !== null ? (
+                Object.entries(item as Record<string, unknown>).map(
+                  ([k, v]) => (
+                    <ComplianceField key={k} fieldKey={k} value={v} />
+                  ),
+                )
+              ) : (
+                <span className="text-sm">{String(item)}</span>
+              )}
+            </div>
+          ))}
+        </div>
+      </details>
+    );
+  }
+
+  return (
+    <div className="border border-[var(--card-border)] rounded-lg p-4">
+      <h3 className="font-semibold text-sm mb-1">{label}</h3>
+      <p className="text-sm">{String(value)}</p>
+    </div>
+  );
+}
+
+function ComplianceField({
+  fieldKey,
+  value,
+}: {
+  fieldKey: string;
+  value: unknown;
+}) {
+  const label = fieldKey
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+
+  if (typeof value === "object" && value !== null) {
+    return <ComplianceSection sectionKey={fieldKey} value={value} />;
+  }
+
+  return (
+    <div className="flex justify-between gap-4 py-1 text-sm border-b border-[var(--card-border)]/50 last:border-0">
+      <span className="text-[var(--muted)] shrink-0">{label}</span>
+      <span className="text-right font-medium">
+        {typeof value === "number"
+          ? value.toLocaleString(undefined, { maximumFractionDigits: 4 })
+          : String(value ?? "—")}
+      </span>
     </div>
   );
 }

@@ -56,7 +56,7 @@ describe("FormField", () => {
   it("applies error styling", () => {
     const { container } = render(<FormField label="Field" error="Bad" />);
     const input = container.querySelector("input");
-    expect(input?.className).toContain("border-red-500");
+    expect(input?.className).toContain("border-[var(--danger)]");
   });
 
   it("applies normal styling without error", () => {

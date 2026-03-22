@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
-import { useAuth } from "@/lib/auth-context";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import {
   listSuppliers,
@@ -15,6 +14,7 @@ import {
   deleteSupplyChainLink,
 } from "@/lib/api";
 import { PageSkeleton } from "@/components/Skeleton";
+import { StatusMessage } from "@/components/StatusMessage";
 import { useToast } from "@/components/Toast";
 
 interface Supplier {
@@ -45,8 +45,7 @@ interface Scope3Summary {
 
 export default function SupplyChainPage() {
   useDocumentTitle("Supply Chain");
-  const { user, loading } = useAuth();
-  const router = useRouter();
+  const { user, loading } = useRequireAuth();
   const [error, setError] = useState("");
 
   // Add supplier form
@@ -75,13 +74,6 @@ export default function SupplyChainPage() {
       );
     }
   }, [supplyQuery.error]);
-
-  useEffect(() => {
-    if (!loading && !user) {
-      router.replace("/login");
-      return;
-    }
-  }, [user, loading, router]);
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -128,7 +120,11 @@ export default function SupplyChainPage() {
 
   if (loading || supplyQuery.isLoading) return <PageSkeleton />;
   if (error && suppliers.length === 0)
-    return <div className="p-8 text-[var(--danger)]">Error: {error}</div>;
+    return (
+      <div className="p-8">
+        <StatusMessage message={error} variant="error" />
+      </div>
+    );
 
   return (
     <div className="max-w-6xl mx-auto p-8 space-y-8">
@@ -140,11 +136,7 @@ export default function SupplyChainPage() {
       />
       <h1 className="text-2xl font-bold">Supply Chain Network</h1>
 
-      {error && (
-        <div className="bg-[var(--danger)]/10 border border-[var(--danger)] text-[var(--danger)] px-4 py-2 rounded-lg text-sm">
-          {error}
-        </div>
-      )}
+      {error && <StatusMessage message={error} variant="error" />}
 
       {/* Scope 3 from suppliers summary */}
       {scope3 && (
@@ -193,7 +185,7 @@ export default function SupplyChainPage() {
               placeholder="e.g. 550e8400-e29b-41d4-a716-446655440000"
               pattern="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
               title="Enter a valid UUID for the supplier company"
-              className="bg-[var(--background)] border border-[var(--card-border)] rounded-md px-3 py-2 text-sm"
+              className="input text-sm"
             />
           </div>
           <div>
@@ -210,7 +202,7 @@ export default function SupplyChainPage() {
               onChange={(e) => setSpend(e.target.value)}
               min={0}
               step="any"
-              className="bg-[var(--background)] border border-[var(--card-border)] rounded-md px-3 py-2 text-sm w-36"
+              className="input text-sm w-36"
             />
           </div>
           <div>
@@ -224,7 +216,7 @@ export default function SupplyChainPage() {
               id="supplier-category"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="bg-[var(--background)] border border-[var(--card-border)] rounded-md px-3 py-2 text-sm"
+              className="input text-sm"
             >
               <option value="general">General</option>
               <option value="raw_materials">Raw Materials</option>
@@ -288,10 +280,10 @@ export default function SupplyChainPage() {
                     <span
                       className={`px-2 py-0.5 rounded text-xs ${
                         s.status === "verified"
-                          ? "bg-green-900/30 text-green-400"
+                          ? "badge-success"
                           : s.status === "rejected"
-                            ? "bg-red-900/30 text-red-400"
-                            : "bg-yellow-900/30 text-yellow-400"
+                            ? "badge-danger"
+                            : "badge-warning"
                       }`}
                     >
                       {s.status}

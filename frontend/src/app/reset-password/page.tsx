@@ -87,7 +87,15 @@ function ResetPasswordPageInner() {
           <>
             <p className="text-[var(--muted)] mb-6">Enter your new password.</p>
             {missingToken && (
-              <div className="bg-yellow-500/10 border border-yellow-500 text-yellow-400 px-4 py-2 rounded-lg mb-4 text-sm">
+              <div
+                className="px-4 py-2 rounded-lg mb-4 text-sm"
+                style={{
+                  background:
+                    "color-mix(in srgb, var(--warning) 10%, transparent)",
+                  border: "1px solid var(--warning)",
+                  color: "var(--warning)",
+                }}
+              >
                 No reset token found. Please use the link from your password
                 reset email.
               </div>

@@ -36,6 +36,14 @@ vi.mock("@/hooks/useEventSource", () => ({
   useEventSource: vi.fn(),
 }));
 
+vi.mock("@/components/Breadcrumbs", () => ({
+  default: () => <nav data-testid="breadcrumbs" />,
+}));
+
+vi.mock("@/components/StatusMessage", () => ({
+  StatusMessage: ({ message }: { message: string }) => <div>{message}</div>,
+}));
+
 import AlertsPage from "@/app/alerts/page";
 
 function renderWithQueryClient(ui: ReactElement) {

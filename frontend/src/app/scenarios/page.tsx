@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
-import { useAuth } from "@/lib/auth-context";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import {
   listReports,
@@ -17,6 +17,7 @@ import {
   type ScenarioOut,
 } from "@/lib/api";
 import { PageSkeleton } from "@/components/Skeleton";
+import { StatusMessage } from "@/components/StatusMessage";
 import { useToast } from "@/components/Toast";
 
 export default function ScenariosPage() {
@@ -73,7 +74,7 @@ const ADJUSTMENT_TYPES = [
 
 function ScenariosPageInner() {
   useDocumentTitle("Scenarios");
-  const { user, loading } = useAuth();
+  const { user, loading } = useRequireAuth();
   const router = useRouter();
   const { toast } = useToast();
   const searchParams = useSearchParams();
@@ -131,13 +132,6 @@ function ScenariosPageInner() {
     const qs = params.toString();
     router.replace(`/scenarios${qs ? `?${qs}` : ""}`, { scroll: false });
   }, [statusFilter, router]);
-
-  useEffect(() => {
-    if (!loading && !user) {
-      router.replace("/login");
-      return;
-    }
-  }, [user, loading, router]);
 
   function toggleAdjustment(key: string, paramKey: string, defaultVal: number) {
     setAdjustments((prev) => {
@@ -251,11 +245,7 @@ function ScenariosPageInner() {
         </select>
       </div>
 
-      {error && (
-        <div className="mb-4 p-3 rounded bg-red-900/20 border border-red-800 text-red-400 text-sm">
-          {error}
-        </div>
-      )}
+      {error && <StatusMessage message={error} variant="error" />}
 
       {/* Create form */}
       {showCreate && (
@@ -317,9 +307,17 @@ function ScenariosPageInner() {
                   key={adj.key}
                   className={`rounded border p-4 text-left transition-colors ${
                     active
-                      ? "border-[var(--primary)] bg-green-900/10"
+                      ? "border-[var(--primary)]"
                       : "border-[var(--card-border)] bg-[var(--background)]/50"
                   }`}
+                  style={
+                    active
+                      ? {
+                          background:
+                            "color-mix(in srgb, var(--primary) 10%, transparent)",
+                        }
+                      : undefined
+                  }
                   role="checkbox"
                   aria-checked={active}
                   onClick={() =>
@@ -407,8 +405,8 @@ function ScenariosPageInner() {
                   <span
                     className={`text-xs px-2 py-0.5 rounded font-medium ${
                       s.status === "computed"
-                        ? "bg-green-900/30 text-green-400"
-                        : "bg-yellow-900/30 text-yellow-400"
+                        ? "badge-success"
+                        : "badge-warning"
                     }`}
                   >
                     {s.status}
@@ -426,14 +424,20 @@ function ScenariosPageInner() {
                     </div>
                     <div className="text-center">
                       <p className="text-xs text-[var(--muted)]">Adjusted</p>
-                      <p className="text-lg font-bold text-blue-400">
+                      <p
+                        className="text-lg font-bold"
+                        style={{ color: "var(--info)" }}
+                      >
                         {totalAdjusted.toLocaleString()}
                       </p>
                       <p className="text-xs text-[var(--muted)]">tCO2e</p>
                     </div>
                     <div className="text-center">
                       <p className="text-xs text-[var(--muted)]">Reduction</p>
-                      <p className="text-lg font-bold text-green-400">
+                      <p
+                        className="text-lg font-bold"
+                        style={{ color: "var(--success)" }}
+                      >
                         -{totalReduction.toLocaleString()} (
                         {reductionPct.toFixed(1)}%)
                       </p>
@@ -445,7 +449,12 @@ function ScenariosPageInner() {
                   {s.status === "draft" && (
                     <button
                       onClick={() => handleCompute(s.id)}
-                      className="px-3 py-1.5 rounded bg-blue-800/50 text-blue-300 text-sm font-medium hover:bg-blue-800/70"
+                      className="px-3 py-1.5 rounded text-sm font-medium"
+                      style={{
+                        background:
+                          "color-mix(in srgb, var(--info) 30%, transparent)",
+                        color: "var(--info)",
+                      }}
                     >
                       Compute
                     </button>

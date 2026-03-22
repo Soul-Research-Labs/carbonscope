@@ -1,15 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useState } from "react";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useQuery } from "@tanstack/react-query";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
-import { useAuth } from "@/lib/auth-context";
-import { getReport, exportReportPdf, type EmissionReport } from "@/lib/api";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
+import {
+  getReport,
+  exportReportPdf,
+  getAuditTrail,
+  type EmissionReport,
+} from "@/lib/api";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { PageSkeleton, CardSkeleton } from "@/components/Skeleton";
+import { ErrorCard } from "@/components/ErrorCard";
+import { useToast } from "@/components/Toast";
 
 const ScopeChart = dynamic(() => import("@/components/ScopeChart"), {
   ssr: false,
@@ -18,12 +25,14 @@ const ScopeChart = dynamic(() => import("@/components/ScopeChart"), {
 
 export default function ReportDetailPage() {
   useDocumentTitle("Report Details");
-  const { user, loading } = useAuth();
-  const router = useRouter();
+  const { user, loading } = useRequireAuth();
   const params = useParams();
   const id = params.id as string;
   const [exporting, setExporting] = useState(false);
+  const { toast } = useToast();
   const [exportError, setExportError] = useState("");
+  const [auditTrail, setAuditTrail] = useState<string | null>(null);
+  const [auditLoading, setAuditLoading] = useState(false);
 
   const reportQuery = useQuery<EmissionReport>({
     queryKey: ["report", id],
@@ -38,18 +47,16 @@ export default function ReportDetailPage() {
       : "Failed to load report"
     : "";
 
-  useEffect(() => {
-    if (!loading && !user) {
-      router.replace("/login");
-    }
-  }, [user, loading, router]);
-
   if (loading || reportQuery.isLoading) {
     return <PageSkeleton />;
   }
 
   if (error) {
-    return <div className="p-8 text-[var(--danger)]">Error: {error}</div>;
+    return (
+      <div className="max-w-4xl mx-auto p-8">
+        <ErrorCard message={error} onRetry={() => reportQuery.refetch()} />
+      </div>
+    );
   }
 
   if (!report) return null;
@@ -145,6 +152,7 @@ export default function ReportDetailPage() {
               a.download = `report-${report.year}.pdf`;
               a.click();
               URL.revokeObjectURL(url);
+              toast("PDF exported successfully", "success");
             } catch (e) {
               setExportError(
                 e instanceof Error ? e.message : "PDF export failed",
@@ -211,6 +219,46 @@ export default function ReportDetailPage() {
           </ul>
         </div>
       )}
+
+      {/* AI Audit Trail */}
+      <div className="card">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold">AI Audit Trail</h2>
+          {!auditTrail && (
+            <button
+              onClick={async () => {
+                setAuditLoading(true);
+                try {
+                  const result = await getAuditTrail(id);
+                  setAuditTrail(result.audit_trail);
+                } catch (e) {
+                  setExportError(
+                    e instanceof Error
+                      ? e.message
+                      : "Failed to load audit trail",
+                  );
+                } finally {
+                  setAuditLoading(false);
+                }
+              }}
+              disabled={auditLoading}
+              className="btn-secondary text-sm"
+            >
+              {auditLoading ? "Loading…" : "Generate Audit Trail"}
+            </button>
+          )}
+        </div>
+        {auditTrail ? (
+          <pre className="bg-[var(--background)] border border-[var(--card-border)] rounded-lg p-4 text-sm whitespace-pre-wrap text-[var(--muted)] max-h-[400px] overflow-auto">
+            {auditTrail}
+          </pre>
+        ) : (
+          <p className="text-sm text-[var(--muted)]">
+            Generate an AI-powered audit trail to understand how this
+            report&apos;s estimates were derived.
+          </p>
+        )}
+      </div>
     </div>
   );
 }

@@ -1,58 +1,104 @@
 "use client";
 
-import { useState } from "react";
+import { useReducer } from "react";
 import { useRouter } from "next/navigation";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import Breadcrumbs from "@/components/Breadcrumbs";
-import { useAuth } from "@/lib/auth-context";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { uploadData, createEstimate } from "@/lib/api";
 import { PageSkeleton } from "@/components/Skeleton";
+import { StatusMessage } from "@/components/StatusMessage";
 
 const CURRENT_YEAR = new Date().getFullYear();
 
+interface UploadState {
+  year: number;
+  submitting: boolean;
+  error: string;
+  success: string;
+  // Scope 1
+  naturalGas: string;
+  diesel: string;
+  gasoline: string;
+  propane: string;
+  fleetMiles: string;
+  // Scope 2
+  electricityKwh: string;
+  gridRegion: string;
+  steamMmbtu: string;
+  // Scope 3
+  employeeCount: string;
+  revenueUsd: string;
+  purchasedGoodsUsd: string;
+  businessTravelMiles: string;
+  wasteMetricTons: string;
+  freightTonMiles: string;
+  notes: string;
+}
+
+type UploadAction =
+  | {
+      type: "SET_FIELD";
+      field: keyof UploadState;
+      value: string | number | boolean;
+    }
+  | { type: "SET_SUBMITTING"; value: boolean }
+  | { type: "SET_ERROR"; value: string }
+  | { type: "SET_SUCCESS"; value: string };
+
+const initialState: UploadState = {
+  year: CURRENT_YEAR - 1,
+  submitting: false,
+  error: "",
+  success: "",
+  naturalGas: "",
+  diesel: "",
+  gasoline: "",
+  propane: "",
+  fleetMiles: "",
+  electricityKwh: "",
+  gridRegion: "",
+  steamMmbtu: "",
+  employeeCount: "",
+  revenueUsd: "",
+  purchasedGoodsUsd: "",
+  businessTravelMiles: "",
+  wasteMetricTons: "",
+  freightTonMiles: "",
+  notes: "",
+};
+
+function uploadReducer(state: UploadState, action: UploadAction): UploadState {
+  switch (action.type) {
+    case "SET_FIELD":
+      return { ...state, [action.field]: action.value };
+    case "SET_SUBMITTING":
+      return { ...state, submitting: action.value };
+    case "SET_ERROR":
+      return { ...state, error: action.value, success: "" };
+    case "SET_SUCCESS":
+      return { ...state, success: action.value, error: "" };
+    default:
+      return state;
+  }
+}
+
 export default function UploadPage() {
   useDocumentTitle("Upload Data");
-  const { user, loading } = useAuth();
+  const { user, loading } = useRequireAuth();
   const router = useRouter();
-  const [year, setYear] = useState(CURRENT_YEAR - 1);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [state, dispatch] = useReducer(uploadReducer, initialState);
 
-  // Scope 1 fields
-  const [naturalGas, setNaturalGas] = useState("");
-  const [diesel, setDiesel] = useState("");
-  const [gasoline, setGasoline] = useState("");
-  const [propane, setPropane] = useState("");
-  const [fleetMiles, setFleetMiles] = useState("");
-
-  // Scope 2 fields
-  const [electricityKwh, setElectricityKwh] = useState("");
-  const [gridRegion, setGridRegion] = useState("");
-  const [steamMmbtu, setSteamMmbtu] = useState("");
-
-  // Scope 3 / context fields
-  const [employeeCount, setEmployeeCount] = useState("");
-  const [revenueUsd, setRevenueUsd] = useState("");
-  const [purchasedGoodsUsd, setPurchasedGoodsUsd] = useState("");
-  const [businessTravelMiles, setBusinessTravelMiles] = useState("");
-  const [wasteMetricTons, setWasteMetricTons] = useState("");
-  const [freightTonMiles, setFreightTonMiles] = useState("");
-
-  const [notes, setNotes] = useState("");
+  const setField = (field: keyof UploadState) => (value: string) =>
+    dispatch({ type: "SET_FIELD", field, value });
 
   if (loading) return <PageSkeleton />;
-
-  if (!loading && !user) {
-    router.replace("/login");
-    return null;
-  }
+  if (!user) return null;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
-    setSuccess("");
-    setSubmitting(true);
+    dispatch({ type: "SET_ERROR", value: "" });
+    dispatch({ type: "SET_SUBMITTING", value: true });
     try {
       const provided_data: Record<string, unknown> = {};
       const addNum = (key: string, val: string) => {
@@ -60,36 +106,40 @@ export default function UploadPage() {
         if (!isNaN(n) && n > 0) provided_data[key] = n;
       };
 
-      addNum("natural_gas_therms", naturalGas);
-      addNum("diesel_gallons", diesel);
-      addNum("gasoline_gallons", gasoline);
-      addNum("propane_gallons", propane);
-      addNum("fleet_miles", fleetMiles);
-      addNum("electricity_kwh", electricityKwh);
-      if (gridRegion) provided_data["grid_region"] = gridRegion;
-      addNum("steam_mmbtu", steamMmbtu);
-      addNum("employee_count", employeeCount);
-      addNum("revenue_usd", revenueUsd);
-      addNum("purchased_goods_usd", purchasedGoodsUsd);
-      addNum("business_travel_miles", businessTravelMiles);
-      addNum("waste_metric_tons", wasteMetricTons);
-      addNum("freight_ton_miles", freightTonMiles);
+      addNum("natural_gas_therms", state.naturalGas);
+      addNum("diesel_gallons", state.diesel);
+      addNum("gasoline_gallons", state.gasoline);
+      addNum("propane_gallons", state.propane);
+      addNum("fleet_miles", state.fleetMiles);
+      addNum("electricity_kwh", state.electricityKwh);
+      if (state.gridRegion) provided_data["grid_region"] = state.gridRegion;
+      addNum("steam_mmbtu", state.steamMmbtu);
+      addNum("employee_count", state.employeeCount);
+      addNum("revenue_usd", state.revenueUsd);
+      addNum("purchased_goods_usd", state.purchasedGoodsUsd);
+      addNum("business_travel_miles", state.businessTravelMiles);
+      addNum("waste_metric_tons", state.wasteMetricTons);
+      addNum("freight_ton_miles", state.freightTonMiles);
 
       const upload = await uploadData({
-        year,
+        year: state.year,
         provided_data,
-        notes: notes || undefined,
+        notes: state.notes || undefined,
       });
 
       // Trigger estimation
       const report = await createEstimate(upload.id);
-      setSuccess(
-        `Estimation complete! Total: ${report.total.toLocaleString()} tCO₂e (${(report.confidence * 100).toFixed(0)}% confidence)`,
-      );
+      dispatch({
+        type: "SET_SUCCESS",
+        value: `Estimation complete! Total: ${report.total.toLocaleString()} tCO₂e (${(report.confidence * 100).toFixed(0)}% confidence)`,
+      });
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Upload failed");
+      dispatch({
+        type: "SET_ERROR",
+        value: err instanceof Error ? err.message : "Upload failed",
+      });
     } finally {
-      setSubmitting(false);
+      dispatch({ type: "SET_SUBMITTING", value: false });
     }
   }
 
@@ -107,15 +157,15 @@ export default function UploadPage() {
         emissions across all three scopes.
       </p>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
-        {error && (
-          <div className="text-sm text-[var(--danger)] bg-[var(--danger)]/10 rounded-md p-3">
-            {error}
-          </div>
-        )}
-        {success && (
+      <form
+        onSubmit={handleSubmit}
+        className="space-y-8"
+        aria-label="Upload operational data"
+      >
+        {state.error && <StatusMessage message={state.error} variant="error" />}
+        {state.success && (
           <div className="text-sm text-[var(--primary)] bg-[var(--primary)]/10 rounded-md p-3">
-            {success}{" "}
+            {state.success}{" "}
             <button
               type="button"
               onClick={() => router.push("/reports")}
@@ -134,8 +184,14 @@ export default function UploadPage() {
           <select
             id="reporting-year"
             className="input w-40"
-            value={year}
-            onChange={(e) => setYear(Number(e.target.value))}
+            value={state.year}
+            onChange={(e) =>
+              dispatch({
+                type: "SET_FIELD",
+                field: "year",
+                value: Number(e.target.value),
+              })
+            }
           >
             {Array.from(
               { length: CURRENT_YEAR - 2000 + 1 },
@@ -160,32 +216,32 @@ export default function UploadPage() {
             <NumField
               id="natural-gas"
               label="Natural Gas (therms)"
-              value={naturalGas}
-              onChange={setNaturalGas}
+              value={state.naturalGas}
+              onChange={setField("naturalGas")}
             />
             <NumField
               id="diesel"
               label="Diesel (gallons)"
-              value={diesel}
-              onChange={setDiesel}
+              value={state.diesel}
+              onChange={setField("diesel")}
             />
             <NumField
               id="gasoline"
               label="Gasoline (gallons)"
-              value={gasoline}
-              onChange={setGasoline}
+              value={state.gasoline}
+              onChange={setField("gasoline")}
             />
             <NumField
               id="propane"
               label="Propane (gallons)"
-              value={propane}
-              onChange={setPropane}
+              value={state.propane}
+              onChange={setField("propane")}
             />
             <NumField
               id="fleet-miles"
               label="Fleet Vehicle Miles"
-              value={fleetMiles}
-              onChange={setFleetMiles}
+              value={state.fleetMiles}
+              onChange={setField("fleetMiles")}
             />
           </div>
         </fieldset>
@@ -202,8 +258,8 @@ export default function UploadPage() {
             <NumField
               id="electricity-kwh"
               label="Electricity (kWh)"
-              value={electricityKwh}
-              onChange={setElectricityKwh}
+              value={state.electricityKwh}
+              onChange={setField("electricityKwh")}
             />
             <div>
               <label htmlFor="grid-region" className="label">
@@ -213,16 +269,22 @@ export default function UploadPage() {
                 id="grid-region"
                 type="text"
                 className="input"
-                value={gridRegion}
-                onChange={(e) => setGridRegion(e.target.value)}
+                value={state.gridRegion}
+                onChange={(e) =>
+                  dispatch({
+                    type: "SET_FIELD",
+                    field: "gridRegion",
+                    value: e.target.value,
+                  })
+                }
                 placeholder="Optional"
               />
             </div>
             <NumField
               id="steam-mmbtu"
               label="Steam / Heating (MMBtu)"
-              value={steamMmbtu}
-              onChange={setSteamMmbtu}
+              value={state.steamMmbtu}
+              onChange={setField("steamMmbtu")}
             />
           </div>
         </fieldset>
@@ -239,38 +301,38 @@ export default function UploadPage() {
             <NumField
               id="employee-count"
               label="Employee Count"
-              value={employeeCount}
-              onChange={setEmployeeCount}
+              value={state.employeeCount}
+              onChange={setField("employeeCount")}
             />
             <NumField
               id="revenue-usd"
               label="Revenue (USD)"
-              value={revenueUsd}
-              onChange={setRevenueUsd}
+              value={state.revenueUsd}
+              onChange={setField("revenueUsd")}
             />
             <NumField
               id="purchased-goods-usd"
               label="Purchased Goods & Services (USD)"
-              value={purchasedGoodsUsd}
-              onChange={setPurchasedGoodsUsd}
+              value={state.purchasedGoodsUsd}
+              onChange={setField("purchasedGoodsUsd")}
             />
             <NumField
               id="business-travel-miles"
               label="Business Travel (miles)"
-              value={businessTravelMiles}
-              onChange={setBusinessTravelMiles}
+              value={state.businessTravelMiles}
+              onChange={setField("businessTravelMiles")}
             />
             <NumField
               id="waste-metric-tons"
               label="Waste Generated (metric tons)"
-              value={wasteMetricTons}
-              onChange={setWasteMetricTons}
+              value={state.wasteMetricTons}
+              onChange={setField("wasteMetricTons")}
             />
             <NumField
               id="freight-ton-miles"
               label="Freight Transport (ton-miles)"
-              value={freightTonMiles}
-              onChange={setFreightTonMiles}
+              value={state.freightTonMiles}
+              onChange={setField("freightTonMiles")}
             />
           </div>
         </fieldset>
@@ -283,14 +345,24 @@ export default function UploadPage() {
           <textarea
             id="notes"
             className="input min-h-[80px]"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
+            value={state.notes}
+            onChange={(e) =>
+              dispatch({
+                type: "SET_FIELD",
+                field: "notes",
+                value: e.target.value,
+              })
+            }
             placeholder="Any additional context about data quality, methodology notes, etc."
           />
         </div>
 
-        <button type="submit" className="btn-primary" disabled={submitting}>
-          {submitting ? (
+        <button
+          type="submit"
+          className="btn-primary"
+          disabled={state.submitting}
+        >
+          {state.submitting ? (
             <span className="inline-flex items-center gap-2">
               <svg
                 className="animate-spin h-4 w-4"

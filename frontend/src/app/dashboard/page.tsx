@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import dynamic from "next/dynamic";
 import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "@/lib/auth-context";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { getDashboard, type DashboardSummary } from "@/lib/api";
 import { PageSkeleton, CardSkeleton } from "@/components/Skeleton";
+import { ErrorCard } from "@/components/ErrorCard";
 
 const ScopeChart = dynamic(() => import("@/components/ScopeChart"), {
   ssr: false,
@@ -16,20 +16,14 @@ const ScopeChart = dynamic(() => import("@/components/ScopeChart"), {
 
 export default function DashboardPage() {
   useDocumentTitle("Dashboard");
-  const { user, loading } = useAuth();
+  const { user, loading } = useRequireAuth();
   const router = useRouter();
 
   const dashboardQuery = useQuery<DashboardSummary>({
     queryKey: ["dashboard", user?.company_id],
-    queryFn: getDashboard,
+    queryFn: () => getDashboard(),
     enabled: !!user && !loading,
   });
-
-  useEffect(() => {
-    if (!loading && !user) {
-      router.replace("/login");
-    }
-  }, [user, loading, router]);
 
   const error =
     dashboardQuery.error instanceof Error ? dashboardQuery.error.message : "";
@@ -45,7 +39,14 @@ export default function DashboardPage() {
   }
 
   if (error) {
-    return <div className="p-8 text-[var(--danger)]">Error: {error}</div>;
+    return (
+      <div className="max-w-6xl mx-auto p-8">
+        <ErrorCard
+          message={error || "Failed to load dashboard"}
+          onRetry={() => dashboardQuery.refetch()}
+        />
+      </div>
+    );
   }
 
   if (!data) return null;

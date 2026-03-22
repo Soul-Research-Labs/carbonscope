@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
-import { useAuth } from "@/lib/auth-context";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 import {
   getCompany,
   updateCompany,
@@ -17,14 +16,14 @@ import {
 import { FormField } from "@/components/FormField";
 import { PageSkeleton } from "@/components/Skeleton";
 import { StatusMessage } from "@/components/StatusMessage";
+import Breadcrumbs from "@/components/Breadcrumbs";
 import WebhookSection from "@/components/WebhookSection";
 
 import { INDUSTRIES, industryLabel } from "@/lib/constants";
 
 export default function SettingsPage() {
   useDocumentTitle("Settings");
-  const { user, loading } = useAuth();
-  const router = useRouter();
+  const { user, loading } = useRequireAuth();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -69,13 +68,6 @@ export default function SettingsPage() {
       setRevenueUsd(c.revenue_usd?.toString() ?? "");
     }
   }, [settingsQuery.data]);
-
-  useEffect(() => {
-    if (!loading && !user) {
-      router.replace("/login");
-      return;
-    }
-  }, [user, loading, router]);
 
   const company = settingsQuery.data?.[1] ?? null;
   const profile = settingsQuery.data?.[0] ?? null;
@@ -153,6 +145,12 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-2xl mx-auto p-8">
+      <Breadcrumbs
+        items={[
+          { label: "Dashboard", href: "/dashboard" },
+          { label: "Settings" },
+        ]}
+      />
       <h1 className="text-2xl font-bold mb-2">Settings</h1>
       <p className="text-[var(--muted)] mb-8">
         Manage your profile and company.

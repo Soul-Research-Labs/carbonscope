@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
-import { useAuth } from "@/lib/auth-context";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { PageSkeleton } from "@/components/Skeleton";
+import { StatusMessage } from "@/components/StatusMessage";
+import Breadcrumbs from "@/components/Breadcrumbs";
 import {
   getMFAStatus,
   setupMFA,
@@ -17,8 +18,7 @@ import {
 
 export default function MFAPage() {
   useDocumentTitle("Multi-Factor Authentication");
-  const { user, loading } = useAuth();
-  const router = useRouter();
+  const { user, loading } = useRequireAuth();
   const [setup, setSetup] = useState<MFASetup | null>(null);
   const [totpCode, setTotpCode] = useState("");
   const [disableCode, setDisableCode] = useState("");
@@ -27,15 +27,11 @@ export default function MFAPage() {
 
   const statusQuery = useQuery<MFAStatus>({
     queryKey: ["mfa-status"],
-    queryFn: getMFAStatus,
+    queryFn: () => getMFAStatus(),
     enabled: !!user && !loading,
   });
 
   const status = statusQuery.data ?? null;
-
-  useEffect(() => {
-    if (!loading && !user) router.push("/login");
-  }, [user, loading, router]);
 
   const handleSetup = async () => {
     setError("");
@@ -77,18 +73,25 @@ export default function MFAPage() {
   if (!user) return null;
 
   return (
-    <main className="mx-auto max-w-2xl p-8">
-      <h1 className="mb-8 text-3xl font-bold">Multi-Factor Authentication</h1>
+    <div className="mx-auto max-w-2xl p-8">
+      <Breadcrumbs
+        items={[
+          { label: "Dashboard", href: "/dashboard" },
+          { label: "Settings", href: "/settings" },
+          { label: "MFA" },
+        ]}
+      />
+      <h1 className="mb-8 text-2xl font-bold">Multi-Factor Authentication</h1>
 
       {error && (
-        <p className="mb-4 rounded bg-[var(--error-bg,rgba(127,29,29,0.3))] p-3 text-[var(--error-fg,#f87171)]">
-          {error}
-        </p>
+        <div className="mb-4">
+          <StatusMessage message={error} variant="error" />
+        </div>
       )}
       {success && (
-        <p className="mb-4 rounded bg-[var(--success-bg,rgba(6,78,59,0.3))] p-3 text-[var(--success-fg,#34d399)]">
-          {success}
-        </p>
+        <div className="mb-4">
+          <StatusMessage message={success} variant="success" />
+        </div>
       )}
 
       {status && (
@@ -150,6 +153,8 @@ export default function MFAPage() {
               value={totpCode}
               onChange={(e) => setTotpCode(e.target.value)}
               maxLength={6}
+              inputMode="numeric"
+              pattern="[0-9]*"
               aria-label="TOTP verification code"
             />
             <button onClick={handleVerify} className="btn-primary">
@@ -161,8 +166,17 @@ export default function MFAPage() {
 
       {/* Disable MFA */}
       {status?.mfa_enabled && (
-        <div className="mt-6 rounded-lg border border-red-800 bg-red-900/10 p-6">
-          <h2 className="mb-2 text-lg font-semibold text-red-400">
+        <div
+          className="mt-6 rounded-lg border p-6"
+          style={{
+            borderColor: "var(--danger)",
+            background: "color-mix(in srgb, var(--danger) 10%, transparent)",
+          }}
+        >
+          <h2
+            className="mb-2 text-lg font-semibold"
+            style={{ color: "var(--danger)" }}
+          >
             Disable MFA
           </h2>
           <p className="mb-4 text-sm text-[var(--muted)]">
@@ -175,6 +189,8 @@ export default function MFAPage() {
               value={disableCode}
               onChange={(e) => setDisableCode(e.target.value)}
               maxLength={6}
+              inputMode="numeric"
+              pattern="[0-9]*"
               aria-label="TOTP code to disable MFA"
             />
             <button onClick={handleDisable} className="btn-danger">
@@ -183,6 +199,6 @@ export default function MFAPage() {
           </div>
         </div>
       )}
-    </main>
+    </div>
   );
 }

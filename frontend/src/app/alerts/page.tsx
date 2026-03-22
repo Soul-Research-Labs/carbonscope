@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
-import { useAuth } from "@/lib/auth-context";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { PageSkeleton } from "@/components/Skeleton";
+import { StatusMessage } from "@/components/StatusMessage";
 import { useToast } from "@/components/Toast";
 import { useEventSource } from "@/hooks/useEventSource";
+import Breadcrumbs from "@/components/Breadcrumbs";
 import {
   listAlerts,
   acknowledgeAlert,
@@ -30,8 +31,7 @@ const SEVERITY_BADGES: Record<string, string> = {
 
 export default function AlertsPage() {
   useDocumentTitle("Alerts");
-  const { user, loading } = useAuth();
-  const router = useRouter();
+  const { user, loading } = useRequireAuth();
   const { toast } = useToast();
   const [error, setError] = useState("");
   const [unreadOnly, setUnreadOnly] = useState(false);
@@ -54,13 +54,6 @@ export default function AlertsPage() {
       );
     }
   }, [alertsQuery.error]);
-
-  useEffect(() => {
-    if (!loading && !user) {
-      router.replace("/login");
-      return;
-    }
-  }, [user, loading, router]);
 
   // Auto-refresh when backend pushes SSE events
   const sseHandlers = useMemo(
@@ -100,13 +93,23 @@ export default function AlertsPage() {
   }
 
   if (error && !data) {
-    return <div className="p-8 text-[var(--danger)]">Error: {error}</div>;
+    return (
+      <div className="p-8">
+        <StatusMessage message={error} variant="error" />
+      </div>
+    );
   }
 
   const alerts = data?.items ?? [];
 
   return (
     <div className="max-w-5xl mx-auto p-8 space-y-6">
+      <Breadcrumbs
+        items={[
+          { label: "Dashboard", href: "/dashboard" },
+          { label: "Alerts" },
+        ]}
+      />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Alerts</h1>
@@ -125,11 +128,7 @@ export default function AlertsPage() {
         </div>
       </div>
 
-      {error && (
-        <div className="p-3 rounded-md bg-[var(--danger)]/10 text-[var(--danger)] text-sm">
-          {error}
-        </div>
-      )}
+      {error && <StatusMessage message={error} variant="error" />}
 
       {/* Filter */}
       <div className="flex gap-3 items-center">

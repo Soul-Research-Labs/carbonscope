@@ -33,6 +33,15 @@ vi.mock("@/components/Skeleton", () => ({
       <td>Loading...</td>
     </tr>
   ),
+  TableSkeleton: () => <div>Loading...</div>,
+}));
+
+vi.mock("@/components/Breadcrumbs", () => ({
+  default: () => <nav data-testid="breadcrumbs" />,
+}));
+
+vi.mock("@/components/StatusMessage", () => ({
+  StatusMessage: ({ message }: { message: string }) => <div>{message}</div>,
 }));
 
 import AuditLogsPage from "@/app/audit-logs/page";
@@ -89,16 +98,19 @@ describe("AuditLogsPage", () => {
 
   it("displays audit log entries", async () => {
     renderWithQueryClient(<AuditLogsPage />);
-    expect(await screen.findByText("report.created")).toBeInTheDocument();
-    expect(screen.getByText("data.uploaded")).toBeInTheDocument();
+    expect(
+      (await screen.findAllByText("report.created")).length,
+    ).toBeGreaterThan(0);
+    expect(screen.getAllByText("data.uploaded").length).toBeGreaterThan(0);
   });
 
   it("shows empty state when no logs", async () => {
     mockListAuditLogs.mockResolvedValue({ items: [], total: 0 });
     renderWithQueryClient(<AuditLogsPage />);
     expect(
-      await screen.findByText(/No audit log entries found/),
-    ).toBeInTheDocument();
+      (await screen.findAllByText(/No audit log entries found|No data found/))
+        .length,
+    ).toBeGreaterThan(0);
   });
 
   it("shows error on API failure", async () => {
@@ -111,7 +123,7 @@ describe("AuditLogsPage", () => {
 
   it("has table role for accessibility", async () => {
     renderWithQueryClient(<AuditLogsPage />);
-    await screen.findByText("report.created");
+    await screen.findAllByText("report.created");
     expect(screen.getByRole("table")).toBeInTheDocument();
   });
 });

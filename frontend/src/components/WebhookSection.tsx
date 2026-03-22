@@ -149,8 +149,10 @@ export default function WebhookSection() {
                 url: whUrl,
                 event_types: whEvents,
               });
-              if ((wh as Record<string, unknown>).secret) {
-                setNewSecret((wh as Record<string, unknown>).secret as string);
+              if ((wh as unknown as Record<string, unknown>).secret) {
+                setNewSecret(
+                  (wh as unknown as Record<string, unknown>).secret as string,
+                );
               }
               setWebhooks((prev) => [...prev, wh]);
               setWhUrl("");
@@ -167,10 +169,19 @@ export default function WebhookSection() {
       </div>
 
       {newSecret && (
-        <div className="card mb-4 border-yellow-500/50 bg-yellow-900/10 p-4">
+        <div
+          className="card mb-4 p-4"
+          style={{
+            borderColor: "var(--warning)",
+            background: "color-mix(in srgb, var(--warning) 10%, transparent)",
+          }}
+        >
           <div className="flex items-start justify-between gap-2">
             <div>
-              <p className="font-semibold text-sm text-yellow-300">
+              <p
+                className="font-semibold text-sm"
+                style={{ color: "var(--warning)" }}
+              >
                 Webhook Signing Secret
               </p>
               <p className="text-xs text-[var(--muted)] mt-1">
@@ -267,7 +278,10 @@ export default function WebhookSection() {
                           setError("Failed to toggle webhook");
                         }
                       }}
-                      className={`text-xs ${wh.active ? "text-green-400" : "text-[var(--muted)]"} hover:underline`}
+                      className={`text-xs hover:underline`}
+                      style={{
+                        color: wh.active ? "var(--success)" : "var(--muted)",
+                      }}
                     >
                       {wh.active ? "Active" : "Disabled"}
                     </button>
@@ -338,11 +352,11 @@ export default function WebhookSection() {
                       <td className="py-1">{d.event_type}</td>
                       <td className="py-1">
                         <span
-                          className={
-                            d.success
-                              ? "text-green-400"
-                              : "text-[var(--danger)]"
-                          }
+                          style={{
+                            color: d.success
+                              ? "var(--success)"
+                              : "var(--danger)",
+                          }}
                         >
                           {d.success ? "OK" : d.error || "Failed"}
                         </span>

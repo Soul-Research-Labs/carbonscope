@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
-import { useAuth } from "@/lib/auth-context";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { PageSkeleton } from "@/components/Skeleton";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import { StatusMessage } from "@/components/StatusMessage";
+import Breadcrumbs from "@/components/Breadcrumbs";
 import {
   listPortfolios,
   createPortfolio,
@@ -21,8 +22,7 @@ import {
 
 export default function PCAFPage() {
   useDocumentTitle("PCAF Portfolios");
-  const { user, loading } = useAuth();
-  const router = useRouter();
+  const { user, loading } = useRequireAuth();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [showCreate, setShowCreate] = useState(false);
@@ -43,7 +43,7 @@ export default function PCAFPage() {
 
   const portfoliosQuery = useQuery<{ items: FinancedPortfolio[] }>({
     queryKey: ["pcaf-portfolios", user?.company_id],
-    queryFn: listPortfolios,
+    queryFn: () => listPortfolios(),
     enabled: !!user && !loading,
   });
 
@@ -74,10 +74,6 @@ export default function PCAFPage() {
     }
   }, [portfoliosQuery.error]);
 
-  useEffect(() => {
-    if (!loading && !user) router.push("/login");
-  }, [user, loading, router]);
-
   const handleCreate = async () => {
     try {
       const p = await createPortfolio({ name: newName, year: newYear });
@@ -93,7 +89,7 @@ export default function PCAFPage() {
   const handleAddAsset = async () => {
     if (!selectedId) return;
     try {
-      const a = await addPortfolioAsset(selectedId, assetForm);
+      await addPortfolioAsset(selectedId, assetForm);
       setShowAssetForm(false);
       await detailsQuery.refetch();
     } catch (e: unknown) {
@@ -117,15 +113,18 @@ export default function PCAFPage() {
   if (!user) return null;
 
   return (
-    <main className="mx-auto max-w-6xl p-8">
+    <div className="mx-auto max-w-6xl p-8">
+      <Breadcrumbs
+        items={[{ label: "Dashboard", href: "/dashboard" }, { label: "PCAF" }]}
+      />
       <div className="mb-8 flex items-center justify-between">
-        <h1 className="text-3xl font-bold">PCAF Financed Emissions</h1>
+        <h1 className="text-2xl font-bold">PCAF Financed Emissions</h1>
         <button onClick={() => setShowCreate(true)} className="btn-primary">
           New Portfolio
         </button>
       </div>
 
-      {error && <p className="mb-4 text-[var(--danger)]">{error}</p>}
+      {error && <StatusMessage message={error} variant="error" />}
 
       {showCreate && (
         <div className="mb-6 rounded-lg border border-[var(--card-border)] bg-[var(--card)] p-4">
@@ -189,7 +188,7 @@ export default function PCAFPage() {
         <div className="lg:col-span-2">
           {summary ? (
             <div>
-              <div className="mb-4 grid grid-cols-3 gap-4">
+              <div className="mb-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="rounded-lg bg-[var(--card)] p-4">
                   <p className="text-sm text-[var(--muted)]">
                     Total Financed Emissions
@@ -225,85 +224,133 @@ export default function PCAFPage() {
               {showAssetForm && (
                 <div className="mb-4 rounded-lg border border-[var(--card-border)] bg-[var(--card)] p-4">
                   <div className="grid grid-cols-2 gap-3">
-                    <input
-                      className="input"
-                      placeholder="Asset name"
-                      onChange={(e) =>
-                        setAssetForm({
-                          ...assetForm,
-                          asset_name: e.target.value,
-                        })
-                      }
-                      aria-label="Asset name"
-                    />
-                    <select
-                      className="input"
-                      onChange={(e) =>
-                        setAssetForm({
-                          ...assetForm,
-                          asset_class: e.target.value,
-                        })
-                      }
-                      aria-label="Asset class"
-                    >
-                      <option value="corporate_bonds">Corporate Bonds</option>
-                      <option value="listed_equity">Listed Equity</option>
-                      <option value="business_loans">Business Loans</option>
-                      <option value="project_finance">Project Finance</option>
-                      <option value="mortgages">Mortgages</option>
-                    </select>
-                    <input
-                      type="number"
-                      className="input"
-                      placeholder="Outstanding amount"
-                      onChange={(e) =>
-                        setAssetForm({
-                          ...assetForm,
-                          outstanding_amount: Number(e.target.value),
-                        })
-                      }
-                      aria-label="Outstanding amount"
-                    />
-                    <input
-                      type="number"
-                      className="input"
-                      placeholder="Total equity/debt"
-                      onChange={(e) =>
-                        setAssetForm({
-                          ...assetForm,
-                          total_equity_debt: Number(e.target.value),
-                        })
-                      }
-                      aria-label="Total equity or debt"
-                    />
-                    <input
-                      type="number"
-                      className="input"
-                      placeholder="Investee emissions (tCO₂e)"
-                      onChange={(e) =>
-                        setAssetForm({
-                          ...assetForm,
-                          investee_emissions_tco2e: Number(e.target.value),
-                        })
-                      }
-                      aria-label="Investee emissions in tCO2e"
-                    />
-                    <select
-                      className="input"
-                      onChange={(e) =>
-                        setAssetForm({
-                          ...assetForm,
-                          data_quality_score: Number(e.target.value),
-                        })
-                      }
-                      aria-label="Data quality score"
-                    >
-                      {[1, 2, 3, 4, 5].map((s) => (
-                        <option key={s} value={s}>
-                          Quality Score: {s}
-                        </option>
-                      ))}
-                    </select>
+                    <div>
+                      <label
+                        htmlFor="asset-name"
+                        className="block text-xs text-[var(--muted)] mb-1"
+                      >
+                        Asset Name
+                      </label>
+                      <input
+                        id="asset-name"
+                        className="input w-full"
+                        placeholder="Asset name"
+                        onChange={(e) =>
+                          setAssetForm({
+                            ...assetForm,
+                            asset_name: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="asset-class"
+                        className="block text-xs text-[var(--muted)] mb-1"
+                      >
+                        Asset Class
+                      </label>
+                      <select
+                        id="asset-class"
+                        className="input w-full"
+                        onChange={(e) =>
+                          setAssetForm({
+                            ...assetForm,
+                            asset_class: e.target.value,
+                          })
+                        }
+                      >
+                        <option value="corporate_bonds">Corporate Bonds</option>
+                        <option value="listed_equity">Listed Equity</option>
+                        <option value="business_loans">Business Loans</option>
+                        <option value="project_finance">Project Finance</option>
+                        <option value="mortgages">Mortgages</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="outstanding-amount"
+                        className="block text-xs text-[var(--muted)] mb-1"
+                      >
+                        Outstanding Amount
+                      </label>
+                      <input
+                        id="outstanding-amount"
+                        type="number"
+                        className="input w-full"
+                        placeholder="0"
+                        onChange={(e) =>
+                          setAssetForm({
+                            ...assetForm,
+                            outstanding_amount: Number(e.target.value),
+                          })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="total-equity-debt"
+                        className="block text-xs text-[var(--muted)] mb-1"
+                      >
+                        Total Equity/Debt
+                      </label>
+                      <input
+                        id="total-equity-debt"
+                        type="number"
+                        className="input w-full"
+                        placeholder="0"
+                        onChange={(e) =>
+                          setAssetForm({
+                            ...assetForm,
+                            total_equity_debt: Number(e.target.value),
+                          })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="investee-emissions"
+                        className="block text-xs text-[var(--muted)] mb-1"
+                      >
+                        Investee Emissions (tCO₂e)
+                      </label>
+                      <input
+                        id="investee-emissions"
+                        type="number"
+                        className="input w-full"
+                        placeholder="0"
+                        onChange={(e) =>
+                          setAssetForm({
+                            ...assetForm,
+                            investee_emissions_tco2e: Number(e.target.value),
+                          })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="data-quality"
+                        className="block text-xs text-[var(--muted)] mb-1"
+                      >
+                        Data Quality Score
+                      </label>
+                      <select
+                        id="data-quality"
+                        className="input w-full"
+                        onChange={(e) =>
+                          setAssetForm({
+                            ...assetForm,
+                            data_quality_score: Number(e.target.value),
+                          })
+                        }
+                      >
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <option key={s} value={s}>
+                            Quality Score: {s}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                   <div className="mt-3 flex gap-2">
                     <button onClick={handleAddAsset} className="btn-primary">
@@ -360,6 +407,6 @@ export default function PCAFPage() {
         onConfirm={() => deleteAssetId && handleDeleteAsset(deleteAssetId)}
         onCancel={() => setDeleteAssetId(null)}
       />
-    </main>
+    </div>
   );
 }

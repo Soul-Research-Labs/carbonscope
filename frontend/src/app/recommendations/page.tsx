@@ -1,19 +1,16 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "@/lib/auth-context";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { listReports, type EmissionReport } from "@/lib/api";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { PageSkeleton } from "@/components/Skeleton";
 
 export default function RecommendationsIndexPage() {
   useDocumentTitle("Recommendations");
-  const { user, loading } = useAuth();
-  const router = useRouter();
+  const { user, loading } = useRequireAuth();
 
   const reportsQuery = useQuery({
     queryKey: ["recommendations-reports", user?.company_id],
@@ -28,12 +25,6 @@ export default function RecommendationsIndexPage() {
       ? reportsQuery.error.message
       : "Failed to load reports"
     : "";
-
-  useEffect(() => {
-    if (!loading && !user) {
-      router.replace("/login");
-    }
-  }, [user, loading, router]);
 
   if (loading || reportsQuery.isLoading) {
     return <PageSkeleton />;
@@ -79,7 +70,7 @@ export default function RecommendationsIndexPage() {
             <Link
               key={report.id}
               href={`/recommendations/${report.id}`}
-              className="card hover:ring-2 hover:ring-[var(--primary)] transition-all cursor-pointer"
+              className="card hover:border-[var(--primary)] transition-colors cursor-pointer"
             >
               <div className="flex items-center justify-between">
                 <div>
