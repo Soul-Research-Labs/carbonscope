@@ -1,0 +1,106 @@
+version: 2
+updates:
+  # Python backend dependencies
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "backend"
+    groups:
+      # FastAPI and related
+      fastapi:
+        patterns:
+          - "fastapi"
+          - "uvicorn*"
+          - "starlette*"
+          - "pydantic*"
+          - "httpx*"
+      # SQLAlchemy / DB
+      database:
+        patterns:
+          - "sqlalchemy*"
+          - "alembic*"
+          - "asyncpg*"
+          - "aiosqlite*"
+      # Security
+      security:
+        patterns:
+          - "passlib*"
+          - "bcrypt*"
+          - "pyjwt*"
+          - "cryptography*"
+          - "slowapi*"
+      # Testing
+      testing:
+        patterns:
+          - "pytest*"
+          - "pytest-asyncio*"
+          - "httpx*"
+
+  # Frontend dependencies (npm)
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "frontend"
+    groups:
+      # Next.js / React
+      nextjs:
+        patterns:
+          - "next"
+          - "react"
+          - "react-dom"
+          - "@types/react*"
+      # Tanstack Query
+      tanstack:
+        patterns:
+          - "@tanstack/*"
+      # Testing
+      testing:
+        patterns:
+          - "vitest*"
+          - "@vitejs/*"
+          - "@playwright/*"
+          - "@testing-library/*"
+      # Tailwind / styling
+      styling:
+        patterns:
+          - "tailwindcss*"
+          - "@tailwindcss/*"
+          - "postcss*"
+          - "autoprefixer*"
+      # TypeScript / lint
+      tooling:
+        patterns:
+          - "typescript"
+          - "eslint*"
+          - "@typescript-eslint/*"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "ci"
+    groups:
+      actions:
+        patterns:
+          - "*"

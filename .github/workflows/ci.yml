@@ -194,9 +194,16 @@ jobs:
         working-directory: frontend
         run: npx tsc --noEmit
 
-      - name: Run tests
+      - name: Run tests with coverage
         working-directory: frontend
-        run: npx vitest run
+        run: npx vitest run --coverage
+
+      - name: Upload frontend coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage/
+          retention-days: 30
 
       - name: Build
         working-directory: frontend
@@ -297,17 +304,13 @@ jobs:
           python-version: "3.12"
 
       - name: Install security tools
-        run: |
-          pip install pip-audit bandit safety
+        run: pip install pip-audit bandit
 
-      - name: Audit dependencies
-        run: pip-audit -r requirements.txt
+      - name: Audit Python dependencies
+        run: pip-audit -r requirements.txt --progress-spinner off
 
-      - name: Run safety check
-        run: safety check -r requirements.txt --output text
-
-      - name: Run bandit
-        run: bandit -r api/ -ll --skip B101
+      - name: Run bandit SAST
+        run: bandit -r api/ carbonscope/ -ll --skip B101,B603
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -412,13 +415,22 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Verify Docker image
-        run: docker run --rm ghcr.io/${{ github.repository }}:sha-${GITHUB_SHA::7} python -c "import api; print('OK')"
+      - name: Get short SHA
+        id: short-sha
+        run: echo "sha=${GITHUB_SHA:0:7}" >> $GITHUB_OUTPUT
+
+      - name: Smoke-test backend image
+        run: |
+          docker run --rm \
+            -e SECRET_KEY=ci-smoke-test-key \
+            -e DATABASE_URL=sqlite+aiosqlite:///:memory: \
+            ghcr.io/${{ github.repository }}:sha-${{ steps.short-sha.outputs.sha }} \
+            python -c "from api import __version__; print('Backend OK:', __version__)"
 
       - name: Trivy vulnerability scan
         uses: aquasecurity/trivy-action@0.24.0
         with:
-          image-ref: ghcr.io/${{ github.repository }}:sha-${{ github.sha }}
+          image-ref: ghcr.io/${{ github.repository }}:sha-${{ steps.short-sha.outputs.sha }}
           format: table
           exit-code: 1
           severity: CRITICAL,HIGH

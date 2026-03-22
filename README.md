@@ -14,7 +14,7 @@
   <img src="https://img.shields.io/badge/python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.10+">
   <img src="https://img.shields.io/badge/node-18%2B-339933?style=flat-square&logo=node.js&logoColor=white" alt="Node 18+">
   <img src="https://img.shields.io/badge/version-0.27.0-orange?style=flat-square" alt="Version 0.27.0">
-  <img src="https://img.shields.io/badge/tests-778%20backend%20%7C%20215%20frontend-brightgreen?style=flat-square" alt="Tests">
+  <img src="https://img.shields.io/badge/tests-816%20backend%20%7C%20250%20frontend-brightgreen?style=flat-square" alt="Tests">
   <img src="https://img.shields.io/badge/endpoints-100%2B-7B61FF?style=flat-square" alt="100+ API Endpoints">
   <img src="https://img.shields.io/badge/Bittensor-Subnet-000000?style=flat-square" alt="Bittensor Subnet">
 </p>
@@ -393,7 +393,7 @@ pytest tests/ --cov=api --cov-report=term-missing     # With coverage
 pytest tests/ -k "test_auth" -v                       # Pattern matching
 ```
 
-### Frontend Tests (214)
+### Frontend Tests (250)
 
 ```bash
 cd frontend
@@ -456,7 +456,7 @@ npm run test:watch        # Watch mode for development
 </details>
 
 <details>
-<summary><strong>Frontend Test Coverage (35 test files, 214 tests)</strong></summary>
+<summary><strong>Frontend Test Coverage (40 test files, 250 tests)</strong></summary>
 
 | File                           | Coverage                                              |
 | :----------------------------- | :---------------------------------------------------- |
@@ -495,6 +495,11 @@ npm run test:watch        # Watch mode for development
 | `ResetPasswordPage.test.tsx`   | Password mismatch, weak password, successful reset    |
 | `useEventSource.test.ts`       | SSE hook lifecycle, reconnect, event handling         |
 | `validation.test.ts`           | Input validation helpers, edge cases                  |
+| `ErrorCard.test.tsx`           | Retry button, title, message, role=alert              |
+| `useDebounce.test.ts`          | Value debounce, delay, fast-type stabilization        |
+| `TeamPage.test.tsx`            | Team member list, invite form, role management        |
+| `RecommendationDetailPage.test.tsx` | Single recommendation, loading, error recovery  |
+| `QuestionnaireDetailPage.test.tsx`  | Question form, save draft, approve flow         |
 
 </details>
 

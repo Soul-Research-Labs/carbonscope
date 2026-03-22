@@ -1,0 +1,142 @@
+name: Deploy
+
+on:
+  # Manual trigger with environment selection
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: "staging"
+        type: choice
+        options:
+          - staging
+          - production
+      tag:
+        description: "Image tag to deploy (e.g. sha-abc1234 or v1.2.3). Defaults to latest main SHA."
+        required: false
+        type: string
+
+  # Auto-deploy on version tags
+  push:
+    tags:
+      - "v*.*.*"
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # ── Determine deploy target ────────────────────────────────────────
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.env.outputs.environment }}
+      image_tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - name: Resolve environment
+        id: env
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "environment=production" >> $GITHUB_OUTPUT
+          else
+            echo "environment=${{ inputs.environment }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Resolve image tag
+        id: tag
+        run: |
+          if [ -n "${{ inputs.tag }}" ]; then
+            echo "tag=${{ inputs.tag }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=sha-${GITHUB_SHA:0:7}" >> $GITHUB_OUTPUT
+          fi
+
+  # ── Deploy to Kubernetes ────────────────────────────────────────────
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [setup]
+    environment: ${{ needs.setup.outputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to cluster
+        uses: azure/k8s-set-context@v4
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.KUBECONFIG }}
+
+      - name: Set image tag in manifests
+        env:
+          TAG: ${{ needs.setup.outputs.image_tag }}
+        run: |
+          sed -i "s/__IMAGE_TAG__/${TAG}/g" k8s/backend.yaml
+          sed -i "s/__IMAGE_TAG__/${TAG}/g" k8s/frontend.yaml
+
+      - name: Verify images exist in registry
+        env:
+          TAG: ${{ needs.setup.outputs.image_tag }}
+        run: |
+          docker manifest inspect ghcr.io/${{ github.repository }}:${TAG} \
+            || (echo "Backend image ${TAG} not found in registry" && exit 1)
+          docker manifest inspect ghcr.io/${{ github.repository }}-frontend:${TAG} \
+            || (echo "Frontend image ${TAG} not found in registry" && exit 1)
+
+      - name: Apply namespace & config
+        run: |
+          kubectl apply -f k8s/namespace.yaml
+          kubectl apply -f k8s/configmap.yaml
+          kubectl apply -f k8s/resource-quota.yaml
+          kubectl apply -f k8s/network-policy.yaml
+
+      - name: Apply infrastructure (postgres, redis)
+        run: |
+          kubectl apply -f k8s/postgres.yaml
+          kubectl apply -f k8s/redis.yaml
+          kubectl -n carbonscope rollout status statefulset/postgres --timeout=120s
+          kubectl -n carbonscope rollout status deployment/redis --timeout=60s
+
+      - name: Deploy backend
+        run: |
+          kubectl apply -f k8s/backend.yaml
+          kubectl -n carbonscope rollout status deployment/backend --timeout=300s
+
+      - name: Deploy frontend
+        run: |
+          kubectl apply -f k8s/frontend.yaml
+          kubectl -n carbonscope rollout status deployment/frontend --timeout=180s
+
+      - name: Apply remaining resources
+        run: |
+          kubectl apply -f k8s/ingress.yaml
+          kubectl apply -f k8s/hpa.yaml
+          kubectl apply -f k8s/pdb.yaml
+          kubectl apply -f k8s/monitoring.yaml
+          kubectl apply -f k8s/cronjob-backup.yaml
+
+      - name: Smoke test deployed API
+        run: |
+          INGRESS_HOST=$(kubectl -n carbonscope get ingress carbonscope \
+            -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || \
+            kubectl -n carbonscope get ingress carbonscope \
+            -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          for i in $(seq 1 12); do
+            STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "https://${INGRESS_HOST}/health" || echo "000")
+            [ "$STATUS" = "200" ] && echo "Health check passed (${STATUS})" && break
+            echo "Attempt ${i}/12: status=${STATUS}, waiting 10s..."
+            sleep 10
+          done
+          [ "$STATUS" = "200" ] || (echo "Health check failed after 2 minutes" && exit 1)
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Deployment to ${{ needs.setup.outputs.environment }} FAILED (tag: ${{ needs.setup.outputs.image_tag }})"
+          echo "Run 'kubectl -n carbonscope rollout undo deployment/backend' to roll back."
+
+      - name: Deployment summary
+        run: |
+          echo "✅ Deployed ${{ needs.setup.outputs.image_tag }} to ${{ needs.setup.outputs.environment }}"
+          kubectl -n carbonscope get pods
