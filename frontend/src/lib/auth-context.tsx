@@ -14,6 +14,7 @@ import {
   logoutApi,
   register as apiRegister,
   getProfile,
+  googleVerify,
   type User,
 } from "@/lib/api";
 import { getQueryClient } from "@/lib/query-client";
@@ -23,6 +24,7 @@ interface AuthState {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginWithGoogle: (credential: string) => Promise<void>;
   register: (data: {
     email: string;
     password: string;
@@ -93,6 +95,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [router, searchParams],
   );
 
+  const loginWithGoogle = useCallback(
+    async (credential: string) => {
+      const resp = await googleVerify(credential);
+      const u: User = resp.user
+        ? {
+            id: resp.user.id,
+            email: resp.user.email,
+            full_name: resp.user.full_name ?? "",
+            company_id: resp.user.company_id,
+            role: resp.user.role ?? "",
+          }
+        : { id: "", email: "", full_name: "", company_id: "", role: "" };
+      setUser(u);
+      router.push("/dashboard");
+    },
+    [router],
+  );
+
   const register = useCallback(
     async (data: {
       email: string;
@@ -137,7 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [router, toast]);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, loginWithGoogle, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

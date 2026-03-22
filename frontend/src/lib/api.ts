@@ -1,7 +1,7 @@
 /** Typed API client for the CarbonScope backend. */
 
 const BASE = "/api/v1";
-const RETRY_MAX_ATTEMPTS = 3;
+const RETRY_MAX_ATTEMPTS = 2;
 const RETRY_BASE_DELAY_MS =
   typeof process !== "undefined" && process.env.NODE_ENV === "test" ? 1 : 200;
 
@@ -254,6 +254,13 @@ export async function register(data: {
   return request<User>("/auth/register", {
     method: "POST",
     body: JSON.stringify(data),
+  });
+}
+
+export async function googleVerify(credential: string): Promise<Token> {
+  return request<Token>("/auth/google/verify", {
+    method: "POST",
+    body: JSON.stringify({ credential }),
   });
 }
 

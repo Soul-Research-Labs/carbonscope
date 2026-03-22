@@ -6,6 +6,10 @@ import logging
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+load_dotenv()  # Load .env from project root (no-op if not present)
+
 logger = logging.getLogger(__name__)
 
 # ── Paths ───────────────────────────────────────────────────────────
@@ -137,3 +141,10 @@ if TOTP_ENCRYPTION_KEY == _DEFAULT_TOTP_KEY and ENV == "production":
 REQUIRE_SMTP_IN_PRODUCTION: bool = os.getenv(
     "REQUIRE_SMTP_IN_PRODUCTION", "false"
 ).lower() in ("true", "1", "yes")
+
+# ── Google OAuth ────────────────────────────────────────────────────
+# Register at https://console.cloud.google.com/apis/credentials
+# Authorised redirect URI: <BACKEND_URL>/api/v1/auth/google/callback
+
+GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID", "")
+GOOGLE_OAUTH_ENABLED: bool = bool(GOOGLE_CLIENT_ID)

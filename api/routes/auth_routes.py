@@ -575,3 +575,127 @@ async def reset_password(
         await send_password_changed_email(user.email)
     except (OSError, ConnectionError, TimeoutError, ValueError) as exc:
         logger.warning("Failed to send password-reset notification email: %s", exc)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Google Sign-In — ID token verification (GIS SDK flow)
+# ─────────────────────────────────────────────────────────────────────────────
+
+from api.config import GOOGLE_CLIENT_ID, GOOGLE_OAUTH_ENABLED
+
+_GOOGLE_TOKENINFO_URL = "https://oauth2.googleapis.com/tokeninfo"
+
+
+class GoogleVerifyRequest(BaseModel):
+    credential: str  # Google ID token from GIS SDK
+
+
+@router.post("/google/verify")
+@limiter.limit(RATE_LIMIT_AUTH)
+async def google_verify(
+    request: Request,
+    body: GoogleVerifyRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Verify a Google ID token (from GIS SDK) and issue session cookies."""
+    if not GOOGLE_OAUTH_ENABLED:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Google sign-in is not configured on this server.",
+        )
+
+    import httpx as _httpx
+    try:
+        async with _httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(
+                _GOOGLE_TOKENINFO_URL,
+                params={"id_token": body.credential},
+            )
+    except Exception as exc:
+        logger.error("Google tokeninfo request failed: %s", exc)
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Could not reach Google.")
+
+    if resp.status_code != 200:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Google token.")
+
+    info = resp.json()
+
+    # Validate audience — must be our app
+    if info.get("aud") != GOOGLE_CLIENT_ID:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token audience mismatch.")
+
+    email: str = info.get("email", "")
+    email_verified: str = info.get("email_verified", "false")
+    full_name: str = info.get("name", "") or email.split("@")[0]
+
+    if not email or email_verified != "true":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Google account has no verified email.")
+
+    # Find or create user by email
+    result = await db.execute(
+        select(User).where(User.email == email, User.deleted_at.is_(None))
+    )
+    user = result.scalar_one_or_none()
+
+    if user is None:
+        company = Company(
+            name=f"{full_name}'s Company",
+            industry="technology",
+            region="US",
+        )
+        db.add(company)
+        await db.flush()
+
+        user = User(
+            email=email,
+            hashed_password=hash_password(secrets.token_hex(32)),
+            full_name=full_name,
+            company_id=company.id,
+            role="admin",
+        )
+        db.add(user)
+
+        from api.services.subscriptions import get_or_create_subscription
+        await get_or_create_subscription(db, company.id)
+
+        try:
+            await db.commit()
+        except IntegrityError:
+            await db.rollback()
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Account creation failed.")
+
+        await db.refresh(user)
+        await audit.record(
+            db, user_id=user.id, company_id=user.company_id,
+            action="register_google", resource_type="user", resource_id=user.id,
+        )
+        await db.commit()
+
+    if not user.is_active:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This account has been deactivated.")
+
+    user.last_login = datetime.now(timezone.utc)
+    access = create_access_token(user.id, user.company_id)
+    refresh = await create_refresh_token(db, user.id, user.company_id)
+    csrf = secrets.token_hex(32)
+
+    await audit.record(
+        db, user_id=user.id, company_id=user.company_id,
+        action="login_google", resource_type="user", resource_id=user.id,
+    )
+    await db.commit()
+
+    login_user = LoginUser(
+        id=user.id, email=user.email,
+        company_id=user.company_id, role=user.role,
+    )
+    response = Response(
+        content=TokenWithRefresh(
+            access_token=access, refresh_token=refresh, csrf_token=csrf,
+            user=login_user,
+        ).model_dump_json(),
+        media_type="application/json",
+    )
+    _set_auth_cookies(response, access, csrf, refresh_token=refresh)
+    return response
+

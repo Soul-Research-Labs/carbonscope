@@ -9,6 +9,6 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ["/api/", "/dashboard/", "/settings/", "/billing/"],
       },
     ],
-    sitemap: `${process.env.NEXT_PUBLIC_SITE_URL || "https://carbonscope.io"}/sitemap.xml`,
+    sitemap: `${process.env.NEXT_PUBLIC_SITE_URL!}/sitemap.xml`,
   };
 }

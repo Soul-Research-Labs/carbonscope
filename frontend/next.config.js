@@ -21,13 +21,14 @@ const nextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline'" +
+              "script-src 'self' 'unsafe-inline' https://accounts.google.com" +
                 (process.env.NODE_ENV !== "production" ? " 'unsafe-eval'" : ""),
-              "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: blob:",
+              "style-src 'self' 'unsafe-inline' https://accounts.google.com",
+              "img-src 'self' data: blob: https://lh3.googleusercontent.com",
               "font-src 'self'",
-              "connect-src 'self' " +
+              "connect-src 'self' https://accounts.google.com " +
                 (process.env.BACKEND_URL || "http://localhost:8000"),
+              "frame-src https://accounts.google.com",
               "frame-ancestors 'none'",
             ].join("; "),
           },

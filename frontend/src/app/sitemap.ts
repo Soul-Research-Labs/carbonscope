@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://carbonscope.io";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL!;
 
 /** Public routes to include in the sitemap. */
 const PUBLIC_PATHS = ["/", "/login", "/register", "/forgot-password"];

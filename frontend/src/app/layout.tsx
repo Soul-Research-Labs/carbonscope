@@ -7,12 +7,12 @@ import { ThemeProvider } from "@/lib/theme-context";
 import { ToastProvider } from "@/components/Toast";
 import Sidebar from "@/components/Sidebar";
 import Navbar from "@/components/Navbar";
-import { validateEnv } from "@/lib/env";
+import { validateEnv, env } from "@/lib/env";
 
 // Validate environment variables at import time (server side)
 validateEnv();
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://carbonscope.io";
+const SITE_URL = env.NEXT_PUBLIC_SITE_URL;
 
 export const metadata: Metadata = {
   title: {

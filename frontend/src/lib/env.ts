@@ -28,6 +28,10 @@ export const env = {
     "NEXT_PUBLIC_SITE_URL",
     "https://carbonscope.io",
   ),
+  NEXT_PUBLIC_GOOGLE_CLIENT_ID: optional(
+    "NEXT_PUBLIC_GOOGLE_CLIENT_ID",
+    "323040716512-7maggb3e8djdg1bfhonnr8jol42lk04e.apps.googleusercontent.com",
+  ),
 } as const;
 
 /**

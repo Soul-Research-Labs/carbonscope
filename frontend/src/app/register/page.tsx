@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { useAuth } from "@/lib/auth-context";
 import { FormField } from "@/components/FormField";
@@ -11,10 +12,29 @@ import {
   type RegisterFormValues,
 } from "@/lib/validation";
 import { INDUSTRIES, REGIONS, industryLabel } from "@/lib/constants";
+import { env } from "@/lib/env";
+
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (cfg: object) => void;
+          renderButton: (el: HTMLElement, opts: object) => void;
+          prompt: () => void;
+        };
+      };
+    };
+  }
+}
+
+const GIS_SCRIPT = "https://accounts.google.com/gsi/client";
+const GOOGLE_CLIENT_ID = env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
 export default function RegisterPage() {
   useDocumentTitle("Register");
-  const { register } = useAuth();
+  const { register, loginWithGoogle } = useAuth();
+  const router = useRouter();
   const [form, setForm] = useState<RegisterFormValues>({
     email: "",
     password: "",
@@ -27,6 +47,56 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const googleBtnRef = useRef<HTMLDivElement>(null);
+
+  // Load GIS SDK and render Google button
+  useEffect(() => {
+    function initGoogle() {
+      if (!window.google || !googleBtnRef.current) return;
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleGoogleCredential,
+        use_fedcm_for_prompt: true,
+      });
+      window.google.accounts.id.renderButton(googleBtnRef.current, {
+        theme: "outline",
+        size: "large",
+        width: googleBtnRef.current.offsetWidth || 400,
+        text: "signup_with",
+        shape: "rectangular",
+      });
+    }
+
+    if (window.google) {
+      initGoogle();
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = GIS_SCRIPT;
+    script.async = true;
+    script.defer = true;
+    script.onload = initGoogle;
+    document.head.appendChild(script);
+
+    return () => {
+      const existing = document.querySelector(`script[src="${GIS_SCRIPT}"]`);
+      if (existing) existing.remove();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function handleGoogleCredential(response: { credential: string }) {
+    setError("");
+    setSubmitting(true);
+    try {
+      await loginWithGoogle(response.credential);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Google sign-in failed");
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   function update(field: keyof RegisterFormValues, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -205,6 +275,17 @@ export default function RegisterPage() {
             {submitting ? "Creating account..." : "Create Account"}
           </button>
         </form>
+
+        {/* Google Sign-In */}
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-[var(--card-border)]" />
+          </div>
+          <div className="relative flex justify-center text-xs text-(--muted) uppercase tracking-wide">
+            <span className="bg-[var(--card)] px-3">or sign up with</span>
+          </div>
+        </div>
+        <div ref={googleBtnRef} className="w-full flex justify-center" />
         <p className="text-center text-sm text-[var(--muted)] mt-6">
           Already have an account?{" "}
           <Link href="/login" className="text-[var(--primary)] hover:underline">
