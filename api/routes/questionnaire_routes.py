@@ -129,7 +129,7 @@ async def upload_questionnaire(
     return questionnaire
 
 
-@router.get("/", response_model=PaginatedResponse[QuestionnaireOut])
+@router.get("", response_model=PaginatedResponse[QuestionnaireOut])
 @limiter.limit(RATE_LIMIT_DEFAULT)
 async def list_questionnaires(
     request: Request,
@@ -173,7 +173,7 @@ async def list_questionnaires(
 # to prevent FastAPI from matching "templates" as a questionnaire ID.
 
 
-@router.get("/templates/", response_model=list)
+@router.get("/templates", response_model=list)
 @limiter.limit(RATE_LIMIT_DEFAULT)
 async def get_templates(
     request: Request,
