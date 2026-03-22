@@ -1,6 +1,6 @@
 "use client";
 
-import { useReducer, useMemo } from "react";
+import { useReducer, useMemo, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import Breadcrumbs from "@/components/Breadcrumbs";
@@ -94,8 +94,19 @@ export default function UploadPage() {
     dispatch({ type: "SET_FIELD", field, value });
 
   // Redirect to /reports when a background subnet estimation completes
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
   const sseHandlers = useMemo(
-    () => ({ report_ready: () => router.push("/reports") }),
+    () => ({
+      report_ready: () => {
+        if (mountedRef.current) router.push("/reports");
+      },
+    }),
     [router],
   );
   useEventSource(sseHandlers, !!user);

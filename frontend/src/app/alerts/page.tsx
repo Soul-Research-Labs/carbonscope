@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState, useMemo, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { PageSkeleton } from "@/components/Skeleton";
@@ -33,6 +33,7 @@ export default function AlertsPage() {
   useDocumentTitle("Alerts");
   const { user, loading } = useRequireAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [error, setError] = useState("");
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [checking, setChecking] = useState(false);
@@ -56,12 +57,16 @@ export default function AlertsPage() {
   }, [alertsQuery.error]);
 
   // Auto-refresh when backend pushes SSE events
+  const invalidateAlerts = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: ["alerts"] }),
+    [queryClient],
+  );
   const sseHandlers = useMemo(
     () => ({
-      "alert.created": () => alertsQuery.refetch(),
-      "alert.acknowledged": () => alertsQuery.refetch(),
+      "alert.created": invalidateAlerts,
+      "alert.acknowledged": invalidateAlerts,
     }),
-    [alertsQuery.refetch],
+    [invalidateAlerts],
   );
   useEventSource(sseHandlers, !!user);
 

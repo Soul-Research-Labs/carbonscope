@@ -233,7 +233,10 @@ async def dispatch_event(
                 "error": str(exc),
             })
 
-        db.add(delivery)
+        try:
+            db.add(delivery)
+        except Exception:
+            logger.exception("Failed to persist webhook delivery for webhook=%s", wh.id)
 
     await db.commit()
     return results

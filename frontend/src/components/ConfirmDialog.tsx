@@ -48,7 +48,7 @@ export default function ConfirmDialog({
       // Focus trap: Tab cycles within dialog
       if (e.key === "Tab") {
         const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+          'button:not([disabled]), [href]:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"]):not([disabled])',
         );
         if (!focusable || focusable.length === 0) return;
         const first = focusable[0];

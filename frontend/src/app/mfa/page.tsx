@@ -51,7 +51,7 @@ export default function MFAPage() {
       setSuccess("MFA enabled successfully!");
       setSetup(null);
       setTotpCode("");
-      statusQuery.refetch();
+      await statusQuery.refetch();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Invalid TOTP code");
     }
@@ -63,7 +63,7 @@ export default function MFAPage() {
       await disableMFA(disableCode);
       setSuccess("MFA disabled.");
       setDisableCode("");
-      statusQuery.refetch();
+      await statusQuery.refetch();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to disable MFA");
     }

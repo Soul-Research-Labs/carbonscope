@@ -34,7 +34,10 @@ function AuditLogsPageInner() {
   const searchParams = useSearchParams();
   const [offset, setOffset] = useState(() => {
     const p = searchParams.get("page");
-    return p ? (Math.max(1, Number(p)) - 1) * PAGE_SIZE : 0;
+    const num = Number(p);
+    return p && Number.isFinite(num) && num > 0
+      ? (Math.max(1, Math.floor(num)) - 1) * PAGE_SIZE
+      : 0;
   });
 
   const logsQuery = useQuery<{ items: AuditLogEntry[]; total: number }>({

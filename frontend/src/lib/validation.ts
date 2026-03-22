@@ -27,6 +27,9 @@ export function validateRegisterField(
       if (!/[A-Z]/.test(value) || !/\d/.test(value)) {
         return "Must include an uppercase letter and a digit";
       }
+      if (!/[^A-Za-z0-9]/.test(value)) {
+        return "Must include a special character";
+      }
       return "";
     case "confirmPassword":
       if (!value) return "Confirm your password";

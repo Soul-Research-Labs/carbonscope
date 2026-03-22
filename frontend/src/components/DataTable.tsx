@@ -72,7 +72,11 @@ function DataTableInner<T extends object>({
             </tr>
           ) : (
             data.map((row, i) => (
-              <tr key={((row as Record<string, unknown>).id as string) ?? i}>
+              <tr
+                key={
+                  ((row as Record<string, unknown>).id as string) ?? `row-${i}`
+                }
+              >
                 {columns.map((col) => (
                   <td
                     key={col.key}

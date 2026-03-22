@@ -347,7 +347,14 @@ export default function Sidebar() {
         )}
 
         <button
-          onClick={logout}
+          onClick={async () => {
+            try {
+              await logout();
+            } catch {
+              // Redirect to login as fallback even if API fails
+              window.location.href = "/login";
+            }
+          }}
           className="sidebar-link sidebar-link-inactive w-full text-[var(--muted)] hover:text-[var(--danger)]"
           title="Logout"
           aria-label="Logout"

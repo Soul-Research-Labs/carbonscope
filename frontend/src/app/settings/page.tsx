@@ -32,6 +32,7 @@ export default function SettingsPage() {
   const { logout } = useAuth();
   const router = useRouter();
   const [saving, setSaving] = useState(false);
+  const [anySaving, setAnySaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -93,9 +94,11 @@ export default function SettingsPage() {
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
+    if (anySaving) return;
     setError("");
     setSuccess("");
     setSaving(true);
+    setAnySaving(true);
     try {
       await updateCompany({
         name,
@@ -110,14 +113,17 @@ export default function SettingsPage() {
       setError(err instanceof Error ? err.message : "Update failed");
     } finally {
       setSaving(false);
+      setAnySaving(false);
     }
   }
 
   async function handleProfileSave(e: React.FormEvent) {
     e.preventDefault();
+    if (anySaving) return;
     setProfileErr("");
     setProfileMsg("");
     setProfileSaving(true);
+    setAnySaving(true);
     try {
       await updateProfile({ full_name: fullName, email });
       await settingsQuery.refetch();
@@ -126,6 +132,7 @@ export default function SettingsPage() {
       setProfileErr(err instanceof Error ? err.message : "Update failed");
     } finally {
       setProfileSaving(false);
+      setAnySaving(false);
     }
   }
 
@@ -145,7 +152,9 @@ export default function SettingsPage() {
       setPwErr(validationErr);
       return;
     }
+    if (anySaving) return;
     setPwSaving(true);
+    setAnySaving(true);
     try {
       await changePassword(currentPw, newPw);
       setPwMsg("Password changed successfully.");
@@ -155,6 +164,7 @@ export default function SettingsPage() {
       setPwErr(err instanceof Error ? err.message : "Password change failed");
     } finally {
       setPwSaving(false);
+      setAnySaving(false);
     }
   }
 

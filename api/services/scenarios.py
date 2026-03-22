@@ -80,6 +80,9 @@ def compute_scenario(
     current = dict(baseline)
 
     adjustments_applied = []
+    unknown_keys = [k for k in parameters if k not in _ADJUSTMENTS]
+    if unknown_keys:
+        raise ServiceError(f"Unknown adjustment types: {', '.join(unknown_keys)}")
     for adj_type, adj_params in parameters.items():
         handler = _ADJUSTMENTS.get(adj_type)
         if handler and isinstance(adj_params, dict):

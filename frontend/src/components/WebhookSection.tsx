@@ -266,6 +266,9 @@ export default function WebhookSection() {
                   <td className="py-2">
                     <button
                       onClick={async () => {
+                        const btn =
+                          document.activeElement as HTMLButtonElement | null;
+                        if (btn) btn.disabled = true;
                         try {
                           const updated = await toggleWebhook(
                             wh.id,
@@ -276,6 +279,8 @@ export default function WebhookSection() {
                           );
                         } catch {
                           setError("Failed to toggle webhook");
+                        } finally {
+                          if (btn) btn.disabled = false;
                         }
                       }}
                       className={`text-xs hover:underline`}

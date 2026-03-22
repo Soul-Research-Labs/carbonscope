@@ -96,8 +96,17 @@ def _global_cb_is_open() -> bool:
             return False
         elapsed = time.monotonic() - _global_cb_opened_at
         if elapsed >= _GLOBAL_CB_RECOVERY_TIMEOUT:
+            # Half-open: reset failures so a single failure doesn't immediately re-open
+            _global_cb_reset_for_half_open()
             return False
         return True
+
+
+def _global_cb_reset_for_half_open() -> None:
+    """Reset failure counter when entering half-open state (called under lock)."""
+    global _global_cb_failures, _global_cb_opened_at
+    _global_cb_failures = 0
+    _global_cb_opened_at = 0.0
 
 
 def _init_bt() -> None:

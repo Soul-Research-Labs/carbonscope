@@ -95,6 +95,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             className={`${colors[t.type]} px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 min-w-[280px] max-w-[400px] animate-slide-in`}
             onMouseEnter={() => pauseTimer(t.id)}
             onMouseLeave={() => resumeTimer(t.id)}
+            tabIndex={0}
             onFocus={() => pauseTimer(t.id)}
             onBlur={() => resumeTimer(t.id)}
           >

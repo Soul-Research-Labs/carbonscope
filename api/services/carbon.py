@@ -93,6 +93,15 @@ async def create_estimate(
     else:
         est = estimate_emissions_local(questionnaire)
 
+    # Validate the estimation result shape
+    if (
+        not isinstance(est, dict)
+        or "emissions" not in est
+        or not isinstance(est["emissions"], dict)
+        or not all(k in est["emissions"] for k in ("scope1", "scope2", "scope3", "total"))
+    ):
+        raise ValueError("Estimation returned malformed result — missing required emission fields")
+
     emissions = est["emissions"]
 
     report = EmissionReport(
