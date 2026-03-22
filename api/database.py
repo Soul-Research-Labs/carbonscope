@@ -1,7 +1,6 @@
 """SQLAlchemy async engine + session factory.
 
-Supports both SQLite (aiosqlite) and PostgreSQL (asyncpg).
-PostgreSQL uses connection pooling for production performance.
+PostgreSQL (asyncpg) with connection pooling for all environments.
 """
 
 from __future__ import annotations
@@ -17,30 +16,16 @@ from api.config import DATABASE_URL, DB_SLOW_QUERY_MS
 
 logger = logging.getLogger(__name__)
 
-_is_sqlite = DATABASE_URL.startswith("sqlite")
-
-# PostgreSQL connection pooling settings
-_engine_kwargs: dict = {"echo": False}
-if not _is_sqlite:
-    _engine_kwargs.update({
-        "pool_size": 10,
-        "max_overflow": 20,
-        "pool_timeout": 30,
-        "pool_recycle": 1800,  # recycle connections every 30 min
-        "pool_pre_ping": True,  # test connections before use
-    })
-
-engine = create_async_engine(DATABASE_URL, **_engine_kwargs)
+engine = create_async_engine(
+    DATABASE_URL,
+    echo=False,
+    pool_size=10,
+    max_overflow=20,
+    pool_timeout=30,
+    pool_recycle=1800,  # recycle connections every 30 min
+    pool_pre_ping=True,  # verify connection health before use
+)
 _SLOW_QUERY_TIMER_KEY = "carbonscope_query_start_times"
-
-
-if _is_sqlite:
-    @event.listens_for(engine.sync_engine, "connect")
-    def _enable_sqlite_fk(dbapi_conn, connection_record):
-        """Enable foreign-key enforcement for every SQLite connection."""
-        cursor = dbapi_conn.cursor()
-        cursor.execute("PRAGMA foreign_keys=ON")
-        cursor.close()
 
 
 @event.listens_for(engine.sync_engine, "before_cursor_execute")
@@ -93,8 +78,6 @@ async def init_db() -> None:
 
 def get_db_pool_status() -> str:
     """Return a compact pool status string for health checks."""
-    if _is_sqlite:
-        return "sqlite/no_pool"
     try:
         return engine.sync_engine.pool.status()
     except (AttributeError, RuntimeError):

@@ -21,20 +21,24 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 ENV: str = os.getenv("ENV", "development")  # development | production | test
 
 # ── Database ────────────────────────────────────────────────────────
-# Supports SQLite (aiosqlite) and PostgreSQL (asyncpg).
-# Examples:
-#   sqlite+aiosqlite:///./carbonscope.db
-#   postgresql+asyncpg://user:pass@localhost:5432/carbonscope
+# PostgreSQL is required for all environments (development, test, production).
+# Example: postgresql+asyncpg://user:pass@localhost:5432/carbonscope
 
 DATABASE_URL: str = os.getenv(
     "DATABASE_URL",
-    f"sqlite+aiosqlite:///{BASE_DIR / 'carbonscope.db'}",
+    "postgresql+asyncpg://carbonscope:carbonscope_dev@localhost:5432/carbonscope",
 )
 DB_SLOW_QUERY_MS: int = int(os.getenv("DB_SLOW_QUERY_MS", "500"))
 
-if ENV == "production" and "sqlite" in DATABASE_URL:
+if "sqlite" in DATABASE_URL:
     raise RuntimeError(
-        "SQLite is not supported in production. Set DATABASE_URL to a PostgreSQL connection string. "
+        "SQLite is not supported. Set DATABASE_URL to a PostgreSQL connection string. "
+        "Example: postgresql+asyncpg://user:pass@localhost:5432/carbonscope"
+    )
+
+if not DATABASE_URL.startswith("postgresql"):
+    raise RuntimeError(
+        "DATABASE_URL must be a PostgreSQL connection string. "
         "Example: postgresql+asyncpg://user:pass@localhost:5432/carbonscope"
     )
 

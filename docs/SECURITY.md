@@ -137,7 +137,7 @@ The application enforces security requirements at startup in production mode:
 
 - All Python dependencies are pinned in `requirements.txt`
 - All npm dependencies are pinned in `package.json`
-- Docker images use specific version tags (e.g., `python:3.12-slim`, `node:20`, `postgres:16-alpine`)
+- Docker images use specific version tags (e.g., `python:3.12-slim`, `node:20`, `postgres:17-alpine`)
 - Containers run as non-root users (`appuser` for backend, `node` for frontend)
 - Docker `no-new-privileges` security option is enabled in production
 

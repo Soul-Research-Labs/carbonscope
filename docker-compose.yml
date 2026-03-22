@@ -1,4 +1,26 @@
 services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: carbonscope
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-carbonscope_dev}
+      POSTGRES_DB: carbonscope
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U carbonscope"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+
   redis:
     image: redis:7-alpine
     ports:
@@ -21,17 +43,16 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=sqlite+aiosqlite:///./carbonscope.db
-      # WARNING: Override SECRET_KEY in production — never use the default.
-      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
+      - DATABASE_URL=postgresql+asyncpg://carbonscope:${POSTGRES_PASSWORD:-carbonscope_dev}@db:5432/carbonscope
+      - SECRET_KEY=${SECRET_KEY:-change-me-in-development}
       - ALLOWED_ORIGINS=http://localhost:3000,http://frontend:3000
       - LOG_LEVEL=INFO
       - RATE_LIMIT_AUTH=10/minute
       - RATE_LIMIT_DEFAULT=60/minute
       - REDIS_URL=redis://redis:6379/0
-    volumes:
-      - db-data:/app
     depends_on:
+      db:
+        condition: service_healthy
       redis:
         condition: service_healthy
     deploy:
@@ -70,4 +91,4 @@ services:
       retries: 3
 
 volumes:
-  db-data:
+  pgdata:
