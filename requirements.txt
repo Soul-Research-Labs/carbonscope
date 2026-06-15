@@ -9,12 +9,12 @@ sqlalchemy[asyncio]==2.0.48
 asyncpg==0.31.0
 alembic==1.18.4
 passlib[bcrypt]==1.7.4
-bcrypt==3.2.2
-PyJWT==2.11.0
+bcrypt==5.0.0
+PyJWT==2.13.0
 pydantic[email]==2.12.5
 httpx==0.28.1
 python-dotenv>=1.0.0
-slowapi==0.1.9
+slowapi==0.1.10
 redis==5.2.1
 python-multipart==0.0.22
 aiosmtplib>=3.0.0
